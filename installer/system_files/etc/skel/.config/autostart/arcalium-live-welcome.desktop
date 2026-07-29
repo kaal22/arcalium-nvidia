@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Arcalium Live Welcome
+Exec=/usr/bin/arcalium-live-welcome.sh
+Icon=system-software-install
+Type=Application
+X-KDE-autostart-phase=2

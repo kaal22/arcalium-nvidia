@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Install Arcalium OS
+GenericName=Install
+Comment=Install Arcalium OS NVIDIA Edition to this computer
+Categories=System;Utility;X-Red-Hat-Base;X-Fedora;
+Exec=liveinst
+Terminal=false
+Type=Application
+Icon=org.fedoraproject.AnacondaInstaller
+StartupNotify=true
+StartupWMClass=liveinst
+NoDisplay=false

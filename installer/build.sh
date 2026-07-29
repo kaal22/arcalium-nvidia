@@ -70,13 +70,17 @@ sed -i "s/^livesys_session=.*/livesys_session=${LIVE_SESSION}/" /etc/sysconfig/l
 systemctl enable livesys.service livesys-late.service
 
 ### Installer
-dnf install -y --allowerasing anaconda-live libblockdev-{btrfs,lvm,dm}
+dnf install -y --allowerasing anaconda-live libblockdev-{btrfs,lvm,dm} yad
 mkdir -p /var/lib/rpm-state /usr/share/anaconda/post-scripts
 
 # shellcheck source=/dev/null
 source /etc/os-release
 rm -f /etc/system-release
 echo "Arcalium OS NVIDIA Edition ${VERSION_ID}" >/etc/system-release
+
+# Anaconda profile, welcome dialog, visible Install launcher
+cp -a "$SCRIPT_DIR/system_files"/. /
+chmod 0755 /usr/bin/arcalium-live-welcome.sh
 
 cat >>/usr/share/anaconda/interactive-defaults.ks <<EOF
 ostreecontainer --url=${INSTALL_IMAGE_PAYLOAD} --transport=containers-storage --no-signature-verification
@@ -91,6 +95,16 @@ cat >/usr/share/anaconda/post-scripts/arcalium-track-registry.ks <<EOF
 bootc switch --mutate-in-place --transport registry ${TARGET_IMAGE_REF}
 %end
 EOF
+
+### Live session: installer-focused, not a gaming desktop
+# Steam and Bazzite announcements belong on the installed system, not the live ISO.
+rm -f /etc/skel/.config/autostart/steam.desktop
+if [[ -f /etc/xdg/autostart/bazzite-announcement.desktop ]]; then
+    sed -i \
+        -e 's/^X-GNOME-Autostart-enabled=.*/X-GNOME-Autostart-enabled=false/' \
+        -e '$a Hidden=true' \
+        /etc/xdg/autostart/bazzite-announcement.desktop
+fi
 
 ### ISO contract
 dnf install -y grub2-efi-x64-cdboot # provides gcdx64.efi

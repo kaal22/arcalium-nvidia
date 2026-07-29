@@ -139,7 +139,8 @@
 | 2026-07-29 | Arcalium files present in built image | `/etc/arcalium/image-info.json` and `/usr/share/arcalium/os-release.snippet` verified |
 | 2026-07-29 | `just build-qcow2` | **success** — `output/qcow2/disk.qcow2`, 5.8 GB, ~14 min; loop devices, Btrfs and `bootc install-to-filesystem` all worked under WSL2 |
 | 2026-07-29 | `just build-iso-live` (titanoboa) | **success** — payload image 27.4 GB; `output/Arcalium-Live.iso` ~6 GB squashfs live installer |
-| 2026-07-29 | `ghcr.io/ublue-os/titanoboa:latest` | **not pullable** (403 Forbidden); local builds use upstream `main.sh` + `quay.io/fedora/fedora:latest` instead |
+| 2026-07-29 | Live ISO Install button | **failed silently** — Anaconda had no profile for `os_id=bazzite`; fixed with `installer/system_files/etc/anaconda/profile.d/bazzite.conf` |
+| 2026-07-29 | Steam autostart on live ISO | Expected from Bazzite skel; suppressed in payload (`rm steam.desktop`, hide announcements, add Arcalium welcome dialog) |
 | 2026-07-29 | `disk_config/disk.toml` `[[customizations.filesystem]]` | reported unsupported for `qcow2` by this BIB version; the 20 GiB minsize was ignored and a default layout used |
 
 ---
