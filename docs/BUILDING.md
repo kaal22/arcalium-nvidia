@@ -117,6 +117,13 @@ The recipe clones upstream titanoboa into `.cache/titanoboa` on first run and ru
 
 The payload image (`localhost/arcalium-os-nvidia-payload:dev`, ~27 GB) layers live media on top of the base image: Fedora-signed kernel for Secure Boot on the live ISO, `dracut-live`, `anaconda-live`, EFI binaries under `/boot/efi`, and `/usr/lib/bootc-image-builder/iso.yaml`. See `installer/build.sh`.
 
+Live-session extras under `installer/system_files/`:
+
+- Anaconda profile matching Bazzite's `os_id` (without it, Install exits silently)
+- Welcome dialog that launches `liveinst`
+- Visible **Install Arcalium OS** launcher
+- Steam and Bazzite announcement autostart disabled for the live session only
+
 ### Building from a Windows workstation via WSL2
 
 Verified working on WSL2 2.6.3 (kernel 6.6.87) with Ubuntu 24.04.

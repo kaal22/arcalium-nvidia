@@ -355,6 +355,9 @@ build-iso-live $target_image=("localhost/" + image_name) $tag=default_tag:
     titanoboa_dir="${PWD}/.cache/titanoboa"
 
     # Payload image: live KDE session, Anaconda, and the image to install.
+    # Bind-mounted installer/ sources are not part of the layer cache key, so bust
+    # the cache whenever those files change.
+    cache_bust="$(find installer -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-16)"
     sudo podman build \
       --cap-add sys_admin \
       --security-opt label=disable \
@@ -362,6 +365,7 @@ build-iso-live $target_image=("localhost/" + image_name) $tag=default_tag:
       --build-arg BASE_IMAGE="${target_image}:${tag}" \
       --build-arg INSTALL_IMAGE_PAYLOAD="${target_image}:${tag}" \
       --build-arg TARGET_IMAGE_REF="ghcr.io/{{ repo_organization }}/{{ image_name }}:${tag}" \
+      --build-arg CACHEBUST="${cache_bust}" \
       --tag "${payload_image}" \
       installer
 

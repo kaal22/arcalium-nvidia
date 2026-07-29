@@ -10,16 +10,21 @@
 ARG BASE_IMAGE=localhost/arcalium-os-nvidia:dev
 ARG INSTALL_IMAGE_PAYLOAD=localhost/arcalium-os-nvidia:dev
 ARG TARGET_IMAGE_REF=ghcr.io/kaal22/arcalium-os-nvidia:dev
+# Changed by just build-iso-live when installer/ contents change so the RUN
+# layer is not reused from a stale cache (bind mounts are not hashed).
+ARG CACHEBUST=0
 
 FROM ${BASE_IMAGE}
 
 ARG BASE_IMAGE
 ARG INSTALL_IMAGE_PAYLOAD
 ARG TARGET_IMAGE_REF
+ARG CACHEBUST
 
 RUN --mount=type=bind,source=./.,target=/src \
     env \
       BASE_IMAGE="${BASE_IMAGE}" \
       INSTALL_IMAGE_PAYLOAD="${INSTALL_IMAGE_PAYLOAD}" \
       TARGET_IMAGE_REF="${TARGET_IMAGE_REF}" \
+      CACHEBUST="${CACHEBUST}" \
       bash /src/build.sh
