@@ -24,12 +24,21 @@ while ((SECONDS < deadline)); do
 done
 [[ -n "$target" ]] || exit 0
 
+# arcalium-install.sh intentionally starts this monitor before liveinst so it can
+# cover Anaconda startup too. Wait for Anaconda instead of mistaking that startup
+# race for the end of an install.
+anaconda_deadline=$((SECONDS + 300))
+while ! pgrep -f '[a]naconda' >/dev/null; do
+    ((SECONDS >= anaconda_deadline)) && exit 0
+    sleep 1
+done
+
 used_at_start=$(df -B1 --output=used "$target" | tail -n1)
 started=$SECONDS
 
 report() {
     while mountpoint -q "$target"; do
-        pgrep -f anaconda >/dev/null || break
+        pgrep -f '[a]naconda' >/dev/null || break
 
         used=$(df -B1 --output=used "$target" | tail -n1)
         written=$((used - used_at_start))
