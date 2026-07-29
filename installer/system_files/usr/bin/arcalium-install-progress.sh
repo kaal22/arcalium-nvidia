@@ -37,9 +37,11 @@ report() {
         elapsed=$((SECONDS - started))
         ((elapsed < 1)) && elapsed=1
 
-        awk -v b="$written" -v e="$elapsed" 'BEGIN {
-            printf "# %.1f GiB written  -  %d:%02d elapsed  -  %d MiB/s\n",
-                b / 1073741824, e / 60, e % 60, (b / e) / 1048576
+        # Total on disk, not the delta since this window opened: the window can be
+        # attached to an install already in progress, and a delta reads as a stall.
+        awk -v t="$used" -v b="$written" -v e="$elapsed" 'BEGIN {
+            printf "# %.1f GiB on disk  -  %d:%02d watched  -  %d MiB/s average\n",
+                t / 1073741824, e / 60, e % 60, (b / e) / 1048576
         }'
         sleep 3
     done
