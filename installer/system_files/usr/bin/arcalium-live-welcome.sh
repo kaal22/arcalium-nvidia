@@ -13,23 +13,15 @@ touch "$marker"
 text='Welcome to the Arcalium OS live installer.
 
 This session is for installation and troubleshooting only.
-It is not the installed gaming experience — Steam and other
+It is not the installed gaming experience — Steam and othe
 desktop first-run services are disabled here.
 
-Click Install to open Anaconda.'
+Expect the install to take 15–40 minutes. The whole OS image
+is written from this disc, so it is much slower than a package
+installer and slowest of all in a virtual machine. A separate
+window will report how much has been written to disk.
 
-launch_installer() {
-    # Force the Bazzite-matched profile; surface failures instead of failing silently.
-    set +e
-    liveinst --profile bazzite "$@"
-    ret=$?
-    set -e
-    if [[ $ret -ne 0 ]]; then
-        yad --error --on-top --center --title='Installer failed' \
-            --text="liveinst exited with code ${ret}.\n\nOpen Konsole and run:\n  sudo liveinst --profile bazzite\n\nand check /tmp/anaconda.log" || true
-    fi
-    return "$ret"
-}
+Click Install to open Anaconda.'
 
 while true; do
     set +e
@@ -46,7 +38,7 @@ while true; do
     set -e
     case $ret in
         10)
-            launch_installer &
+            setsid /usr/bin/arcalium-install.sh >/dev/null 2>&1 &
             disown
             exit 0
             ;;

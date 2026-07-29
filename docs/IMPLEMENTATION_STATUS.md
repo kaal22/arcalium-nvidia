@@ -31,7 +31,7 @@ Phase 0 scaffolding is done. Local WSL builds work. The live ISO boots in VMware
 
 **Not finished — next session**
 
-1. **Retest Install** on the newest Desktop ISO (Firefox fix). Confirm Anaconda opens and can install into the VM disk.
+1. **Rebuild the ISO** with the progress window and the zstd squashfs fix, then retest the install end to end in the VM. Do not run the build while a VM install is in flight — they compete for the same CPU and disk.
 2. Set GitHub Actions secret `SIGNING_SECRET` from local `cosign.key`, then get CI to publish the private `ghcr.io/kaal22/arcalium-os-nvidia:dev`.
 3. Hardware install on RTX 3090 / RTX 2060 after VM install works.
 4. Do **not** start Control Centre until base image + ISO install are proven (spec gate).
@@ -153,10 +153,10 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | 5 | Add `docs/IMPLEMENTATION_STATUS.md` | complete |
 | 6 | Configure Cosign (no private key in git) | in progress — pubkey ready; secret upload pending |
 | 7 | Build/publish private `dev` image to GHCR | in progress — repository pushed; signing secret pending |
-| 8 | Verify image signature | blocked |
-| 9 | Build QCOW2 | blocked |
-| 10 | Boot-test unbranded image | blocked |
-| 11 | Build installer ISO | blocked |
+| 8 | Verify image signature | blocked — needs a CI-published image, which needs `SIGNING_SECRET` |
+| 9 | Build QCOW2 | complete — `output/qcow2/disk.qcow2`, built locally under WSL2 |
+| 10 | Boot-test unbranded image | in progress — live ISO boots under UEFI in VMware; Anaconda install running |
+| 11 | Build installer ISO | complete — `output/Arcalium-Live.iso` via titanoboa (`just build-iso-live`) |
 | 12–13 | Install on RTX 3090 / RTX 2060 | blocked — hardware |
 | 14 | Record commands, failures, upstream changes | in progress — see below |
 | 15 | Do not begin Control Centre until base+ISO proven | complete (honoured) |
@@ -185,6 +185,11 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | 2026-07-29 | Rebuild `Arcalium-Live.iso` with installer fixes | **success** — payload verified (profile present, Steam gone, welcome + Install launcher); ISO ~6.1 GB |
 | 2026-07-29 | Install still silent after profile fix | Missing Firefox — `anaconda-webui` needs it at runtime; soft RPM dep does not pull it without `fedora-release-workstation`. Installing Firefox like Bazzite. |
 | 2026-07-29 | `disk_config/disk.toml` `[[customizations.filesystem]]` | reported unsupported for `qcow2` by this BIB version; the 20 GiB minsize was ignored and a default layout used |
+| 2026-07-29 | VM boot of `Arcalium-Live.iso` with BIOS firmware | failed to PXE — titanoboa ISOs are UEFI-only; resolved by switching the VMware VM to UEFI |
+| 2026-07-29 | Live ISO Install after adding Firefox | **works** — Anaconda launches and reaches deployment |
+| 2026-07-29 | Anaconda `ostreecontainer` deploy step duration | slow but healthy — `ostree-container ... deploy` sat on "Deployment starting…" for 10+ min while unpacking a 27 GB payload; confirmed alive via CPU time, not hung |
+| 2026-07-29 | Deploy step is indistinguishable from a hang | Treated as a defect, not impatience. Added `arcalium-install-progress.sh` (bytes written, elapsed, throughput) and routed both launch paths through `arcalium-install.sh`. Welcome dialog now states 15–40 minutes up front. |
+| 2026-07-29 | titanoboa builds a **gzip** squashfs, not zstd | Upstream `build_iso.sh` puts `-comp zstd -Xcompression-level 19` after `-e`, and `mksquashfs` reads everything after `-e` as exclude paths. Log line: `Exportable Squashfs 4.0 filesystem, gzip compressed`. `build-iso-live` now patches the clone and asserts the fix. Worth an upstream PR. |
 
 ---
 
@@ -205,3 +210,4 @@ Resolved: local build host — WSL2 Ubuntu 24.04 on the Windows workstation runs
 | 2026-07-29 | Disk images built locally, not in CI | Local builds run from local container storage and need no registry credentials; CI cannot pull the private package. |
 | 2026-07-29 | ISOs will use titanoboa, not Bootc Image Builder | BIB's `anaconda-iso` depsolve is broken against Bazzite's Terra repos (BIB #1188), and titanoboa is what Bazzite uses for its own ISOs. Keeps Arcalium aligned with upstream instead of disabling signature checks. |
 | 2026-07-29 | ISO build workflow: edit on Windows → push to GitHub → pull in WSL → build in WSL | Git is the transfer mechanism between workstation and build host. Avoids `/mnt/c` performance and permission problems, prevents the two checkouts drifting, and keeps the CI image and local ISO on the same commit. See `docs/BUILDING.md`. |
+| 2026-07-29 | Kickstart `%post` registry switch runs without `--erroronfail` | The GHCR package is private, so the installer cannot reach it and the switch fails. A registry lookup must never abort a tester's install. Consequence: installed systems track `localhost/arcalium-os-nvidia:dev` and need one manual `bootc switch` before they can update — documented in `docs/BUILDING.md`. Publishing the package removes the step. |

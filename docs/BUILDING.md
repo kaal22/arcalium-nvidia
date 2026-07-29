@@ -9,7 +9,7 @@ This is the established loop. Git is the transfer mechanism between the Windows 
 1. **Edit** on the Windows workstation (`Arcalium NVIDIA` folder).
 2. **Commit and push** to `main` on GitHub.
 3. **Pull** in the WSL clone at `~/arcalium-nvidia`.
-4. **Build** there with `just build` then `just build-iso`.
+4. **Build** there with `just build` then `just build-iso-live`.
 5. **Copy** the finished ISO back to Windows.
 
 ```bash
@@ -20,9 +20,11 @@ git add -A && git commit -m "..." && git push origin main
 cd /home/kaal/arcalium-nvidia
 git pull
 just build
-just build-iso
-cp output/bootiso/*.iso /mnt/c/Users/Kaal/Desktop/
+just build-iso-live
+cp output/Arcalium-Live.iso /mnt/c/Users/Kaal/Desktop/
 ```
+
+Use `build-iso-live` (Titanoboa), not `build-iso`. Bootc Image Builder cannot resolve Bazzite's Terra GPG keys and fails the depsolve — details under “ISO builds” below.
 
 Two reasons this order matters: the WSL clone and the Windows folder are separate checkouts that silently drift if you skip the pull, and pushing first means the CI-built image and the local ISO come from the same commit.
 
@@ -123,6 +125,33 @@ Live-session extras under `installer/system_files/`:
 - Welcome dialog that launches `liveinst`
 - Visible **Install Arcalium OS** launcher
 - Steam and Bazzite announcement autostart disabled for the live session only
+- `arcalium-install-progress.sh`, a progress window covering the deploy step
+
+Both the welcome dialog and the desktop launcher go through `arcalium-install.sh`, so the progress window and error reporting apply however the installer is started.
+
+### Install time and the deploy step
+
+An install writes the whole OS image to disk, so it takes 15–40 minutes and spends nearly all of that inside one Anaconda step with no visible progress. Anaconda reports nothing during `ostree container deploy`, `hwclock` is the last line in the log before it starts, and testers reasonably read that as a hang. `arcalium-install-progress.sh` exists to disprove that: it polls the target mount and reports bytes written, elapsed time, and throughput.
+
+The bar pulsates rather than showing a percentage because the target is btrfs with `zstd:1`, so bytes on disk never approach the image size and any percentage would stall short of 100.
+
+To confirm progress by hand from a live-session terminal:
+
+```bash
+watch -n5 'df -h /mnt/sysroot /mnt/sysimage 2>/dev/null; pgrep -a ostree'
+```
+
+### Upstream: titanoboa silently builds gzip squashfs
+
+`build_iso.sh` invokes:
+
+```bash
+mksquashfs /rootfs … -e sysroot -e ostree -comp zstd -Xcompression-level 19
+```
+
+`mksquashfs` treats every argument after `-e` as an exclude path, so `-comp zstd -Xcompression-level 19` becomes four exclude patterns and the compressor falls back to gzip. Build logs confirm it: `Exportable Squashfs 4.0 filesystem, gzip compressed`. The entire live root, including the embedded container store the installer reads from, is then decompressed with gzip for the whole install.
+
+`build-iso-live` patches the clone with `sed` before running it and asserts the result, so a silent upstream reordering cannot reintroduce the fallback unnoticed. Fixing it upstream is worth a pull request.
 
 ### Building from a Windows workstation via WSL2
 
@@ -192,7 +221,27 @@ sudo systemctl reboot
 
 That machine then doubles as the local ISO builder.
 
-Note: `disk_config/iso.toml` runs `bootc switch` in the Anaconda `%post` stage. While the package is private, that step needs credentials available to the installer.
+## After an ISO install: point the system at GHCR
+
+A system installed from the ISO will not update until you do this once, by design.
+
+The ISO installs from the container image baked into it (`--transport=containers-storage`), so the installed system initially tracks `localhost/arcalium-os-nvidia:dev` — a reference that can never be pulled. The kickstart tries to correct this in `%post` with `bootc switch --mutate-in-place`, but the GHCR package is private during the alpha and the installer has no credentials, so that step fails. It deliberately runs without `--erroronfail` so a failed registry lookup cannot abort a tester's install.
+
+Confirm what the system is tracking:
+
+```bash
+sudo bootc status
+```
+
+If `image` shows `localhost/arcalium-os-nvidia:dev`, authenticate with a token holding `read:packages` and repoint it:
+
+```bash
+sudo podman login ghcr.io -u <github-username>
+sudo bootc switch ghcr.io/kaal22/arcalium-os-nvidia:dev
+sudo systemctl reboot
+```
+
+`bootc upgrade` works normally after that. Making the GHCR package public removes this step entirely, but that is held behind the Steam licensing gate in `docs/PRODUCT_SPEC.md` §17.2.
 
 ## Important gates
 
