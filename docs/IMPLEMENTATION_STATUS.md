@@ -37,7 +37,8 @@ Phase 0 scaffolding is done. Local WSL builds work. The ISO installs and the ins
 3. Hardware install on RTX 3090 / RTX 2060 — the VM install now works, so this is unblocked apart from hardware access.
 4. Retest in a VM with a preallocated disk and a Defender exclusion for the VM folder, to confirm the deploy step is disk-bound.
 5. Branding replaces the Bazzite first-run wizard and logo — but only after the spec's base+ISO gate, which is now met.
-6. Do **not** start Control Centre until the licensing and signing items above are settled (spec gate).
+6. Decide browser for the installed system: Firefox did not carry over from the live ISO (payload-only today). Candidate is Brave.
+7. Do **not** start Control Centre until the licensing and signing items above are settled (spec gate).
 
 **Resume commands**
 
@@ -200,6 +201,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | 2026-07-29 | Anaconda finish screen offers no restart | Live installer returns to the desktop and tells the user to exit it. Acceptable for alpha; an end user expects an explicit "Restart now". Polish item. |
 | 2026-07-29 | `bootc status` on the installed VM | `localhost/arcalium-os-nvidia:dev` as predicted — the ISO's embedded image, so `bootc upgrade` is inert until the GHCR package is published and the system is repointed |
 | 2026-07-29 | First-run setup completed; Steam installed on the installed system | **correct behaviour** — Steam belongs on the installed system and was only suppressed in the live installer session |
+| 2026-07-29 | Firefox present on live ISO, absent from installed system | Expected today — Firefox is installed only into the titanoboa payload for Anaconda Web UI, not into the shipped OS image. Candidate for the installed system: package Brave instead of (or alongside) Firefox. Decision deferred. |
 | 2026-07-29 | Installed system shows **Bazzite** first-run wizard and logo | Expected at this phase — no branding work has been done, and the spec gates Control Centre and branding behind proving base + ISO. Records the branding surfaces that need replacing: first-run wizard, logo, `os-release`, Plymouth. |
 
 ---
