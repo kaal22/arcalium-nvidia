@@ -33,7 +33,8 @@
 | Arcalium wallpaper | not started | |
 | Control Centre placeholder | not started | Spec forbids Control Centre until base+ISO proven |
 | First-boot placeholder | not started | Same gate |
-| ISO and QCOW2 workflow | blocked | `disk_config/iso.toml` points at `ghcr.io/kaal22/arcalium-os-nvidia:dev`; CI disk builds cannot pull the private package (see blocker 2). Local `just build-iso` is the adopted path |
+| QCOW2 workflow | tested | Built locally in WSL2, 5.8 GB; boot test still outstanding |
+| ISO workflow | blocked | Bootc Image Builder `anaconda-iso` fails on this base (upstream BIB #1188). Adopting `ublue-os/titanoboa`, which is what Bazzite itself uses — see blocker 2 |
 
 ## Phase 2 — Hardware validation
 
@@ -132,20 +133,29 @@
 | 2026-07-29 | WSL2 privileged container loop-device support | OK — `/dev/loop-control` visible, `losetup -f` returns `/dev/loop0` |
 | 2026-07-29 | Podman `--security-opt label=type:unconfined_t` on non-SELinux host | accepted; no Justfile change required |
 | 2026-07-29 | Ubuntu apt `just` 1.21 vs Justfile `[group(...)]` attributes | incompatible — installed upstream `just` 1.57.0 to `/usr/local/bin` |
+| 2026-07-29 | Root build against user-owned clone | git refused with "dubious ownership"; fixed with `safe.directory` for root |
+| 2026-07-29 | `just build` | **success** — `localhost/arcalium-os-nvidia:dev`, 13.2 GB, ~3 min, `bootc container lint` 13 checks passed, 1 skipped |
+| 2026-07-29 | Arcalium files present in built image | `/etc/arcalium/image-info.json` and `/usr/share/arcalium/os-release.snippet` verified |
+| 2026-07-29 | `just build-qcow2` | **success** — `output/qcow2/disk.qcow2`, 5.8 GB, ~14 min; loop devices, Btrfs and `bootc install-to-filesystem` all worked under WSL2 |
+| 2026-07-29 | `just build-iso` | **failed** — Bootc Image Builder depsolve cannot read `gpgkey=file://` from the image; upstream [BIB #1188](https://github.com/osbuild/bootc-image-builder/issues/1188) |
+| 2026-07-29 | `disk_config/disk.toml` `[[customizations.filesystem]]` | reported unsupported for `qcow2` by this BIB version; the 20 GiB minsize was ignored and a default layout used |
 
 ---
 
 ## Blockers
 
 1. **`SIGNING_SECRET`:** Paste contents of local `cosign.key` into the `kaal22/arcalium-nvidia` Actions secret `SIGNING_SECRET`. Never commit `cosign.key`.
-2. **CI disk builds vs private package:** `osbuild/bootc-image-builder-action` documents no authentication or pull-secret input, so `build-disk.yml` cannot pull the private `arcalium-os-nvidia` package. Upstream interface unconfirmed — not worked around. Disk images are built locally instead.
-3. ~~**Local build host**~~ — resolved. WSL2 Ubuntu 24.04 on the Windows workstation runs Podman with working loop devices; see `docs/BUILDING.md`.
+2. **ISO builds:** Bootc Image Builder cannot produce an Anaconda ISO from this base. Its depsolver rewrites certificate paths against the mounted image root but not `gpgkey=file://` paths, so Bazzite's Terra repositories fail with Curl error 37 ([BIB #1188](https://github.com/osbuild/bootc-image-builder/issues/1188)). Not worked around, because the available workarounds disable package signature verification. Planned fix is to adopt [`ublue-os/titanoboa`](https://github.com/ublue-os/titanoboa), the tool Bazzite uses for its own ISOs; this requires an `installer/` payload layer satisfying titanoboa's container-native ISO contract. QCOW2 and raw builds are unaffected.
+3. **CI disk builds vs private package:** `osbuild/bootc-image-builder-action` documents no authentication or pull-secret input, so `build-disk.yml` cannot pull the private `arcalium-os-nvidia` package. Upstream interface unconfirmed — not worked around. Disk images are built locally instead.
 4. **Steam redistribution:** Blocks public ISO and public package only; private alpha testing on owned hardware may continue.
+
+Resolved: local build host — WSL2 Ubuntu 24.04 on the Windows workstation runs Podman with working loop devices, and has produced both an image and a QCOW2. See `docs/BUILDING.md`.
 
 ## Decisions
 
 | Date | Decision | Rationale |
 |---|---|---|
 | 2026-07-29 | Repository public, GHCR package private | Free CI minutes and artifact storage; spec principle 9 wants build instructions visible, while §17.2 requires the Steam-bearing image to stay undistributed. Package visibility is irreversible once public. |
-| 2026-07-29 | Disk images built locally, not in CI | Local `just build-iso` builds from local container storage and needs no registry credentials; CI cannot pull the private package. |
+| 2026-07-29 | Disk images built locally, not in CI | Local builds run from local container storage and need no registry credentials; CI cannot pull the private package. |
+| 2026-07-29 | ISOs will use titanoboa, not Bootc Image Builder | BIB's `anaconda-iso` depsolve is broken against Bazzite's Terra repos (BIB #1188), and titanoboa is what Bazzite uses for its own ISOs. Keeps Arcalium aligned with upstream instead of disabling signature checks. |
 | 2026-07-29 | ISO build workflow: edit on Windows → push to GitHub → pull in WSL → build in WSL | Git is the transfer mechanism between workstation and build host. Avoids `/mnt/c` performance and permission problems, prevents the two checkouts drifting, and keeps the CI image and local ISO on the same commit. See `docs/BUILDING.md`. |

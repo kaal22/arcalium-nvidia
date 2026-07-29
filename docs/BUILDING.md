@@ -90,10 +90,25 @@ Requires a Linux host with Podman, `sudo`, privileged containers, and plenty of 
 ```bash
 just build                # builds localhost/arcalium-os-nvidia:dev
 just build-qcow2          # QCOW2 for VM boot tests
-just build-iso            # Anaconda installer ISO
+just build-iso            # Anaconda installer ISO — see ISO status below
 ```
 
 Output lands in `output/`. `build-iso` uses `disk_config/iso.toml`; `build-qcow2` uses `disk_config/disk.toml`.
+
+### ISO status — `just build-iso` does not work on this base
+
+The template's Bootc Image Builder ISO path fails during manifest generation:
+
+```text
+Failed to retrieve GPG key for repo 'terra-mesa': Curl error (37):
+Could not read a file:// file for file:///etc/pki/rpm-gpg/RPM-GPG-KEY-terra44-mesa
+```
+
+The key **is** present in the image. The cause is [osbuild/bootc-image-builder#1188](https://github.com/osbuild/bootc-image-builder/issues/1188): when depsolving for an Anaconda ISO, the depsolver points DNF at the mounted image root and rewrites certificate paths, but not `gpgkey=file://` paths, so they resolve against the builder's filesystem instead. Bazzite's Terra repositories use exactly that form. Only `anaconda-iso` depsolves, which is why QCOW2 and raw builds are unaffected.
+
+Do not work around this by disabling `gpgcheck` or deleting Terra repo files — that weakens package verification in the shipped image.
+
+Bazzite does not build its own ISOs with Bootc Image Builder. It uses [ublue-os/titanoboa](https://github.com/ublue-os/titanoboa), which wraps a bootc image into a live/installer ISO. Adopting titanoboa is the planned path. It requires the image to satisfy titanoboa's container-native ISO contract: `/usr/lib/bootc-image-builder/iso.yaml`, kernel and `initramfs.img` under `/usr/lib/modules/*/`, EFI binaries in `/boot/efi/EFI/$VENDOR`, and GRUB2 modules in `/usr/lib/grub/i386-pc`. Bazzite layers a dedicated `installer/` payload image to meet it.
 
 ### Building from a Windows workstation via WSL2
 
@@ -118,6 +133,12 @@ cp output/bootiso/*.iso /mnt/c/Users/<you>/Desktop/
 ```
 
 If `sudo` prompts for a password, enter the distro as root instead: `wsl -d Ubuntu -u root`. The `_rootful_load_image` recipe detects it is already root and skips the image copy into rootful storage.
+
+Building as root against a clone owned by your normal user makes git refuse to read the repository, and the `build` recipe needs `git status` and `git rev-parse` for its image labels. Allow it once:
+
+```bash
+git config --global --add safe.directory /home/<user>/arcalium-nvidia
+```
 
 Verified on this workstation:
 
