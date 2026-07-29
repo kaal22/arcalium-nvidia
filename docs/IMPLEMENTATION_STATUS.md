@@ -8,6 +8,47 @@
 
 ---
 
+## Where we left off (2026-07-29 evening)
+
+Phase 0 scaffolding is done. Local WSL builds work. The live ISO boots in VMware (UEFI).
+
+**Last successful artifacts (on the Windows Desktop and in WSL `~/arcalium-nvidia/output/`):**
+
+| Artifact | Location | Notes |
+|---|---|---|
+| Live ISO | `C:\Users\Kaal\Desktop\Arcalium-Live.iso` (~6.11 GB) | Built with Anaconda profile + Firefox + Steam suppressed |
+| QCOW2 | WSL `~/arcalium-nvidia/output/qcow2/disk.qcow2` (~5.8 GB) | Not yet boot-tested |
+| OCI image | WSL `localhost/arcalium-os-nvidia:dev` | 13.2 GB |
+| Payload image | WSL `localhost/arcalium-os-nvidia-payload:dev` | Live/installer layer |
+
+**Proven today**
+
+- `just build` and `just build-qcow2` in WSL Ubuntu
+- Titanoboa live ISO path (`just build-iso-live`) — not Bootc Image Builder
+- UEFI boot of the live ISO in VMware Workstation
+- Live desktop comes up; welcome dialog appears
+- WSL Ubuntu was recovered after a bad `mv` (not reinstalled)
+
+**Not finished — next session**
+
+1. **Retest Install** on the newest Desktop ISO (Firefox fix). Confirm Anaconda opens and can install into the VM disk.
+2. Set GitHub Actions secret `SIGNING_SECRET` from local `cosign.key`, then get CI to publish the private `ghcr.io/kaal22/arcalium-os-nvidia:dev`.
+3. Hardware install on RTX 3090 / RTX 2060 after VM install works.
+4. Do **not** start Control Centre until base image + ISO install are proven (spec gate).
+
+**Resume commands**
+
+```powershell
+wsl -d Ubuntu -u root
+cd /home/kaal/arcalium-nvidia && git pull
+just build && just build-iso-live
+cp output/Arcalium-Live.iso /mnt/c/Users/Kaal/Desktop/
+```
+
+Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox installer fix (`6399708` and parents).
+
+---
+
 ## Phase 0 — Repository and research
 
 | Requirement | Status | Notes |
@@ -34,7 +75,7 @@
 | Control Centre placeholder | not started | Spec forbids Control Centre until base+ISO proven |
 | First-boot placeholder | not started | Same gate |
 | QCOW2 workflow | tested | Built locally in WSL2, 5.8 GB; boot test still outstanding |
-| ISO workflow | tested | `just build-iso-live` produced `Arcalium-Live.iso` (~6 GB) in WSL2; boot test still outstanding |
+| ISO workflow | tested | Live ISO boots in VMware UEFI; Install needs retest after Firefox was added to the payload |
 | Bootc Image Builder ISO (`just build-iso`) | blocked | Upstream BIB #1188 — do not use |
 
 ## Phase 2 — Hardware validation
