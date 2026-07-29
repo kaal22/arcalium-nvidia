@@ -2,11 +2,37 @@
 
 Arcalium derives from Universal Blue’s [image-template](https://github.com/ublue-os/image-template) and the Bazzite NVIDIA-open desktop image.
 
+## Standard ISO build workflow
+
+This is the established loop. Git is the transfer mechanism between the Windows workstation and the Linux build host — never copy the working tree across manually, and never build from `/mnt/c`.
+
+1. **Edit** on the Windows workstation (`Arcalium NVIDIA` folder).
+2. **Commit and push** to `main` on GitHub.
+3. **Pull** in the WSL clone at `~/arcalium-nvidia`.
+4. **Build** there with `just build` then `just build-iso`.
+5. **Copy** the finished ISO back to Windows.
+
+```bash
+# 1-2. On Windows
+git add -A && git commit -m "..." && git push origin main
+
+# 3-5. In WSL (as root: wsl -d Ubuntu -u root)
+cd /home/kaal/arcalium-nvidia
+git pull
+just build
+just build-iso
+cp output/bootiso/*.iso /mnt/c/Users/Kaal/Desktop/
+```
+
+Two reasons this order matters: the WSL clone and the Windows folder are separate checkouts that silently drift if you skip the pull, and pushing first means the CI-built image and the local ISO come from the same commit.
+
+Setup for the WSL host is under [Building from a Windows workstation via WSL2](#building-from-a-windows-workstation-via-wsl2).
+
 ## Prerequisites
 
 - GitHub repository with Actions enabled
 - Cosign keypair (`cosign.pub` in repo; private key only as `SIGNING_SECRET`)
-- For local builds: a Linux host with Podman (preferably already on a Universal Blue / bootc system). A Windows workstation cannot build disk images; Bootc Image Builder needs a privileged Linux container with loop devices.
+- For local builds: a Linux host with Podman. Bootc Image Builder needs a privileged Linux container with working loop devices, so this runs in WSL2 (Ubuntu 24.04) or on a bootc machine, never on Windows directly.
 
 ## One-time Cosign setup
 

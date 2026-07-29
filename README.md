@@ -21,8 +21,16 @@ Gaming-first Linux OS for NVIDIA desktops. Built on [Bazzite](https://bazzite.gg
 1. Set GitHub Actions secret `SIGNING_SECRET` from your local `cosign.key` (never commit the key).
 2. Confirm `REPO_ORGANIZATION` in `image-template.env`.
 3. Push to `main` → **Build container image** publishes `ghcr.io/<owner>/arcalium-os-nvidia:dev`.
-4. Run **Build disk images** for QCOW2 + installer ISO.
+4. Build disk images locally — see the standard workflow below.
 5. Hardware-test before any Control Centre work.
+
+## Standard ISO build workflow
+
+Edit on Windows → push to GitHub → pull in WSL → build in WSL → copy the ISO back. Git is the transfer mechanism; disk images are never built from `/mnt/c` or in CI. Full detail in [`docs/BUILDING.md`](docs/BUILDING.md).
+
+```bash
+cd /home/kaal/arcalium-nvidia && git pull && just build && just build-iso
+```
 
 ```bash
 sudo bootc switch ghcr.io/kaal22/arcalium-os-nvidia:dev

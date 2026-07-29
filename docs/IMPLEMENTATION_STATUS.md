@@ -148,3 +148,4 @@
 |---|---|---|
 | 2026-07-29 | Repository public, GHCR package private | Free CI minutes and artifact storage; spec principle 9 wants build instructions visible, while §17.2 requires the Steam-bearing image to stay undistributed. Package visibility is irreversible once public. |
 | 2026-07-29 | Disk images built locally, not in CI | Local `just build-iso` builds from local container storage and needs no registry credentials; CI cannot pull the private package. |
+| 2026-07-29 | ISO build workflow: edit on Windows → push to GitHub → pull in WSL → build in WSL | Git is the transfer mechanism between workstation and build host. Avoids `/mnt/c` performance and permission problems, prevents the two checkouts drifting, and keeps the CI image and local ISO on the same commit. See `docs/BUILDING.md`. |
