@@ -19,9 +19,9 @@
 | Confirmed image tag `bazzite-nvidia-open:stable` | complete | GHCR tags include `stable`; digest pinned in Containerfile |
 | Confirmed build workflow | complete | `.github/workflows/build.yml` + `build-disk.yml` present |
 | Cosign setup (public key committed, private key secret) | in progress | `cosign.pub` generated; `cosign.key` local only — must set GitHub secret `SIGNING_SECRET` before publish |
-| Private GHCR `dev` image | in progress | Repository pushed to `kaal22/arcalium-nvidia`; Actions still needs `SIGNING_SECRET` |
+| Private GHCR `dev` image | in progress | Repository pushed to `kaal22/arcalium-nvidia`; Actions still needs `SIGNING_SECRET`. Package stays private per spec §17.2 |
 | Image signature verifies | blocked | Depends on first successful signed publish |
-| Test machine switch / QCOW2 boot | blocked | Depends on published image + disk build |
+| Test machine switch / QCOW2 boot | blocked | Depends on published image; bootstrap path is rebase from stock Bazzite, see `docs/BUILDING.md` |
 
 ## Phase 1 — Minimal Arcalium NVIDIA image
 
@@ -33,7 +33,7 @@
 | Arcalium wallpaper | not started | |
 | Control Centre placeholder | not started | Spec forbids Control Centre until base+ISO proven |
 | First-boot placeholder | not started | Same gate |
-| ISO and QCOW2 workflow | in progress | `disk_config/iso.toml` points at `ghcr.io/kaal22/arcalium-os-nvidia:dev` |
+| ISO and QCOW2 workflow | blocked | `disk_config/iso.toml` points at `ghcr.io/kaal22/arcalium-os-nvidia:dev`; CI disk builds cannot pull the private package (see blocker 2). Local `just build-iso` is the adopted path |
 
 ## Phase 2 — Hardware validation
 
@@ -135,5 +135,13 @@
 ## Blockers
 
 1. **`SIGNING_SECRET`:** Paste contents of local `cosign.key` into the `kaal22/arcalium-nvidia` Actions secret `SIGNING_SECRET`. Never commit `cosign.key`.
-2. **Local image build:** This Windows environment lacks Podman/Docker; first image build should run via `.github/workflows/build.yml`.
-3. **Steam redistribution:** Blocks public ISO only; private alpha testing on owned hardware may continue.
+2. **CI disk builds vs private package:** `osbuild/bootc-image-builder-action` documents no authentication or pull-secret input, so `build-disk.yml` cannot pull the private `arcalium-os-nvidia` package. Upstream interface unconfirmed — not worked around. Disk images are built locally instead.
+3. **Local build host:** This Windows workstation lacks Podman and cannot run Bootc Image Builder. A Linux/bootc host is required for `just build-iso`; the first test machine will serve this role.
+4. **Steam redistribution:** Blocks public ISO and public package only; private alpha testing on owned hardware may continue.
+
+## Decisions
+
+| Date | Decision | Rationale |
+|---|---|---|
+| 2026-07-29 | Repository public, GHCR package private | Free CI minutes and artifact storage; spec principle 9 wants build instructions visible, while §17.2 requires the Steam-bearing image to stay undistributed. Package visibility is irreversible once public. |
+| 2026-07-29 | Disk images built locally, not in CI | Local `just build-iso` builds from local container storage and needs no registry credentials; CI cannot pull the private package. |
