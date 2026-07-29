@@ -367,7 +367,7 @@ build-iso-live $target_image=("localhost/" + image_name) $tag=default_tag:
       --build-arg TARGET_IMAGE_REF="ghcr.io/{{ repo_organization }}/{{ image_name }}:${tag}" \
       --build-arg CACHEBUST="${cache_bust}" \
       --tag "${payload_image}" \
-      installe
+      installer
 
     # ghcr.io/ublue-os/titanoboa is not publicly pullable (403). Upstream's local path
     # runs build_iso.sh inside quay.io/fedora/fedora:latest instead.
@@ -378,7 +378,7 @@ build-iso-live $target_image=("localhost/" + image_name) $tag=default_tag:
 
     # mksquashfs treats every argument after -e as an exclude path, so upstream's
     # "-e sysroot -e ostree -comp zstd -Xcompression-level 19" silently swallows the
-    # compressor and falls back to gzip. The live root is read through that compresso
+    # compressor and falls back to gzip. The live root is read through that compressor
     # for the whole install, so put the excludes last.
     sed -i \
       's|^mksquashfs /rootfs .*|mksquashfs /rootfs /work/iso-root/LiveOS/squashfs.img -all-root -noappend -comp zstd -Xcompression-level 19 -e sysroot ostree|' \

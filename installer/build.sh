@@ -56,7 +56,7 @@ dnf -y --repo fedora,updates --setopt=tsflags=noscripts install kernel kernel-co
 kernel=$(find /usr/lib/modules -mindepth 1 -maxdepth 1 -type d -printf '%P\n' | head -1)
 depmod "$kernel"
 
-# Nouveau needs the GSP firmware to bring up a display on Turing and newe
+# Nouveau needs the GSP firmware to bring up a display on Turing and newer
 dnf install -y nvidia-gpu-firmware || :
 
 ### Live environment
@@ -69,7 +69,7 @@ dnf install -y livesys-scripts
 sed -i "s/^livesys_session=.*/livesys_session=${LIVE_SESSION}/" /etc/sysconfig/livesys
 systemctl enable livesys.service livesys-late.service
 
-### Installe
+### Installer
 # Firefox is required at runtime by anaconda-webui (webui-desktop launches it).
 # Soft RPM dep only applies with fedora-release-workstation, which this image lacks.
 dnf install -y --enable-repo=fedora-cisco-openh264 --allowerasing \
@@ -81,7 +81,7 @@ source /etc/os-release
 rm -f /etc/system-release
 echo "Arcalium OS NVIDIA Edition ${VERSION_ID}" >/etc/system-release
 
-# Anaconda profile, welcome dialog, visible Install launche
+# Anaconda profile, welcome dialog, visible Install launcher
 cp -a "$SCRIPT_DIR/system_files"/. /
 chmod 0755 /usr/bin/arcalium-live-welcome.sh /usr/bin/arcalium-install.sh \
     /usr/bin/arcalium-install-progress.sh
@@ -118,7 +118,7 @@ mkdir -p /boot/efi
 cp -av /usr/lib/efi/*/*/EFI /boot/efi/
 cp -v /boot/efi/EFI/fedora/grubx64.efi /boot/efi/EFI/BOOT/fbx64.efi
 
-mkdir -p /usr/lib/bootc-image-builde
+mkdir -p /usr/lib/bootc-image-builder
 cp -v "$SCRIPT_DIR/iso.yaml" /usr/lib/bootc-image-builder/iso.yaml
 
 ### Live session housekeeping

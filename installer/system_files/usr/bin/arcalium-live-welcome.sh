@@ -13,7 +13,7 @@ touch "$marker"
 text='Welcome to the Arcalium OS live installer.
 
 This session is for installation and troubleshooting only.
-It is not the installed gaming experience — Steam and othe
+It is not the installed gaming experience — Steam and other
 desktop first-run services are disabled here.
 
 Expect the install to take 15–40 minutes. The whole OS image
