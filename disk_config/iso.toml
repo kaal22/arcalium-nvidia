@@ -1,0 +1,25 @@
+# KDE Anaconda installer config for Arcalium OS NVIDIA Edition.
+# Derived from Universal Blue image-template disk_config/iso-kde.toml.
+# IMAGE must match IMAGE_NAME + DEFAULT_TAG in image-template.env after publish.
+
+[customizations.installer.kickstart]
+contents = """
+%post
+bootc switch --mutate-in-place --transport registry ghcr.io/kaal22/arcalium-os-nvidia:dev
+%end
+"""
+
+[customizations.installer.modules]
+enable = [
+  "org.fedoraproject.Anaconda.Modules.Storage",
+  "org.fedoraproject.Anaconda.Modules.Runtime",
+  "org.fedoraproject.Anaconda.Modules.Network",
+  "org.fedoraproject.Anaconda.Modules.Security",
+  "org.fedoraproject.Anaconda.Modules.Services",
+  "org.fedoraproject.Anaconda.Modules.Users",
+  "org.fedoraproject.Anaconda.Modules.Timezone"
+]
+
+disable = [
+  "org.fedoraproject.Anaconda.Modules.Subscription",
+]

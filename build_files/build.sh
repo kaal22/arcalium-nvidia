@@ -5,23 +5,34 @@ set -ouex pipefail
 # Copy the contents of system_files/ of the git repo to /
 cp -avf "/ctx/system_files"/. /
 
-### Install packages
+### Phase 0 / Phase 1 — minimal Arcalium identity
+# Do not layer ordinary desktop apps into the immutable image.
+# Do not replace the Bazzite kernel or NVIDIA stack.
+# Control Centre and first-boot wizard come after the base image + ISO workflow is proven.
 
-# Packages can be installed from any enabled yum repo on the image.
-# RPMfusion repos are available by default in ublue main images
-# List of rpmfusion packages can be found here:
-# https://mirrors.rpmfusion.org/mirrorlist?path=free/fedora/updates/43/x86_64/repoview/index.html&protocol=https&redirect=1
+mkdir -p /usr/share/arcalium /etc/arcalium
 
-# this installs a package from fedora repos
-dnf5 install -y tmux
+cat >/usr/share/arcalium/os-release.snippet <<'EOF'
+NAME="Arcalium OS"
+PRETTY_NAME="Arcalium OS NVIDIA Edition"
+ID_LIKE="fedora bazzite"
+VARIANT="NVIDIA Edition"
+VARIANT_ID="nvidia"
+ARCALIUM_EDITION="nvidia"
+ARCALIUM_CHANNEL="dev"
+EOF
 
-# Use a COPR Example:
-#
-# dnf5 -y copr enable ublue-os/staging
-# dnf5 -y install package
-# Disable COPRs so they don't end up enabled on the final image:
-# dnf5 -y copr disable ublue-os/staging
+cat >/etc/arcalium/image-info.json <<'EOF'
+{
+  "schemaVersion": 1,
+  "product": "Arcalium OS",
+  "edition": "NVIDIA Edition",
+  "imageName": "arcalium-os-nvidia",
+  "channel": "dev",
+  "baseImage": "ghcr.io/ublue-os/bazzite-nvidia-open:stable",
+  "independentProjectNotice": "Arcalium OS is an independent project built on Bazzite and is not affiliated with or endorsed by Valve, NVIDIA, Spotify, Proton AG, Fedora, Universal Blue or the Bazzite project."
+}
+EOF
 
-#### Example for enabling a System Unit File
-
+# Keep podman.socket available (inherited template default; idempotent).
 systemctl enable podman.socket
