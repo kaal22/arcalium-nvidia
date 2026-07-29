@@ -59,7 +59,7 @@ Making a GHCR package public is irreversible. Do not change the package to publi
 
 Local builds run against the image in local container storage, so they never pull from GHCR and need no registry credentials.
 
-Requires a Linux host with Podman, `sudo`, privileged containers, and plenty of free disk. A machine already running Bazzite or Arcalium is ideal.
+Requires a Linux host with Podman, `sudo`, privileged containers, and plenty of free disk. A machine already running Bazzite or Arcalium is ideal. A WSL2 distro also works — see below.
 
 ```bash
 just build                # builds localhost/arcalium-os-nvidia:dev
@@ -68,6 +68,40 @@ just build-iso            # Anaconda installer ISO
 ```
 
 Output lands in `output/`. `build-iso` uses `disk_config/iso.toml`; `build-qcow2` uses `disk_config/disk.toml`.
+
+### Building from a Windows workstation via WSL2
+
+Verified working on WSL2 2.6.3 (kernel 6.6.87) with Ubuntu 24.04.
+
+```bash
+# In the WSL distro, as root:
+apt-get update && apt-get install -y podman git uidmap
+curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+```
+
+Install `just` from the upstream script, not from apt. Ubuntu packages `just` 1.21, which is too old for the `[group(...)]` attributes this Justfile uses and fails with `Unknown attribute group`.
+
+Clone inside the WSL filesystem rather than building from `/mnt/c`. The recipes `chown` output, create temp directories in the working tree, and move multi-gigabyte files, which is slow and permission-prone across the Windows filesystem bridge.
+
+```bash
+git clone https://github.com/kaal22/arcalium-nvidia.git ~/arcalium-nvidia
+cd ~/arcalium-nvidia
+just build
+just build-iso
+cp output/bootiso/*.iso /mnt/c/Users/<you>/Desktop/
+```
+
+If `sudo` prompts for a password, enter the distro as root instead: `wsl -d Ubuntu -u root`. The `_rootful_load_image` recipe detects it is already root and skips the image copy into rootful storage.
+
+Verified on this workstation:
+
+| Check | Result |
+|---|---|
+| `/dev/loop-control` inside a privileged container | present, `losetup -f` returns `/dev/loop0` |
+| `--security-opt label=type:unconfined_t` on a non-SELinux host | accepted by Podman, no Justfile change needed |
+| `just --evaluate image_name` / `default_tag` | `arcalium-os-nvidia` / `dev` |
+
+Expect the first `just build` to pull roughly 15–20 GB of Bazzite NVIDIA layers, and allow tens of gigabytes more for the ISO build.
 
 ## Build disk images (GitHub Actions) — currently blocked
 

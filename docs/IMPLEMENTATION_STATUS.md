@@ -128,7 +128,10 @@
 | 2026-07-29 | Confirmed GHCR package `ublue-os/bazzite-nvidia-open` tags include `stable` | OK |
 | 2026-07-29 | Resolved `:stable` digest | `sha256:83c6084f9713abda10b966dce3631f4c9b4430e419f06c9a76dad10bfc43cbe9` |
 | 2026-07-29 | Generated Cosign keypair (v2.6.3) | `cosign.pub` + local `cosign.key` |
-| 2026-07-29 | Local OCI build on this Windows workstation | blocked — Podman/Docker not available here; use GitHub Actions or a bootc host |
+| 2026-07-29 | Local OCI build on this Windows workstation | resolved — WSL2 Ubuntu 24.04 provisioned with Podman 4.9.3 as the local build host |
+| 2026-07-29 | WSL2 privileged container loop-device support | OK — `/dev/loop-control` visible, `losetup -f` returns `/dev/loop0` |
+| 2026-07-29 | Podman `--security-opt label=type:unconfined_t` on non-SELinux host | accepted; no Justfile change required |
+| 2026-07-29 | Ubuntu apt `just` 1.21 vs Justfile `[group(...)]` attributes | incompatible — installed upstream `just` 1.57.0 to `/usr/local/bin` |
 
 ---
 
@@ -136,7 +139,7 @@
 
 1. **`SIGNING_SECRET`:** Paste contents of local `cosign.key` into the `kaal22/arcalium-nvidia` Actions secret `SIGNING_SECRET`. Never commit `cosign.key`.
 2. **CI disk builds vs private package:** `osbuild/bootc-image-builder-action` documents no authentication or pull-secret input, so `build-disk.yml` cannot pull the private `arcalium-os-nvidia` package. Upstream interface unconfirmed — not worked around. Disk images are built locally instead.
-3. **Local build host:** This Windows workstation lacks Podman and cannot run Bootc Image Builder. A Linux/bootc host is required for `just build-iso`; the first test machine will serve this role.
+3. ~~**Local build host**~~ — resolved. WSL2 Ubuntu 24.04 on the Windows workstation runs Podman with working loop devices; see `docs/BUILDING.md`.
 4. **Steam redistribution:** Blocks public ISO and public package only; private alpha testing on owned hardware may continue.
 
 ## Decisions
