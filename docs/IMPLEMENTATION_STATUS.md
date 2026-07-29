@@ -19,7 +19,7 @@
 | Confirmed image tag `bazzite-nvidia-open:stable` | complete | GHCR tags include `stable`; digest pinned in Containerfile |
 | Confirmed build workflow | complete | `.github/workflows/build.yml` + `build-disk.yml` present |
 | Cosign setup (public key committed, private key secret) | in progress | `cosign.pub` generated; `cosign.key` local only — must set GitHub secret `SIGNING_SECRET` before publish |
-| Private GHCR `dev` image | blocked | Needs GitHub repo `arcalium-os` (or similar), Actions enabled, `SIGNING_SECRET`, push to default branch |
+| Private GHCR `dev` image | in progress | Repository pushed to `kaal22/arcalium-nvidia`; Actions still needs `SIGNING_SECRET` |
 | Image signature verifies | blocked | Depends on first successful signed publish |
 | Test machine switch / QCOW2 boot | blocked | Depends on published image + disk build |
 
@@ -109,7 +109,7 @@
 | 4 | Add `docs/PRODUCT_SPEC.md` | complete |
 | 5 | Add `docs/IMPLEMENTATION_STATUS.md` | complete |
 | 6 | Configure Cosign (no private key in git) | in progress — pubkey ready; secret upload pending |
-| 7 | Build/publish private `dev` image to GHCR | blocked — needs remote GitHub repo + secrets |
+| 7 | Build/publish private `dev` image to GHCR | in progress — repository pushed; signing secret pending |
 | 8 | Verify image signature | blocked |
 | 9 | Build QCOW2 | blocked |
 | 10 | Boot-test unbranded image | blocked |
@@ -134,8 +134,6 @@
 
 ## Blockers
 
-1. **GitHub remote:** Create `https://github.com/kaal22/arcalium-os` (or preferred name), push this tree, enable Actions.
-2. **`SIGNING_SECRET`:** Paste contents of local `cosign.key` into repo Actions secret `SIGNING_SECRET`. Never commit `cosign.key`.
-3. **Local image build:** This Windows environment lacks Podman/Docker; first image build should run via `.github/workflows/build.yml`.
-4. **Steam redistribution:** Blocks public ISO only; private alpha testing on owned hardware may continue.
-5. **`REPO_ORGANIZATION`:** Currently set to `kaal22` from local git identity — change in `image-template.env` and `disk_config/iso.toml` if the GHCR owner differs.
+1. **`SIGNING_SECRET`:** Paste contents of local `cosign.key` into the `kaal22/arcalium-nvidia` Actions secret `SIGNING_SECRET`. Never commit `cosign.key`.
+2. **Local image build:** This Windows environment lacks Podman/Docker; first image build should run via `.github/workflows/build.yml`.
+3. **Steam redistribution:** Blocks public ISO only; private alpha testing on owned hardware may continue.
