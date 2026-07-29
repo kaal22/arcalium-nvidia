@@ -32,7 +32,7 @@ Phase 0 scaffolding is done. Local WSL builds work. The ISO installs and the ins
 
 **Not finished — next session**
 
-1. Confirm `bootc status` on the installed VM and repoint it off the `localhost` ref (see `docs/BUILDING.md`).
+1. Repoint the installed VM off the `localhost` ref once the GHCR package is published. `bootc status` is confirmed showing `localhost/arcalium-os-nvidia:dev`, so `bootc upgrade` cannot work until then (see `docs/BUILDING.md`).
 2. Set GitHub Actions secret `SIGNING_SECRET` from local `cosign.key`, then get CI to publish the private `ghcr.io/kaal22/arcalium-os-nvidia:dev`.
 3. Hardware install on RTX 3090 / RTX 2060 — the VM install now works, so this is unblocked apart from hardware access.
 4. Retest in a VM with a preallocated disk and a Defender exclusion for the VM folder, to confirm the deploy step is disk-bound.
@@ -198,6 +198,8 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | 2026-07-29 | Deploy step throughput measured | `vmstat 5` during deploy: ~7 MB/s, `wa` 7–15%, CPU 81–85% idle, `b` 1–2. **Disk-bound, not CPU-bound** — ostree's small-file, checksum-and-sync writes through VMware's virtual disk. More vCPUs will not help. |
 | 2026-07-29 | Progress window reported delta, not total | Bytes since the window opened, so attaching mid-install read as a stall. Now reports total on target with the rate labelled an average. |
 | 2026-07-29 | Anaconda finish screen offers no restart | Live installer returns to the desktop and tells the user to exit it. Acceptable for alpha; an end user expects an explicit "Restart now". Polish item. |
+| 2026-07-29 | `bootc status` on the installed VM | `localhost/arcalium-os-nvidia:dev` as predicted — the ISO's embedded image, so `bootc upgrade` is inert until the GHCR package is published and the system is repointed |
+| 2026-07-29 | First-run setup completed; Steam installed on the installed system | **correct behaviour** — Steam belongs on the installed system and was only suppressed in the live installer session |
 | 2026-07-29 | Installed system shows **Bazzite** first-run wizard and logo | Expected at this phase — no branding work has been done, and the spec gates Control Centre and branding behind proving base + ISO. Records the branding surfaces that need replacing: first-run wizard, logo, `os-release`, Plymouth. |
 
 ---
