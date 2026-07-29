@@ -90,25 +90,32 @@ Requires a Linux host with Podman, `sudo`, privileged containers, and plenty of 
 ```bash
 just build                # builds localhost/arcalium-os-nvidia:dev
 just build-qcow2          # QCOW2 for VM boot tests
-just build-iso            # Anaconda installer ISO — see ISO status below
+just build-iso-live       # live/installer ISO via titanoboa (see below)
 ```
 
-Output lands in `output/`. `build-iso` uses `disk_config/iso.toml`; `build-qcow2` uses `disk_config/disk.toml`.
+Output lands in `output/`. `build-qcow2` uses `disk_config/disk.toml`. `build-iso-live` writes `output/Arcalium-Live.iso`.
 
-### ISO status — `just build-iso` does not work on this base
+### ISO builds — use `just build-iso-live`, not `just build-iso`
 
-The template's Bootc Image Builder ISO path fails during manifest generation:
+The template's Bootc Image Builder ISO path (`just build-iso`) fails during manifest generation:
 
 ```text
 Failed to retrieve GPG key for repo 'terra-mesa': Curl error (37):
 Could not read a file:// file for file:///etc/pki/rpm-gpg/RPM-GPG-KEY-terra44-mesa
 ```
 
-The key **is** present in the image. The cause is [osbuild/bootc-image-builder#1188](https://github.com/osbuild/bootc-image-builder/issues/1188): when depsolving for an Anaconda ISO, the depsolver points DNF at the mounted image root and rewrites certificate paths, but not `gpgkey=file://` paths, so they resolve against the builder's filesystem instead. Bazzite's Terra repositories use exactly that form. Only `anaconda-iso` depsolves, which is why QCOW2 and raw builds are unaffected.
+The key **is** present in the image. The cause is [osbuild/bootc-image-builder#1188](https://github.com/osbuild/bootc-image-builder/issues/1188). Only `anaconda-iso` depsolves, which is why QCOW2 builds are unaffected.
 
-Do not work around this by disabling `gpgcheck` or deleting Terra repo files — that weakens package verification in the shipped image.
+Arcalium follows Bazzite's path instead: an `installer/` payload image satisfies [titanoboa's container-native ISO contract](https://github.com/ublue-os/titanoboa), then `just build-iso-live` wraps it into bootable media.
 
-Bazzite does not build its own ISOs with Bootc Image Builder. It uses [ublue-os/titanoboa](https://github.com/ublue-os/titanoboa), which wraps a bootc image into a live/installer ISO. Adopting titanoboa is the planned path. It requires the image to satisfy titanoboa's container-native ISO contract: `/usr/lib/bootc-image-builder/iso.yaml`, kernel and `initramfs.img` under `/usr/lib/modules/*/`, EFI binaries in `/boot/efi/EFI/$VENDOR`, and GRUB2 modules in `/usr/lib/grub/i386-pc`. Bazzite layers a dedicated `installer/` payload image to meet it.
+```bash
+just build              # prerequisite: localhost/arcalium-os-nvidia:dev
+just build-iso-live     # builds payload + ISO → output/Arcalium-Live.iso
+```
+
+The recipe clones upstream titanoboa into `.cache/titanoboa` on first run and runs its `main.sh` inside `quay.io/fedora/fedora:latest`. The `ghcr.io/ublue-os/titanoboa` image is not publicly pullable (403), so local builds do not use it.
+
+The payload image (`localhost/arcalium-os-nvidia-payload:dev`, ~27 GB) layers live media on top of the base image: Fedora-signed kernel for Secure Boot on the live ISO, `dracut-live`, `anaconda-live`, EFI binaries under `/boot/efi`, and `/usr/lib/bootc-image-builder/iso.yaml`. See `installer/build.sh`.
 
 ### Building from a Windows workstation via WSL2
 
@@ -128,8 +135,8 @@ Clone inside the WSL filesystem rather than building from `/mnt/c`. The recipes 
 git clone https://github.com/kaal22/arcalium-nvidia.git ~/arcalium-nvidia
 cd ~/arcalium-nvidia
 just build
-just build-iso
-cp output/bootiso/*.iso /mnt/c/Users/<you>/Desktop/
+just build-iso-live
+cp output/Arcalium-Live.iso /mnt/c/Users/<you>/Desktop/
 ```
 
 If `sudo` prompts for a password, enter the distro as root instead: `wsl -d Ubuntu -u root`. The `_rootful_load_image` recipe detects it is already root and skips the image copy into rootful storage.

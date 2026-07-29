@@ -350,9 +350,11 @@ build-iso-live $target_image=("localhost/" + image_name) $tag=default_tag:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    # First the payload image: a live KDE session, Anaconda, and the image to install.
-    # The host image store is mounted so the payload can absorb a local, unpublished
-    # image; ublue's storage.conf already lists that path as an additional image store.
+    payload_image="${target_image}-payload:${tag}"
+    output_dir="${PWD}/output"
+    titanoboa_dir="${PWD}/.cache/titanoboa"
+
+    # Payload image: live KDE session, Anaconda, and the image to install.
     sudo podman build \
       --cap-add sys_admin \
       --security-opt label=disable \
@@ -360,27 +362,22 @@ build-iso-live $target_image=("localhost/" + image_name) $tag=default_tag:
       --build-arg BASE_IMAGE="${target_image}:${tag}" \
       --build-arg INSTALL_IMAGE_PAYLOAD="${target_image}:${tag}" \
       --build-arg TARGET_IMAGE_REF="ghcr.io/{{ repo_organization }}/{{ image_name }}:${tag}" \
-      --tag "${target_image}-payload:${tag}" \
+      --tag "${payload_image}" \
       installer
 
-    BUILDTMP=$(mktemp -p "${PWD}" -d -t _build-titanoboa.XXXXXXXXXX)
+    # ghcr.io/ublue-os/titanoboa is not publicly pullable (403). Upstream's local path
+    # runs build_iso.sh inside quay.io/fedora/fedora:latest instead.
+    if [[ ! -f "${titanoboa_dir}/main.sh" ]]; then
+      rm -rf "${titanoboa_dir}"
+      git clone --depth 1 https://github.com/ublue-os/titanoboa.git "${titanoboa_dir}"
+    fi
 
-    # Then titanoboa wraps that payload into bootable media
-    sudo podman run \
-      --rm \
-      --privileged \
-      --pull=newer \
-      --net=host \
-      --security-opt label=disable \
-      -v "${BUILDTMP}":/output \
-      -v /var/lib/containers/storage:/usr/lib/containers/storage:ro \
-      --mount type=image,source="${target_image}-payload:${tag}",dst=/rootfs \
-      ghcr.io/ublue-os/titanoboa:latest
+    mkdir -p "${output_dir}"
+    TITANOBOA_CTR_IMAGE="${payload_image}" \
+    TITANOBOA_OUTPUT_DIR="${output_dir}" \
+      sudo -E bash "${titanoboa_dir}/main.sh"
 
-    mkdir -p output
-    sudo mv -f "${BUILDTMP}"/* output/
-    sudo rmdir "${BUILDTMP}"
-    sudo chown -R "${USER}:${USER}" output/
+    ls -lah "${output_dir}"/*.iso
 
 # Rebuild a QCOW2 virtual machine image
 [group('Build Virtal Machine Image')]

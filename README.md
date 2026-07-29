@@ -29,7 +29,7 @@ Gaming-first Linux OS for NVIDIA desktops. Built on [Bazzite](https://bazzite.gg
 Edit on Windows → push to GitHub → pull in WSL → build in WSL → copy the ISO back. Git is the transfer mechanism; disk images are never built from `/mnt/c` or in CI. Full detail in [`docs/BUILDING.md`](docs/BUILDING.md).
 
 ```bash
-cd /home/kaal/arcalium-nvidia && git pull && just build && just build-iso
+cd /home/kaal/arcalium-nvidia && git pull && just build && just build-iso-live
 ```
 
 ```bash

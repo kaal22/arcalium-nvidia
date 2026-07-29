@@ -34,7 +34,8 @@
 | Control Centre placeholder | not started | Spec forbids Control Centre until base+ISO proven |
 | First-boot placeholder | not started | Same gate |
 | QCOW2 workflow | tested | Built locally in WSL2, 5.8 GB; boot test still outstanding |
-| ISO workflow | blocked | Bootc Image Builder `anaconda-iso` fails on this base (upstream BIB #1188). Adopting `ublue-os/titanoboa`, which is what Bazzite itself uses — see blocker 2 |
+| ISO workflow | tested | `just build-iso-live` produced `Arcalium-Live.iso` (~6 GB) in WSL2; boot test still outstanding |
+| Bootc Image Builder ISO (`just build-iso`) | blocked | Upstream BIB #1188 — do not use |
 
 ## Phase 2 — Hardware validation
 
@@ -137,7 +138,8 @@
 | 2026-07-29 | `just build` | **success** — `localhost/arcalium-os-nvidia:dev`, 13.2 GB, ~3 min, `bootc container lint` 13 checks passed, 1 skipped |
 | 2026-07-29 | Arcalium files present in built image | `/etc/arcalium/image-info.json` and `/usr/share/arcalium/os-release.snippet` verified |
 | 2026-07-29 | `just build-qcow2` | **success** — `output/qcow2/disk.qcow2`, 5.8 GB, ~14 min; loop devices, Btrfs and `bootc install-to-filesystem` all worked under WSL2 |
-| 2026-07-29 | `just build-iso` | **failed** — Bootc Image Builder depsolve cannot read `gpgkey=file://` from the image; upstream [BIB #1188](https://github.com/osbuild/bootc-image-builder/issues/1188) |
+| 2026-07-29 | `just build-iso-live` (titanoboa) | **success** — payload image 27.4 GB; `output/Arcalium-Live.iso` ~6 GB squashfs live installer |
+| 2026-07-29 | `ghcr.io/ublue-os/titanoboa:latest` | **not pullable** (403 Forbidden); local builds use upstream `main.sh` + `quay.io/fedora/fedora:latest` instead |
 | 2026-07-29 | `disk_config/disk.toml` `[[customizations.filesystem]]` | reported unsupported for `qcow2` by this BIB version; the 20 GiB minsize was ignored and a default layout used |
 
 ---
@@ -145,7 +147,7 @@
 ## Blockers
 
 1. **`SIGNING_SECRET`:** Paste contents of local `cosign.key` into the `kaal22/arcalium-nvidia` Actions secret `SIGNING_SECRET`. Never commit `cosign.key`.
-2. **ISO builds:** Bootc Image Builder cannot produce an Anaconda ISO from this base. Its depsolver rewrites certificate paths against the mounted image root but not `gpgkey=file://` paths, so Bazzite's Terra repositories fail with Curl error 37 ([BIB #1188](https://github.com/osbuild/bootc-image-builder/issues/1188)). Not worked around, because the available workarounds disable package signature verification. Planned fix is to adopt [`ublue-os/titanoboa`](https://github.com/ublue-os/titanoboa), the tool Bazzite uses for its own ISOs; this requires an `installer/` payload layer satisfying titanoboa's container-native ISO contract. QCOW2 and raw builds are unaffected.
+2. **Bootc Image Builder ISO (`just build-iso`):** Cannot produce an Anaconda ISO from this base ([BIB #1188](https://github.com/osbuild/bootc-image-builder/issues/1188)). Use `just build-iso-live` instead. The `installer/` payload layer is implemented.
 3. **CI disk builds vs private package:** `osbuild/bootc-image-builder-action` documents no authentication or pull-secret input, so `build-disk.yml` cannot pull the private `arcalium-os-nvidia` package. Upstream interface unconfirmed — not worked around. Disk images are built locally instead.
 4. **Steam redistribution:** Blocks public ISO and public package only; private alpha testing on owned hardware may continue.
 
