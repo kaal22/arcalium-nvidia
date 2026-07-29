@@ -10,13 +10,13 @@
 
 ## Where we left off (2026-07-29 evening)
 
-Phase 0 scaffolding is done. Local WSL builds work. The live ISO boots in VMware (UEFI).
+Phase 0 scaffolding is done. Local WSL builds work. The ISO installs and the installed system boots in VMware (UEFI).
 
 **Last successful artifacts (on the Windows Desktop and in WSL `~/arcalium-nvidia/output/`):**
 
 | Artifact | Location | Notes |
 |---|---|---|
-| Live ISO | `C:\Users\Kaal\Desktop\Arcalium-Live.iso` (~6.11 GB) | Built with Anaconda profile + Firefox + Steam suppressed |
+| Live ISO | `C:\Users\Kaal\Desktop\Arcalium-Live.iso` (5.8 GB) | zstd squashfs, Anaconda profile, Firefox, progress window, Steam suppressed |
 | QCOW2 | WSL `~/arcalium-nvidia/output/qcow2/disk.qcow2` (~5.8 GB) | Not yet boot-tested |
 | OCI image | WSL `localhost/arcalium-os-nvidia:dev` | 13.2 GB |
 | Payload image | WSL `localhost/arcalium-os-nvidia-payload:dev` | Live/installer layer |
@@ -27,14 +27,17 @@ Phase 0 scaffolding is done. Local WSL builds work. The live ISO boots in VMware
 - Titanoboa live ISO path (`just build-iso-live`) — not Bootc Image Builder
 - UEFI boot of the live ISO in VMware Workstation
 - Live desktop comes up; welcome dialog appears
+- **Full chain: ISO → Anaconda install → boot to first-run setup**
 - WSL Ubuntu was recovered after a bad `mv` (not reinstalled)
 
 **Not finished — next session**
 
-1. **Rebuild the ISO** with the progress window and the zstd squashfs fix, then retest the install end to end in the VM. Do not run the build while a VM install is in flight — they compete for the same CPU and disk.
+1. Confirm `bootc status` on the installed VM and repoint it off the `localhost` ref (see `docs/BUILDING.md`).
 2. Set GitHub Actions secret `SIGNING_SECRET` from local `cosign.key`, then get CI to publish the private `ghcr.io/kaal22/arcalium-os-nvidia:dev`.
-3. Hardware install on RTX 3090 / RTX 2060 after VM install works.
-4. Do **not** start Control Centre until base image + ISO install are proven (spec gate).
+3. Hardware install on RTX 3090 / RTX 2060 — the VM install now works, so this is unblocked apart from hardware access.
+4. Retest in a VM with a preallocated disk and a Defender exclusion for the VM folder, to confirm the deploy step is disk-bound.
+5. Branding replaces the Bazzite first-run wizard and logo — but only after the spec's base+ISO gate, which is now met.
+6. Do **not** start Control Centre until the licensing and signing items above are settled (spec gate).
 
 **Resume commands**
 
@@ -155,7 +158,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | 7 | Build/publish private `dev` image to GHCR | in progress — repository pushed; signing secret pending |
 | 8 | Verify image signature | blocked — needs a CI-published image, which needs `SIGNING_SECRET` |
 | 9 | Build QCOW2 | complete — `output/qcow2/disk.qcow2`, built locally under WSL2 |
-| 10 | Boot-test unbranded image | in progress — live ISO boots under UEFI in VMware; Anaconda install running |
+| 10 | Boot-test unbranded image | complete (VM) — installed from the live ISO and booted to first-run setup in VMware |
 | 11 | Build installer ISO | complete — `output/Arcalium-Live.iso` via titanoboa (`just build-iso-live`) |
 | 12–13 | Install on RTX 3090 / RTX 2060 | blocked — hardware |
 | 14 | Record commands, failures, upstream changes | in progress — see below |
@@ -190,6 +193,12 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | 2026-07-29 | Anaconda `ostreecontainer` deploy step duration | slow but healthy — `ostree-container ... deploy` sat on "Deployment starting…" for 10+ min while unpacking a 27 GB payload; confirmed alive via CPU time, not hung |
 | 2026-07-29 | Deploy step is indistinguishable from a hang | Treated as a defect, not impatience. Added `arcalium-install-progress.sh` (bytes written, elapsed, throughput) and routed both launch paths through `arcalium-install.sh`. Welcome dialog now states 15–40 minutes up front. |
 | 2026-07-29 | titanoboa builds a **gzip** squashfs, not zstd | Upstream `build_iso.sh` puts `-comp zstd -Xcompression-level 19` after `-e`, and `mksquashfs` reads everything after `-e` as exclude paths. Log line: `Exportable Squashfs 4.0 filesystem, gzip compressed`. `build-iso-live` now patches the clone and asserts the fix. Worth an upstream PR. |
+| 2026-07-29 | Rebuild with zstd fix | **success** — `Exportable Squashfs 4.0 filesystem, zstd compressed`; squashfs 5.30 GiB (was 5.71), ISO 5.8 GB (was 6.2) |
+| 2026-07-29 | **Full install + first boot in VMware** | **success** — installed from `Arcalium-Live.iso` (8 vCPU, 16 GB, 40 GB NVMe-controller disk, UEFI) and booted to the first-run setup wizard. First end-to-end proof of the ISO → install → boot chain. |
+| 2026-07-29 | Deploy step throughput measured | `vmstat 5` during deploy: ~7 MB/s, `wa` 7–15%, CPU 81–85% idle, `b` 1–2. **Disk-bound, not CPU-bound** — ostree's small-file, checksum-and-sync writes through VMware's virtual disk. More vCPUs will not help. |
+| 2026-07-29 | Progress window reported delta, not total | Bytes since the window opened, so attaching mid-install read as a stall. Now reports total on target with the rate labelled an average. |
+| 2026-07-29 | Anaconda finish screen offers no restart | Live installer returns to the desktop and tells the user to exit it. Acceptable for alpha; an end user expects an explicit "Restart now". Polish item. |
+| 2026-07-29 | Installed system shows **Bazzite** first-run wizard and logo | Expected at this phase — no branding work has been done, and the spec gates Control Centre and branding behind proving base + ISO. Records the branding surfaces that need replacing: first-run wizard, logo, `os-release`, Plymouth. |
 
 ---
 
