@@ -18,6 +18,19 @@ desktop first-run services are disabled here.
 
 Click Install to open Anaconda.'
 
+launch_installer() {
+    # Force the Bazzite-matched profile; surface failures instead of failing silently.
+    set +e
+    liveinst --profile bazzite "$@"
+    ret=$?
+    set -e
+    if [[ $ret -ne 0 ]]; then
+        yad --error --on-top --center --title='Installer failed' \
+            --text="liveinst exited with code ${ret}.\n\nOpen Konsole and run:\n  sudo liveinst --profile bazzite\n\nand check /tmp/anaconda.log" || true
+    fi
+    return "$ret"
+}
+
 while true; do
     set +e
     yad \
@@ -33,7 +46,7 @@ while true; do
     set -e
     case $ret in
         10)
-            liveinst &
+            launch_installer &
             disown
             exit 0
             ;;

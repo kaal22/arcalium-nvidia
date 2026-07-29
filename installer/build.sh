@@ -70,7 +70,10 @@ sed -i "s/^livesys_session=.*/livesys_session=${LIVE_SESSION}/" /etc/sysconfig/l
 systemctl enable livesys.service livesys-late.service
 
 ### Installer
-dnf install -y --allowerasing anaconda-live libblockdev-{btrfs,lvm,dm} yad
+# Firefox is required at runtime by anaconda-webui (webui-desktop launches it).
+# Soft RPM dep only applies with fedora-release-workstation, which this image lacks.
+dnf install -y --enable-repo=fedora-cisco-openh264 --allowerasing \
+    firefox anaconda-live libblockdev-{btrfs,lvm,dm} yad
 mkdir -p /var/lib/rpm-state /usr/share/anaconda/post-scripts
 
 # shellcheck source=/dev/null
