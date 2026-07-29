@@ -1,0 +1,16 @@
+# Live ISO boot configuration, read by titanoboa from
+# /usr/lib/bootc-image-builder/iso.yaml inside the payload image.
+# The CDLABEL values must match `label`, or the live root will not be found.
+#
+# enforcing=0 applies to the live installer session only. The installed system
+# keeps SELinux enforcing; a live overlay cannot carry correct labels.
+label: "Arcalium-Live"
+grub2:
+  timeout: 3
+  entries:
+    - name: "Install Arcalium OS NVIDIA Edition"
+      linux: "/images/pxeboot/vmlinuz quiet rhgb root=live:CDLABEL=Arcalium-Live enforcing=0 rd.live.image"
+      initrd: "/images/pxeboot/initrd.img"
+    - name: "Install Arcalium OS NVIDIA Edition (Basic Graphics Mode)"
+      linux: "/images/pxeboot/vmlinuz quiet rhgb root=live:CDLABEL=Arcalium-Live enforcing=0 rd.live.image nomodeset"
+      initrd: "/images/pxeboot/initrd.img"

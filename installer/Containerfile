@@ -1,0 +1,25 @@
+# Live/installer payload image for Arcalium OS NVIDIA Edition.
+#
+# This is not the shipped OS. It is the throwaway image titanoboa converts into an
+# ISO: a live KDE session, Anaconda, and the Arcalium image that Anaconda installs.
+# See docs/BUILDING.md for why ISOs do not come from Bootc Image Builder.
+#
+# Must be built with --cap-add sys_admin --security-opt label=disable, and with the
+# host image store bind-mounted at /usr/lib/containers/storage.
+
+ARG BASE_IMAGE=localhost/arcalium-os-nvidia:dev
+ARG INSTALL_IMAGE_PAYLOAD=localhost/arcalium-os-nvidia:dev
+ARG TARGET_IMAGE_REF=ghcr.io/kaal22/arcalium-os-nvidia:dev
+
+FROM ${BASE_IMAGE}
+
+ARG BASE_IMAGE
+ARG INSTALL_IMAGE_PAYLOAD
+ARG TARGET_IMAGE_REF
+
+RUN --mount=type=bind,source=./.,target=/src \
+    env \
+      BASE_IMAGE="${BASE_IMAGE}" \
+      INSTALL_IMAGE_PAYLOAD="${INSTALL_IMAGE_PAYLOAD}" \
+      TARGET_IMAGE_REF="${TARGET_IMAGE_REF}" \
+      bash /src/build.sh

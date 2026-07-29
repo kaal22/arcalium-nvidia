@@ -336,9 +336,51 @@ build-qcow2 $target_image=("localhost/" + image_name) $tag=default_tag: && (_bui
 [group('Build Virtal Machine Image')]
 build-raw $target_image=("localhost/" + image_name) $tag=default_tag: && (_build-bib target_image tag "raw" "disk_config/disk.toml")
 
-# Build an ISO virtual machine image
+# Bootc Image Builder cannot depsolve an Anaconda ISO from Bazzite's Terra repos
+# (osbuild/bootc-image-builder#1188), so this recipe fails on this base. Kept because
+# it is upstream template surface and will work again once BIB is fixed.
+
+# Build an ISO virtual machine image (broken on this base, use build-iso-live)
 [group('Build Virtal Machine Image')]
 build-iso $target_image=("localhost/" + image_name) $tag=default_tag: && (_build-bib target_image tag "iso" "disk_config/iso.toml")
+
+# Build a live installer ISO with titanoboa
+[group('Build Virtal Machine Image')]
+build-iso-live $target_image=("localhost/" + image_name) $tag=default_tag:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # First the payload image: a live KDE session, Anaconda, and the image to install.
+    # The host image store is mounted so the payload can absorb a local, unpublished
+    # image; ublue's storage.conf already lists that path as an additional image store.
+    sudo podman build \
+      --cap-add sys_admin \
+      --security-opt label=disable \
+      --volume /var/lib/containers/storage:/usr/lib/containers/storage:ro \
+      --build-arg BASE_IMAGE="${target_image}:${tag}" \
+      --build-arg INSTALL_IMAGE_PAYLOAD="${target_image}:${tag}" \
+      --build-arg TARGET_IMAGE_REF="ghcr.io/{{ repo_organization }}/{{ image_name }}:${tag}" \
+      --tag "${target_image}-payload:${tag}" \
+      installer
+
+    BUILDTMP=$(mktemp -p "${PWD}" -d -t _build-titanoboa.XXXXXXXXXX)
+
+    # Then titanoboa wraps that payload into bootable media
+    sudo podman run \
+      --rm \
+      --privileged \
+      --pull=newer \
+      --net=host \
+      --security-opt label=disable \
+      -v "${BUILDTMP}":/output \
+      -v /var/lib/containers/storage:/usr/lib/containers/storage:ro \
+      --mount type=image,source="${target_image}-payload:${tag}",dst=/rootfs \
+      ghcr.io/ublue-os/titanoboa:latest
+
+    mkdir -p output
+    sudo mv -f "${BUILDTMP}"/* output/
+    sudo rmdir "${BUILDTMP}"
+    sudo chown -R "${USER}:${USER}" output/
 
 # Rebuild a QCOW2 virtual machine image
 [group('Build Virtal Machine Image')]
