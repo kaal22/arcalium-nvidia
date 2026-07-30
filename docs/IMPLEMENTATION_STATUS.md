@@ -12,7 +12,13 @@
 
 Phase 0 scaffolding is done. Local WSL builds work. The ISO installs and boots on bare metal.
 
-**Primary test machine:** bare-metal RTX **3060 12 GB** (not the 3090/2060 matrix from the original checklist). Further testing is hardware-first; VMware is no longer the install validation path.
+**Roles**
+
+| Role | Machine | Notes |
+|---|---|---|
+| Build | this Windows workstation + WSL Ubuntu | Edit here, push, pull in WSL, `just build` / `just build-iso-live` |
+| Hardware test | separate bare-metal PC, RTX **3060 12 GB** | Installs and post-boot checks only; not the build host |
+| VMware | retired for install validation | Used once to prove the ISO chain; further installs are bare metal |
 
 **Last successful artifacts (on the Windows Desktop and in WSL `~/arcalium-nvidia/output/`):**
 
@@ -235,4 +241,4 @@ Resolved: local build host — WSL2 Ubuntu 24.04 on the Windows workstation runs
 | 2026-07-29 | ISOs will use titanoboa, not Bootc Image Builder | BIB's `anaconda-iso` depsolve is broken against Bazzite's Terra repos (BIB #1188), and titanoboa is what Bazzite uses for its own ISOs. Keeps Arcalium aligned with upstream instead of disabling signature checks. |
 | 2026-07-29 | ISO build workflow: edit on Windows → push to GitHub → pull in WSL → build in WSL | Git is the transfer mechanism between workstation and build host. Avoids `/mnt/c` performance and permission problems, prevents the two checkouts drifting, and keeps the CI image and local ISO on the same commit. See `docs/BUILDING.md`. |
 | 2026-07-29 | Kickstart `%post` registry switch runs without `--erroronfail` | The GHCR package is private, so the installer cannot reach it and the switch fails. A registry lookup must never abort a tester's install. Consequence: installed systems track `localhost/arcalium-os-nvidia:dev` and need one manual `bootc switch` before they can update — documented in `docs/BUILDING.md`. Publishing the package removes the step. |
-| 2026-07-30 | Primary hardware is RTX 3060 12 GB; no further VM install testing | Real GPU path is what matters. Spec's 3090/2060 matrix was wrong for this lab and is optional later. |
+| 2026-07-30 | Build host vs test host | Builds stay on this Windows/WSL workstation. Hardware validation runs on a separate RTX 3060 12 GB PC — never conflate the two. |
