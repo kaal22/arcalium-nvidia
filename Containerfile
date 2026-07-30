@@ -2,6 +2,7 @@
 FROM scratch AS ctx
 COPY build_files /
 COPY system_files /system_files
+COPY assets /assets
 
 # Base Image — Arcalium OS NVIDIA Edition
 # Source of truth: docs/PRODUCT_SPEC.md

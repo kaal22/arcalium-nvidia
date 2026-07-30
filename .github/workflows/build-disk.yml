@@ -1,6 +1,13 @@
 ---
 name: Build disk images
 
+# Manual only, on purpose. Disk images are milestone artifacts, not per-commit ones:
+# they take tens of minutes and the ISO is ~6 GB. Day-to-day changes ship through the
+# container image (build.yml) and reach test machines with `bootc upgrade`.
+#
+# The live ISO is NOT built here — it comes from `just build-iso-live` (titanoboa) in
+# WSL. Bootc Image Builder's anaconda-iso path fails on this base, so only qcow2 is
+# offered below. See docs/BUILDING.md.
 on:
   workflow_dispatch:
     inputs:
@@ -15,13 +22,6 @@ on:
         options:
           - amd64
           - arm64
-  pull_request:
-    branches:
-      - main
-    paths:
-      - './disk_config/disk.toml'
-      - './disk_config/iso.toml'
-      - './.github/workflows/build-disk.yml'
 
 env:
   IMAGE_NAME: arcalium-os-nvidia # keep in sync with image-template.env
@@ -40,7 +40,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        disk-type: ["qcow2", "anaconda-iso"]
+        # anaconda-iso removed: Bootc Image Builder cannot depsolve this base
+        # (osbuild/bootc-image-builder#1188), so it only burned a long run to fail.
+        disk-type: ["qcow2"]
     permissions:
       contents: read
       packages: read

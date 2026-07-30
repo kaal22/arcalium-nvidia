@@ -1,11 +1,13 @@
 ---
 name: Build container image
+# No nightly schedule: during the alpha the published :dev tag should only move when
+# we push, so a tester's `bootc upgrade` never picks up an unreviewed base change.
+# Upstream Bazzite updates are taken deliberately by re-pinning the digest in the
+# Containerfile, or by running this workflow manually.
 on:
   pull_request:
     branches:
       - main
-  schedule:
-    - cron: '05 10 * * *'  # 10:05am UTC everyday
   push:
     branches:
       - main

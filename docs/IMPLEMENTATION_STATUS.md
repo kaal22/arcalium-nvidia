@@ -46,10 +46,10 @@ Phase 0 scaffolding is done. Local WSL builds work. The ISO installs and boots o
 
 1. ~~Set GitHub Actions secret `SIGNING_SECRET`~~ — done 2026-07-30.
 2. ~~Publish and sign `ghcr.io/kaal22/arcalium-os-nvidia:dev`~~ — done 2026-07-30 ([run 30524876626](https://github.com/kaal22/arcalium-nvidia/actions/runs/30524876626)); digest `sha256:bbcea032d6369e77927d3497a3d64ade5dbb1dae6805198d2ec128c37c6ebe90`.
-3. On the 3060 test PC: `podman login ghcr.io` then `bootc switch ghcr.io/kaal22/arcalium-os-nvidia:dev`.
-4. Rebuild ISO with progress-window race fix (`7e172de`) and Basic Graphics as the clearer default path if needed.
+3. ~~On the 3060 test PC: `podman login ghcr.io` then `bootc switch ghcr.io/kaal22/arcalium-os-nvidia:dev`~~ — done 2026-07-30.
+4. Rebuild ISO **at the next milestone**, not per change — it will carry the progress-window race fix (`7e172de`), bundled Brave/Spotify/ProtonPlus Flatpaks and Basic Graphics as the clearer default path. Day-to-day changes go out as image + `bootc upgrade`.
 5. Branding (first-run wizard, logo, Plymouth) — base+ISO gate is met.
-6. Decide browser for the installed system (Brave candidate; Firefox is live-payload only today).
+6. ~~Decide browser for the installed system~~ — Brave Flatpak + taskbar pin + default-browser (`arcalium-pins.js`, `mimeapps.list`, Kickoff favorites). New ISO installs get all three; the 3060 needs `flatpak install` by hand and a one-time pin (existing Plasma layout is not overwritten).
 7. Do **not** start Control Centre until licensing items above are settled.
 8. Optional later: second-GPU matrix (3090 / 2060) if those machines appear; not blocking alpha on the 3060.
 
@@ -87,8 +87,8 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 |---|---|---|
 | NVIDIA-open Bazzite base | complete | Containerfile uses verified base |
 | Arcalium image metadata | complete | `image-template.env` + `/etc/arcalium/image-info.json` |
-| Basic branding | not started | Wallpaper / logos deferred until assets exist |
-| Arcalium wallpaper | not started | |
+| Basic branding | in progress | Wallpaper + logo mark/wordmark wired; Plymouth watermark, dark-panel mark, and live `os-release` replacement remain |
+| Arcalium wallpaper | in progress | 5504×3072 asset installed and set for new Plasma users; build/test and redistribution licence record pending |
 | Control Centre placeholder | not started | Spec forbids Control Centre until base+ISO proven |
 | First-boot placeholder | not started | Same gate |
 | QCOW2 workflow | tested | Built locally in WSL2, 5.8 GB; superseded by bare-metal validation |
@@ -117,7 +117,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | Requirement | Status | Notes |
 |---|---|---|
 | Declarative app catalogue | not started | Flatpak IDs must be re-validated on Flathub before commit |
-| Spotify / ProtonPlus / optional launchers | not started | |
+| Spotify / ProtonPlus / optional launchers | in progress | Spotify and ProtonPlus bundled and pinned; setup UI, retry/uninstall and Spotify community-package disclosure UI remain |
 
 ## Phase 5 — Proton-GE
 
@@ -221,6 +221,16 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | 2026-07-29 | Progress window closed immediately on bare metal | Race: monitor started before Anaconda process existed. Fixed in `7e172de` (next ISO). Manual restart of the script still works. |
 | 2026-07-29 | Bare-metal deploy throughput | ~17–30 MiB/s vs ~7 MiB/s in VMware — confirms VM slowness was virtual disk, not the image. |
 | 2026-07-30 | **Bare-metal install + boot on RTX 3060 12 GB** | **success** — `localhost/arcalium-os-nvidia:dev`, `nvidia-smi` OK, Wayland, Secure Boot disabled, 0 failed units. Primary hard-install test machine going forward; VMware dropped for install validation. Spec checklist 3090/2060 deferred. |
+| 2026-07-30 | **No browser on the installed system** | Root cause: our hand-written `installer/build.sh` omitted the Flatpak provisioning step that upstream Bazzite runs (`flatpak install` from `installer/<de>_flatpaks/flatpaks`), which is where Bazzite's own Firefox comes from. Live-session Firefox is an `anaconda-webui` dependency and never reaches disk. Fixed by adding `installer/flatpaks` plus the Flathub remote and `var-lib-flatpak.mount` in the payload build. |
+| 2026-07-30 | Browser choice: **Brave** (`com.brave.Browser`) | Flathub-verified via `brave.com`, publisher Brave Software, MPL-2.0, so no community-maintained caveat is needed. Its Flathub manifest repacks Brave's official release zip at build time rather than using `extra-data`, so the Flatpak can be bundled into the ISO and installed offline. Redistribution check recorded in `docs/LICENSING.md`. |
+| 2026-07-30 | Bundled-app taskbar defaults | `arcalium-pins.js` (before `bazzite-pins.js`, empty-launchers only) and `kicker-extra-favoritesrc` now include Brave, ChatGPT web app, Spotify and ProtonPlus; Steam and Bazaar remain pinned. Matches PRODUCT_SPEC §11.2 skeleton-defaults rule and never overwrites an existing user's layout. |
+| 2026-07-30 | ChatGPT added to application menu and taskbar | Dedicated Brave web-app launcher for the official `https://chatgpt.com/` site. No official Linux ChatGPT app exists, so no unofficial credential-handling wrapper is bundled. No OpenAI assets or client binaries are redistributed. |
+| 2026-07-30 | Spotify and ProtonPlus bundled | Added verified IDs `com.spotify.Client` and `com.vysp3r.ProtonPlus` to `installer/flatpaks`. Spotify is proprietary, community-maintained and unsupported by Spotify; disclosure and public-ISO redistribution gates recorded in `docs/LICENSING.md`. ProtonPlus is a publisher-verified GPL compatibility-tool manager—not Proton VPN. |
+| 2026-07-30 | Arcalium desktop wallpaper wired in | `assets/arcalium-wallpaper.png` is installed to `/usr/share/wallpapers/` and selected through the Bazzite Vapor look-and-feel setup script for newly created Plasma desktops only. Existing user wallpaper is not overwritten. Source is 5504×3072 (the IDE preview was downscaled); redistribution licence record remains. |
+| 2026-07-30 | Logo mark + wordmark wired | Sources `assets/arccleanSVG.svg` (Kickoff/distributor mark) and `assets/ARG_fullSVG.svg` (wordmark). `install_logos.py` strips Illustrator metadata (~46 KB→~1 KB mark, ~68 KB→~7 KB wordmark) and installs into hicolor places + `/usr/share/arcalium/`. Plasma splash `bazzite_logo.svgz` replaced with gzipped wordmark where present. Plymouth watermark PNG and dark-panel mark still needed. |
+| 2026-07-30 | Nightly image rebuild removed | `build.yml` no longer runs on a cron. `:dev` now moves only on push, so a tester's `bootc upgrade` cannot pull a base change nobody reviewed. Bazzite updates are taken deliberately by re-pinning the `Containerfile` digest (currently `sha256:83c6084f…`, pinned 2026-07-29) or by manual dispatch. Trade-off accepted: upstream security fixes no longer arrive on their own. |
+| 2026-07-30 | **Policy: ISOs are milestone artifacts** | Iterate via container image + `bootc upgrade`; rebuild the ~6 GB live ISO only when installer behaviour or the bundled app set changes, or a tester needs a clean install. `build-disk.yml` made `workflow_dispatch`-only (its `pull_request` trigger was dead anyway — the `./`-prefixed path filters never matched) and its `anaconda-iso` matrix entry dropped, since BIB cannot depsolve this base and the run could only fail. Caveat recorded in `docs/BUILDING.md`: Flatpaks do **not** travel with `bootc upgrade`. |
+| 2026-07-30 | Added `.gitattributes` (`* text=auto eol=lf`) | `installer/flatpaks` was written CRLF from the Windows workstation, which would have made `xargs` pass a ref with a trailing carriage return. Second line-ending bug in this repo, so enforced repo-wide. |
 | 2026-07-30 | CI publish + Cosign sign | **success** — `ghcr.io/kaal22/arcalium-os-nvidia:dev` and `:dev-20260730`; digest `sha256:bbcea032d6369e77927d3497a3d64ade5dbb1dae6805198d2ec128c37c6ebe90`; [Actions run 30524876626](https://github.com/kaal22/arcalium-nvidia/actions/runs/30524876626) |
 | 2026-07-30 | Local Cosign verify | **success** — `cosign verify --key cosign.pub ghcr.io/kaal22/arcalium-os-nvidia:dev` from build workstation |
 | 2026-07-30 | GHCR login returned 403 | Token scope, not credentials. The `gh` CLI OAuth token is `gist, read:org, repo` — no `read:packages`. Needs a classic token with that scope. |
@@ -247,3 +257,4 @@ Resolved: local build host — WSL2 Ubuntu 24.04 on the Windows workstation runs
 | 2026-07-29 | ISO build workflow: edit on Windows → push to GitHub → pull in WSL → build in WSL | Git is the transfer mechanism between workstation and build host. Avoids `/mnt/c` performance and permission problems, prevents the two checkouts drifting, and keeps the CI image and local ISO on the same commit. See `docs/BUILDING.md`. |
 | 2026-07-29 | Kickstart `%post` registry switch runs without `--erroronfail` | The GHCR package is private, so the installer cannot reach it and the switch fails. A registry lookup must never abort a tester's install. Consequence: installed systems track `localhost/arcalium-os-nvidia:dev` and need one manual `bootc switch` before they can update — documented in `docs/BUILDING.md`. Publishing the package removes the step. |
 | 2026-07-30 | Build host vs test host | Builds stay on this Windows/WSL workstation. Hardware validation runs on a separate RTX 3060 12 GB PC — never conflate the two. |
+| 2026-07-30 | Bazzite updates arrive only by re-pinning the base digest | Machines track `ghcr.io/kaal22/arcalium-os-nvidia:dev` and never rebase onto `bazzite-nvidia-open` — doing so would take them off Arcalium. The `Containerfile` pins the base by digest, so upstream moving `:stable` changes nothing until we re-pin, rebuild and publish; `bootc upgrade` then delivers Bazzite fixes and Arcalium changes as one atomic image with the previous deployment kept for rollback. Matches PRODUCT_SPEC §14 (Arcalium updates by receiving a new signed Arcalium image) and principle 7 (stay close to upstream). Accepted trade-off: upstream security and driver fixes do not flow automatically, so re-pinning needs a deliberate cadence. Procedure and digest-resolution command in `docs/BUILDING.md`. |

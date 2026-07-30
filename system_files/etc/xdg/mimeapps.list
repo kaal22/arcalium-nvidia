@@ -1,0 +1,10 @@
+[Default Applications]
+# Keep Bazzite's Bazaar association for .flatpakref files.
+application/vnd.flatpak.ref=io.github.kolunmi.Bazaar.desktop
+# Brave is the default browser (Flatpak com.brave.Browser). preferred://browser
+# and http/https links resolve here; the taskbar pin uses the desktop id directly.
+text/html=com.brave.Browser.desktop
+application/xhtml+xml=com.brave.Browser.desktop
+x-scheme-handler/http=com.brave.Browser.desktop
+x-scheme-handler/https=com.brave.Browser.desktop
+x-scheme-handler/about=com.brave.Browser.desktop

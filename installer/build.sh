@@ -25,6 +25,17 @@ mount -o remount,rw /proc/sys
 # The live layer needs packages newer than Bazzite's version pins allow
 dnf -qy versionlock clear || :
 
+### Default applications for the installed system
+# PRODUCT_SPEC section 7.3 wants graphical applications as Flatpaks rather than RPMs
+# layered into the immutable image. Anaconda copies this live installation onto the
+# target, so anything listed here lands on the installed system without needing a
+# network during the install. Omitting this step is why early builds shipped with no
+# browser at all: Bazzite's own default apps arrive through exactly this mechanism.
+mkdir -p /etc/flatpak/remotes.d
+curl --retry 3 -Lo /etc/flatpak/remotes.d/flathub.flatpakrepo \
+    https://dl.flathub.org/repo/flathub.flatpakrepo
+xargs -r flatpak install -y --noninteractive <"$SCRIPT_DIR/flatpaks"
+
 ### The image Anaconda writes to disk
 # Carried inside the ISO's own container store so installs need no network.
 if mountpoint -q /usr/lib/containers/storage; then
@@ -143,5 +154,21 @@ Options=size=50%%,nr_inodes=1m
 WantedBy=local-fs.target
 EOF
 systemctl enable var-tmp.mount
+
+# Keep the bundled Flatpaks pristine while Anaconda copies them onto the target.
+cat >/etc/systemd/system/var-lib-flatpak.mount <<'EOF'
+[Unit]
+Description=Read-only bundled Flatpak store on the live system
+
+[Mount]
+Type=none
+What=/var/lib/flatpak
+Where=/var/lib/flatpak
+Options=bind,ro
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl enable var-lib-flatpak.mount
 
 dnf clean all

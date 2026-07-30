@@ -1,0 +1,10 @@
+# Everything in this repo is consumed by Linux tooling inside the image build.
+# Committing CRLF breaks scripts and turns list files like installer/flatpaks into
+# refs with a trailing carriage return, so normalise on commit and check out LF even
+# on the Windows build workstation.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.iso binary
+*.qcow2 binary

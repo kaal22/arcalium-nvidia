@@ -2,9 +2,59 @@
 
 Arcalium derives from Universal Blue’s [image-template](https://github.com/ublue-os/image-template) and the Bazzite NVIDIA-open desktop image.
 
+## When to rebuild what
+
+ISOs are **milestone artifacts**, not per-commit ones. A live ISO build is ~6 GB and tens of minutes; the container image is a push and a `bootc upgrade`. Default to the image loop and batch ISO rebuilds behind meaningful milestones.
+
+| Change | Reaches machines via | Needs an ISO? |
+|---|---|---|
+| `system_files/`, `build_files/`, `Containerfile` — desktop defaults, taskbar pins, branding, layered packages | `just build` locally, or CI → `bootc upgrade` | No |
+| `installer/` — Anaconda profile, welcome dialog, progress window, live-session tweaks | live media only | **Yes** |
+| `installer/flatpaks` — bundled apps such as Brave | copied to disk by Anaconda at install time | **Yes** |
+| `disk_config/`, `Justfile` build recipes | whichever build you run | Only if testing that build |
+
+The trap worth remembering: **Flatpaks do not travel with `bootc upgrade`.** Anything in `installer/flatpaks` reaches only machines installed from a rebuilt ISO. On an existing box, `flatpak install` it by hand rather than cutting a new ISO.
+
+Milestones that justify an ISO: installer behaviour changed, bundled app set changed, or a tester needs a clean bare-metal install. Otherwise push, let CI publish the image, and `bootc upgrade` on the test machine.
+
+### What CI does automatically
+
+- **`build.yml`** — builds, signs and pushes the container image on every push to `main`, and on PRs. This is the cheap path and the one to rely on. No nightly schedule: `:dev` moves only when we push, so a tester's `bootc upgrade` never pulls an unreviewed base change. Take Bazzite updates deliberately by re-pinning the digest in the `Containerfile`, or run the workflow by hand.
+- **`build-disk.yml`** — **manual only** (`workflow_dispatch`). It never fires on a push. It builds qcow2 only; the live ISO comes from `just build-iso-live` in WSL, since Bootc Image Builder cannot depsolve this base.
+
+## How updates reach users, and how Bazzite changes get in
+
+Arcalium is the update source of truth. An installed machine tracks `ghcr.io/kaal22/arcalium-os-nvidia:dev` and never pulls from `bazzite-nvidia-open` directly — rebasing onto the Bazzite image would take the machine off Arcalium entirely. `bootc upgrade` fetches the next Arcalium image, stages a deployment and reboots; the previous deployment stays bootable for rollback. Flatpaks and user data are untouched by that.
+
+| Layer | How it updates |
+|---|---|
+| Kernel, NVIDIA driver, Plasma, Steam (Bazzite base) | Only when we re-pin the base digest and publish a new Arcalium image |
+| Arcalium branding, pins, wallpaper, Control Centre later | With every Arcalium image push |
+| Brave / Spotify / ProtonPlus Flatpaks | Flatpak or Bazaar on the machine; the bundled *set* changes only with a new ISO |
+| Home directory, Steam library, user settings | Not touched by image updates |
+
+The `Containerfile` pins the base by digest, so the `:stable` tag in the `FROM` line is documentation — the digest is what actually builds. Bazzite moving `:stable` therefore changes nothing here until we act, which is the point: no tester receives a base change nobody reviewed. The trade-off is that **upstream security and driver fixes do not arrive on their own**, so re-pin on a deliberate cadence.
+
+### Taking a Bazzite update
+
+Resolve what `:stable` currently points at (no pull needed; `skopeo` is not installed in WSL, so use the registry API):
+
+```bash
+TOKEN=$(curl -s "https://ghcr.io/token?scope=repository:ublue-os/bazzite-nvidia-open:pull&service=ghcr.io" | jq -r .token)
+curl -sI -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/vnd.oci.image.index.v1+json" \
+  -H "Accept: application/vnd.docker.distribution.manifest.list.v2+json" \
+  https://ghcr.io/v2/ublue-os/bazzite-nvidia-open/manifests/stable \
+  | grep -i docker-content-digest
+```
+
+If it differs from the digest in the `Containerfile`, update the `FROM` line and the date comment above it, then push. CI rebuilds Arcalium on the new base, signs it, and testers pick it up with `bootc upgrade`. Re-pinning the kernel and NVIDIA stack is exactly the kind of change that deserves a bare-metal check on the 3060 before it goes further.
+
+Last checked 2026-07-30: `:stable` is still `sha256:83c6084f…`, matching the current pin.
+
 ## Standard ISO build workflow
 
-This is the established loop. Git is the transfer mechanism between the Windows workstation and the Linux build host — never copy the working tree across manually, and never build from `/mnt/c`.
+Use this at milestones, not for every change. Git is the transfer mechanism between the Windows workstation and the Linux build host — never copy the working tree across manually, and never build from `/mnt/c`.
 
 1. **Edit** on the Windows workstation (`Arcalium NVIDIA` folder).
 2. **Commit and push** to `main` on GitHub.
@@ -128,6 +178,63 @@ Live-session extras under `installer/system_files/`:
 - `arcalium-install-progress.sh`, a progress window covering the deploy step
 
 Both the welcome dialog and the desktop launcher go through `arcalium-install.sh`, so the progress window and error reporting apply however the installer is started.
+
+### Default applications (`installer/flatpaks`)
+
+Applications for the **installed** system are Flatpaks listed one ref per line in `installer/flatpaks`, following PRODUCT_SPEC §7.3 rather than layering RPMs into the immutable image:
+
+```
+app/com.brave.Browser/x86_64/stable
+app/com.spotify.Client/x86_64/stable
+app/com.vysp3r.ProtonPlus/x86_64/stable
+```
+
+The payload build adds the Flathub remote and installs the list into the live image's `/var/lib/flatpak`; Anaconda then copies that store onto the target, so the apps arrive without a network during the install. This is the same mechanism Bazzite uses for its defaults, and omitting it is why builds before this shipped with **no browser at all** — Firefox in the live session is an `anaconda-webui` dependency and never reaches the installed system.
+
+Two consequences worth knowing. Each entry pulls its runtimes as well, so the first browser added roughly a gigabyte to the ISO. And changes only reach machines that are installed from a **rebuilt ISO**: existing installs need `flatpak install` by hand, since `bootc upgrade` does not touch Flatpaks.
+
+Verify any new ID on Flathub before committing it — PRODUCT_SPEC principle 4 forbids inventing Flatpak IDs, and `docs/LICENSING.md` tracks redistribution for anything bundled.
+
+### Taskbar and default browser
+
+New users get every bundled Arcalium app pinned on the Icon Tasks panel and in Kickoff favorites: Brave, the ChatGPT web app, Spotify and ProtonPlus. Existing Bazzite defaults Steam and Bazaar remain pinned too.
+
+- `system_files/.../updates/arcalium-pins.js` — runs before Bazzite's `bazzite-pins.js` (alphabetical) and only writes when `launchers` is empty, per PRODUCT_SPEC §11.2
+- `system_files/etc/xdg/mimeapps.list` — Brave as the default for `http`/`https`/`text/html` (keeps Bazzite's Bazaar `.flatpakref` association)
+- `system_files/.../kicker-extra-favoritesrc` — the same bundled apps in application-launcher favorites
+
+These live in the **bootc image**, not the live ISO payload. They reach machines via `just build` + `bootc upgrade`/`switch`, or a fresh ISO install. Existing users whose taskbar was already configured are left alone — pin Brave once by hand if needed. Control Centre is omitted until it exists.
+
+### ChatGPT web app
+
+`system_files/usr/share/applications/arcalium-chatgpt.desktop` adds ChatGPT to the application menu and launches the official `https://chatgpt.com/` site in a dedicated Brave app window. It is also included in the new-user taskbar defaults.
+
+This is a launcher, not a redistributed ChatGPT client: OpenAI does not publish an official Linux app as of 2026-07-30, and unofficial wrappers would make users trust third-party code with their OpenAI credentials. The launcher adds negligible image size and reaches existing systems through the bootc image, but requires the Brave Flatpak to be installed.
+
+### Desktop wallpaper
+
+The build installs `assets/arcalium-wallpaper.png` as `/usr/share/wallpapers/arcalium-wallpaper.png`. The Bazzite Vapor look-and-feel setup script is overridden so Plasma selects it only while creating a new desktop containment. Existing users keep their chosen wallpaper, as required by PRODUCT_SPEC §11.2.
+
+The source is 5504×3072, which is sufficient for 4K displays (the IDE preview is downscaled and must not be used to infer source dimensions). A future replacement can use the same filename without changing the configuration. Record its author, source and redistribution licence in `docs/LICENSING.md` before a public image or ISO.
+
+### Logos
+
+Source assets:
+
+| File | Role |
+|---|---|
+| `assets/arccleanSVG.svg` | Primary mark — application menu / Kickoff icon and other compact surfaces |
+| `assets/ARG_fullSVG.svg` | Wordmark (mark + “ARCALIUM OS” text) — splash and branding screens |
+
+`build_files/install_logos.py` strips Adobe Illustrator private metadata at image-build time (the raw exports are ~10× larger and the metadata is unused for rendering) and installs:
+
+- Mark → `/usr/share/icons/hicolor/scalable/places/{distributor-logo,distributor-logo-white,start-here-kde}.svg` and `/usr/share/arcalium/logo-mark.svg`
+- Wordmark → `/usr/share/arcalium/logo-wordmark.svg`
+- Both also under `/usr/share/icons/hicolor/scalable/apps/` as `arcalium-logo.svg` / `arcalium-wordmark.svg`
+
+Any existing `bazzite_logo.svgz` under Plasma look-and-feel packages is replaced with a gzipped copy of the wordmark so the desktop splash shows Arcalium without rewriting Splash.qml.
+
+Still outstanding for full branding: a ~149×43 Plymouth watermark PNG, a dark mark for light panels (current fills are white), and real `os-release` replacement (the snippet in `/usr/share/arcalium/` is not yet applied).
 
 ### Install time and the deploy step
 
