@@ -171,7 +171,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | 5 | Add `docs/IMPLEMENTATION_STATUS.md` | complete |
 | 6 | Configure Cosign (no private key in git) | complete — `cosign.pub` in repo; `SIGNING_SECRET` set in Actions 2026-07-30 |
 | 7 | Build/publish private `dev` image to GHCR | complete — `ghcr.io/kaal22/arcalium-os-nvidia:dev` published 2026-07-30 |
-| 8 | Verify image signature | complete — CI Cosign sign step succeeded; digest `sha256:bbcea0…ebe90` |
+| 8 | Verify image signature | complete — CI Cosign sign + local `cosign verify --key cosign.pub ghcr.io/kaal22/arcalium-os-nvidia:dev` (digest `sha256:bbcea0…ebe90`) |
 | 9 | Build QCOW2 | complete — `output/qcow2/disk.qcow2`, built locally under WSL2 |
 | 10 | Boot-test unbranded image | complete — VM then bare-metal RTX 3060 12 GB |
 | 11 | Build installer ISO | complete — `output/Arcalium-Live.iso` via titanoboa (`just build-iso-live`) |
@@ -222,6 +222,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | 2026-07-29 | Bare-metal deploy throughput | ~17–30 MiB/s vs ~7 MiB/s in VMware — confirms VM slowness was virtual disk, not the image. |
 | 2026-07-30 | **Bare-metal install + boot on RTX 3060 12 GB** | **success** — `localhost/arcalium-os-nvidia:dev`, `nvidia-smi` OK, Wayland, Secure Boot disabled, 0 failed units. Primary hard-install test machine going forward; VMware dropped for install validation. Spec checklist 3090/2060 deferred. |
 | 2026-07-30 | CI publish + Cosign sign | **success** — `ghcr.io/kaal22/arcalium-os-nvidia:dev` and `:dev-20260730`; digest `sha256:bbcea032d6369e77927d3497a3d64ade5dbb1dae6805198d2ec128c37c6ebe90`; [Actions run 30524876626](https://github.com/kaal22/arcalium-nvidia/actions/runs/30524876626) |
+| 2026-07-30 | Local Cosign verify | **success** — `cosign verify --key cosign.pub ghcr.io/kaal22/arcalium-os-nvidia:dev` from build workstation |
 
 ---
 
