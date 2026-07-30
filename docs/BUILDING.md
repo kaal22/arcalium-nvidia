@@ -30,7 +30,7 @@ Arcalium is the update source of truth. An installed machine tracks `ghcr.io/kaa
 |---|---|
 | Kernel, NVIDIA driver, Plasma, Steam (Bazzite base) | Only when we re-pin the base digest and publish a new Arcalium image |
 | Arcalium branding, pins, wallpaper, Control Centre later | With every Arcalium image push |
-| Brave / Spotify / ProtonPlus Flatpaks | Flatpak or Bazaar on the machine; the bundled *set* changes only with a new ISO |
+| Brave / Spotify / ProtonPlus / Heroic Flatpaks | Flatpak or Bazaar on the machine; the bundled *set* changes only with a new ISO |
 | Home directory, Steam library, user settings | Not touched by image updates |
 
 The `Containerfile` pins the base by digest, so the `:stable` tag in the `FROM` line is documentation — the digest is what actually builds. Bazzite moving `:stable` therefore changes nothing here until we act, which is the point: no tester receives a base change nobody reviewed. The trade-off is that **upstream security and driver fixes do not arrive on their own**, so re-pin on a deliberate cadence.
@@ -202,6 +202,7 @@ Applications for the **installed** system are Flatpaks listed one ref per line i
 app/com.brave.Browser/x86_64/stable
 app/com.spotify.Client/x86_64/stable
 app/com.vysp3r.ProtonPlus/x86_64/stable
+app/com.heroicgameslauncher.hgl/x86_64/stable
 ```
 
 The payload build adds the Flathub remote and installs the list into the live image's `/var/lib/flatpak`; Anaconda then copies that store onto the target, so the apps arrive without a network during the install. This is the same mechanism Bazzite uses for its defaults, and omitting it is why builds before this shipped with **no browser at all** — Firefox in the live session is an `anaconda-webui` dependency and never reaches the installed system.
@@ -212,7 +213,7 @@ Verify any new ID on Flathub before committing it — PRODUCT_SPEC principle 4 f
 
 ### Taskbar and default browser
 
-New users get every bundled Arcalium app pinned on the Icon Tasks panel and in Kickoff favorites: Brave, the ChatGPT web app, Spotify and ProtonPlus. Existing Bazzite defaults Steam and Bazaar remain pinned too.
+New users get every bundled Arcalium app pinned on the Icon Tasks panel and in Kickoff favorites: Brave, the ChatGPT web app, Spotify, ProtonPlus and Heroic. Existing Bazzite defaults Steam and Bazaar remain pinned too, with Heroic sitting next to Steam so the game launchers group together.
 
 - `system_files/.../updates/arcalium-pins.js` — runs before Bazzite's `bazzite-pins.js` (alphabetical) and only writes when `launchers` is empty, per PRODUCT_SPEC §11.2
 - `system_files/etc/xdg/mimeapps.list` — Brave as the default for `http`/`https`/`text/html` (keeps Bazzite's Bazaar `.flatpakref` association)

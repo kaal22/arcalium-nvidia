@@ -25,6 +25,7 @@ Anything listed in `installer/flatpaks` is copied into the ISO, so we redistribu
 | `com.brave.Browser` | Yes — verified via `brave.com`, publisher Brave Software | MPL-2.0 (project) | The Flathub build repacks Brave's official release archive, so a public ISO redistributes Brave's binaries and marks. Confirm Brave's terms and trademark policy before any public ISO. |
 | `com.spotify.Client` | **No** — community-provided package | Proprietary Spotify client | Not affiliated with or supported by Spotify. The Flatpak repackages Spotify's official client; every user-facing catalogue and setup surface must disclose that the package is community-maintained. Confirm redistribution terms before a public ISO. |
 | `com.vysp3r.ProtonPlus` | Yes — verified via `vysp3r.com`, publisher Vysp3r | GPL-3.0-or-later | Compatibility-tool manager, not Proton VPN and not affiliated with Proton AG. |
+| `com.heroicgameslauncher.hgl` | Yes — verified via `heroicgameslauncher.com` | GPL-3.0 | Open-source launcher for Epic, GOG and Amazon libraries. Arcalium redistributes only the launcher: no store client, game content or store credentials. Users authenticate to those stores themselves, and Arcalium is not affiliated with Epic Games, GOG or Amazon. |
 
 ## Web-app launchers
 
