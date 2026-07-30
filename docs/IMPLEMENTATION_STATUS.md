@@ -223,6 +223,8 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | 2026-07-30 | **Bare-metal install + boot on RTX 3060 12 GB** | **success** — `localhost/arcalium-os-nvidia:dev`, `nvidia-smi` OK, Wayland, Secure Boot disabled, 0 failed units. Primary hard-install test machine going forward; VMware dropped for install validation. Spec checklist 3090/2060 deferred. |
 | 2026-07-30 | CI publish + Cosign sign | **success** — `ghcr.io/kaal22/arcalium-os-nvidia:dev` and `:dev-20260730`; digest `sha256:bbcea032d6369e77927d3497a3d64ade5dbb1dae6805198d2ec128c37c6ebe90`; [Actions run 30524876626](https://github.com/kaal22/arcalium-nvidia/actions/runs/30524876626) |
 | 2026-07-30 | Local Cosign verify | **success** — `cosign verify --key cosign.pub ghcr.io/kaal22/arcalium-os-nvidia:dev` from build workstation |
+| 2026-07-30 | GHCR login returned 403 | Token scope, not credentials. The `gh` CLI OAuth token is `gist, read:org, repo` — no `read:packages`. Needs a classic token with that scope. |
+| 2026-07-30 | `podman login` is not sufficient for bootc | bootc reads `/etc/ostree/auth.json`, not podman's `$XDG_RUNTIME_DIR/containers/auth.json`, so a normal login looks fine and then upgrades fail or stop working after reboot. `docs/BUILDING.md` corrected — it previously documented the wrong command. |
 
 ---
 

@@ -206,11 +206,7 @@ Expect the first `just build` to pull roughly 15–20 GB of Bazzite NVIDIA layer
 An Arcalium ISO is only needed for clean-install repeatability testing. To validate hardware sooner, rebase an existing Bazzite install:
 
 1. Install stock `bazzite-nvidia-open` from the official [Bazzite ISO](https://download.bazzite.gg).
-2. Authenticate to GHCR for the private package, using a token with `read:packages`:
-
-```bash
-sudo podman login ghcr.io -u <github-username>
-```
+2. Authenticate to GHCR for the private package — see [GHCR authentication for bootc](#ghcr-authentication-for-bootc) below, which is not a plain `podman login`.
 
 3. Switch to the Arcalium image and reboot:
 
@@ -233,15 +229,33 @@ Confirm what the system is tracking:
 sudo bootc status
 ```
 
-If `image` shows `localhost/arcalium-os-nvidia:dev`, authenticate with a token holding `read:packages` and repoint it:
+If `image` shows `localhost/arcalium-os-nvidia:dev`, authenticate as below and then repoint it:
 
 ```bash
-sudo podman login ghcr.io -u <github-username>
 sudo bootc switch ghcr.io/kaal22/arcalium-os-nvidia:dev
 sudo systemctl reboot
 ```
 
 `bootc upgrade` works normally after that. Making the GHCR package public removes this step entirely, but that is held behind the Steam licensing gate in `docs/PRODUCT_SPEC.md` §17.2.
+
+## GHCR authentication for bootc
+
+Two things trip this up, and a plain `sudo podman login ghcr.io` hits both.
+
+**The token needs `read:packages`.** A GitHub password will not work, and neither will most tokens you already have — the `gh` CLI's own OAuth token is scoped `gist, read:org, repo` by default, so reusing it returns `403 Forbidden`. Create a classic token with only the `read:packages` scope:
+
+<https://github.com/settings/tokens/new?scopes=read:packages&description=Arcalium%20bootc%20pull>
+
+**bootc does not read podman's credentials.** `podman login` writes to `$XDG_RUNTIME_DIR/containers/auth.json`, which is both ephemeral and in a location system services should not read. bootc reads `/etc/ostree/auth.json`, `/run/ostree/auth.json` or `/usr/lib/ostree/auth.json` instead ([bootc secrets docs](https://bootc.dev/bootc/building/secrets.html)). Authenticating the ordinary way therefore appears to succeed and then `bootc upgrade` still fails, or works until the next reboot.
+
+Write the credentials straight to the persistent path bootc uses:
+
+```bash
+echo '<TOKEN>' | sudo podman login ghcr.io \
+  -u <github-username> --password-stdin \
+  --authfile /etc/ostree/auth.json
+sudo chmod 600 /etc/ostree/auth.json
+```
 
 ## Important gates
 
