@@ -29,8 +29,8 @@ done < <(find /usr/share/plasma/look-and-feel -type f -name 'bazzite_logo.svgz' 
 # Plymouth boot splash (post-GRUB) uses the spinner theme's watermark.png —
 # including via the default bgrt theme, whose ImageDir points here. Bazzite's
 # file is 149×43; our wordmark is taller, so render at ~256×121 to keep text
-# readable. bootc regenerates initramfs on deploy, so the next upgrade+reboot
-# picks this up without a manual plymouth-set-default-theme.
+# readable. The initramfs also carries a copy; it is rebuilt at the end of this
+# script.
 magick -background none -density 300 \
     /usr/share/arcalium/logo-wordmark.svg \
     -resize 256x121 \
@@ -88,3 +88,23 @@ systemctl enable arcalium-migrate-hostname.service
 
 # Keep podman.socket available (inherited template default; idempotent).
 systemctl enable podman.socket
+
+# Plymouth draws the boot splash from the initramfs but the shutdown splash from
+# /usr, so branding applied only to /usr shows Arcalium on shutdown and stock
+# Bazzite on boot. The initramfs in the base image was generated before this
+# layer, so rebuild it with the arguments dracut recorded in the original
+# (visible via `lsinitrd`) and confirm our watermark and os-release land inside.
+for moddir in /usr/lib/modules/*/; do
+    [[ -f "${moddir}initramfs.img" ]] || continue
+    kver="$(basename "${moddir}")"
+    dracut --no-hostonly --kver "${kver}" --reproducible --zstd -v \
+        --add ostree --add fido2 --force "${moddir}initramfs.img"
+    chmod 0600 "${moddir}initramfs.img"
+
+    lsinitrd "${moddir}initramfs.img" -f usr/share/plymouth/themes/spinner/watermark.png |
+        cmp - /usr/share/plymouth/themes/spinner/watermark.png
+    # os-release inside the initramfs is a symlink to initrd-release, which
+    # dracut derives from /usr/lib/os-release and Plymouth reads for its title.
+    lsinitrd "${moddir}initramfs.img" -f usr/lib/initrd-release |
+        grep -q '^NAME="Arcalium OS"$'
+done

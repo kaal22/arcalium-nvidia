@@ -249,9 +249,37 @@ Source assets:
 
 Any existing `bazzite_logo.svgz` under Plasma look-and-feel packages is replaced with a gzipped copy of the wordmark so the desktop splash shows Arcalium without rewriting Splash.qml. Verify by comparing checksums rather than grepping for a marker: `gzip -dc <svgz> | sha256sum` must equal `sha256sum /usr/share/arcalium/logo-wordmark.svg`.
 
-Plymouth (the “OS Loading” screen after GRUB) uses `/usr/share/plymouth/themes/spinner/watermark.png`. `build.sh` rasterises `logo-wordmark.svg` to that path at ~256×121 with a transparent background via ImageMagick. The default `bgrt` theme reads the same ImageDir, so both themes pick it up. `NAME` / `PRETTY_NAME` in `/usr/lib/os-release` are rewritten to Arcalium at the same time (keeping `ID=bazzite` for the live Anaconda profile). After `bootc upgrade` and a reboot, the new watermark is inside the regenerated initramfs — no manual `plymouth-set-default-theme` is required.
+Plymouth (the “OS Loading” screen after GRUB) uses `/usr/share/plymouth/themes/spinner/watermark.png`. `build.sh` rasterises `logo-wordmark.svg` to that path at ~256×121 with a transparent background via ImageMagick. The default `bgrt` theme reads the same ImageDir, so both themes pick it up. `NAME` / `PRETTY_NAME` in `/usr/lib/os-release` are rewritten to Arcalium at the same time (keeping `ID=bazzite` for the live Anaconda profile).
 
-Login / lock greeter wallpaper is **not** the desktop wallpaper setting. Bazzite hard-codes `/usr/share/wallpapers/convergence.jxl` in `/etc/xdg/kscreenlockerrc` (and the kde-settings profile copy). We override both to `/usr/share/wallpapers/arcalium-wallpaper.png`. That is why a manually chosen desktop wallpaper can stick while the login screen still shows Bazzite until this image lands.
+#### Plymouth needs the initramfs rebuilt
+
+Writing the watermark into `/usr` is not enough, and the failure is easy to misread as “the change did not apply”: Plymouth runs **from the initramfs during boot** and **from the root filesystem during shutdown**, so a `/usr`-only change gives you Arcalium on shutdown and stock Bazzite on boot.
+
+bootc does **not** regenerate the initramfs on deploy — the image ships a prebuilt `/usr/lib/modules/<kver>/initramfs.img`, and the one inherited from Bazzite was generated before our layer existed. `build.sh` therefore rebuilds it. The arguments are not guesswork; the original invocation is recorded in the image and can be read back with:
+
+```bash
+lsinitrd /usr/lib/modules/<kver>/initramfs.img | head -1
+# Arguments: --no-hostonly --kver '<kver>' --reproducible --zstd -v --add 'ostree' --add 'fido2' -f
+```
+
+We reuse exactly those, restore mode `0600`, and then assert that the watermark inside the new initramfs is byte-identical to the one in `/usr` and that its `os-release` says Arcalium. A wrong initramfs is an unbootable machine, so those assertions are deliberately fatal to the build. Consequences worth knowing:
+
+- Build time grows by a few minutes and the image carries its own ~240 MB initramfs layer instead of sharing Bazzite's.
+- `--reproducible` keeps the output stable across rebuilds, so the layer digest only churns when its inputs actually change.
+- The live ISO was never affected: `installer/build.sh` already regenerates the payload initramfs (with `dmsquash-live`) on top of our branded `/usr`.
+
+#### Login screen is plasmalogin, not SDDM
+
+Plasma 6.7 replaced SDDM with `plasma-login-manager`, so `/etc/systemd/system/display-manager.service` points at `plasmalogin.service` and there is no `sddm` binary in the image at all. SDDM recipes found online do nothing here.
+
+Its config cascade (from `PlasmaLoginSettings::getInstance()`) is `/etc/plasmalogin.conf` → `/etc/plasmalogin.conf.d/*` → `/usr/lib/plasmalogin/defaults.conf` → `/usr/lib/plasmalogin/plasmalogin.conf.d/*`. Distro defaults belong in `defaults.conf`, which we ship from `system_files`; anything a user picks in System Settings is written to `/etc/plasmalogin.conf` and still wins. The group nesting comes from `WallpaperIntegration` (`Greeter` → `Wallpaper` → plugin id) plus the plugin's own group (`General` for `org.kde.image`):
+
+```ini
+[Greeter][Wallpaper][org.kde.image][General]
+Image=/usr/share/wallpapers/arcalium-wallpaper.png
+```
+
+The **lock** screen is separate again: Bazzite hard-codes `/usr/share/wallpapers/convergence.jxl` in `/etc/xdg/kscreenlockerrc` (and the kde-settings profile copy), and we override both. So three different files govern desktop, lock and login wallpaper — which is why a manually chosen desktop wallpaper sticks while the login screen still shows Bazzite.
 
 ### Hostname and Konsole welcome
 
