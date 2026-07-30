@@ -44,7 +44,8 @@ Phase 0 scaffolding is done. Local WSL builds work. The ISO installs and boots o
 
 **Not finished — next**
 
-1. Set GitHub Actions secret `SIGNING_SECRET` from local `cosign.key`, publish private `ghcr.io/kaal22/arcalium-os-nvidia:dev`, verify Cosign signature.
+1. ~~Set GitHub Actions secret `SIGNING_SECRET`~~ — done 2026-07-30; CI build triggered.
+2. Wait for CI to publish and sign `ghcr.io/kaal22/arcalium-os-nvidia:dev`, then verify Cosign signature.
 2. On the 3060: `podman login ghcr.io` then `bootc switch` to the published ref so upgrades work.
 3. Rebuild ISO with progress-window race fix (`7e172de`) and Basic Graphics as the clearer default path if needed.
 4. Branding (first-run wizard, logo, Plymouth) — base+ISO gate is met.
@@ -168,9 +169,9 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | 3 | Set metadata for `arcalium-os-nvidia` | complete |
 | 4 | Add `docs/PRODUCT_SPEC.md` | complete |
 | 5 | Add `docs/IMPLEMENTATION_STATUS.md` | complete |
-| 6 | Configure Cosign (no private key in git) | in progress — pubkey ready; secret upload pending |
-| 7 | Build/publish private `dev` image to GHCR | in progress — repository pushed; signing secret pending |
-| 8 | Verify image signature | blocked — needs a CI-published image, which needs `SIGNING_SECRET` |
+| 6 | Configure Cosign (no private key in git) | complete — `cosign.pub` in repo; `SIGNING_SECRET` set in Actions 2026-07-30 |
+| 7 | Build/publish private `dev` image to GHCR | in progress — CI build triggered after secret upload |
+| 8 | Verify image signature | in progress — pending CI publish |
 | 9 | Build QCOW2 | complete — `output/qcow2/disk.qcow2`, built locally under WSL2 |
 | 10 | Boot-test unbranded image | complete — VM then bare-metal RTX 3060 12 GB |
 | 11 | Build installer ISO | complete — `output/Arcalium-Live.iso` via titanoboa (`just build-iso-live`) |
@@ -225,7 +226,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 
 ## Blockers
 
-1. **`SIGNING_SECRET`:** Paste contents of local `cosign.key` into the `kaal22/arcalium-nvidia` Actions secret `SIGNING_SECRET`. Never commit `cosign.key`.
+1. ~~**`SIGNING_SECRET`:**~~ Set 2026-07-30 via `gh secret set`. Never commit `cosign.key`.
 2. **Bootc Image Builder ISO (`just build-iso`):** Cannot produce an Anaconda ISO from this base ([BIB #1188](https://github.com/osbuild/bootc-image-builder/issues/1188)). Use `just build-iso-live` instead. The `installer/` payload layer is implemented.
 3. **CI disk builds vs private package:** `osbuild/bootc-image-builder-action` documents no authentication or pull-secret input, so `build-disk.yml` cannot pull the private `arcalium-os-nvidia` package. Upstream interface unconfirmed — not worked around. Disk images are built locally instead.
 4. **Steam redistribution:** Blocks public ISO and public package only; private alpha testing on owned hardware may continue.
