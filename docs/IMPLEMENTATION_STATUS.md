@@ -8,9 +8,9 @@
 
 ---
 
-## Where we left off (2026-07-30 morning)
+## Where we left off (2026-07-30 evening)
 
-Phase 0 scaffolding is done. Local WSL builds work. The ISO installs and boots on bare metal.
+Phase 0 scaffolding is done. Local WSL builds work. The ISO installs and boots on bare metal. The branding and bundled-app milestone is published as an image and cut to a fresh ISO, which has **not yet been installed on hardware**.
 
 **Roles**
 
@@ -24,10 +24,11 @@ Phase 0 scaffolding is done. Local WSL builds work. The ISO installs and boots o
 
 | Artifact | Location | Notes |
 |---|---|---|
-| Live ISO | `C:\Users\Kaal\Desktop\Arcalium-Live.iso` (5.8 GB) | zstd squashfs, Anaconda profile, Firefox, progress window, Steam suppressed |
+| Live ISO — **current** | WSL `~/arcalium-nvidia/output/Arcalium-Live.iso` (6.9 GB) | Commit `89b31ba`; adds Brave/Spotify/ProtonPlus Flatpaks, ChatGPT launcher, wallpaper, logo mark + splash wordmark. Grew 5.8 → 6.9 GB from the Flatpaks and their runtimes |
+| Live ISO — previous | same folder, `.iso.prev` (5.8 GB) | Kept as the known-good fallback: this is the build that installed on the 3060 |
 | QCOW2 | WSL `~/arcalium-nvidia/output/qcow2/disk.qcow2` (~5.8 GB) | Not needed for current validation |
 | OCI image | WSL `localhost/arcalium-os-nvidia:dev` | 13.2 GB |
-| Payload image | WSL `localhost/arcalium-os-nvidia-payload:dev` | Live/installer layer |
+| Payload image | WSL `localhost/arcalium-os-nvidia-payload:dev` | 31.4 GB live/installer layer |
 
 **Proven**
 
@@ -47,7 +48,7 @@ Phase 0 scaffolding is done. Local WSL builds work. The ISO installs and boots o
 1. ~~Set GitHub Actions secret `SIGNING_SECRET`~~ — done 2026-07-30.
 2. ~~Publish and sign `ghcr.io/kaal22/arcalium-os-nvidia:dev`~~ — done 2026-07-30 ([run 30524876626](https://github.com/kaal22/arcalium-nvidia/actions/runs/30524876626)); digest `sha256:bbcea032d6369e77927d3497a3d64ade5dbb1dae6805198d2ec128c37c6ebe90`.
 3. ~~On the 3060 test PC: `podman login ghcr.io` then `bootc switch ghcr.io/kaal22/arcalium-os-nvidia:dev`~~ — done 2026-07-30.
-4. Rebuild ISO **at the next milestone**, not per change — it will carry the progress-window race fix (`7e172de`), bundled Brave/Spotify/ProtonPlus Flatpaks and Basic Graphics as the clearer default path. Day-to-day changes go out as image + `bootc upgrade`.
+4. ~~Rebuild ISO at the next milestone~~ — done 2026-07-30 evening from `89b31ba`. Carries the progress-window race fix, the bundled Flatpaks and the branding. **Next: install it on the 3060** and confirm the taskbar pins, default browser, wallpaper, application-menu mark and splash wordmark all appear for the new user created during setup.
 5. Branding (first-run wizard, logo, Plymouth) — base+ISO gate is met.
 6. ~~Decide browser for the installed system~~ — Brave Flatpak + taskbar pin + default-browser (`arcalium-pins.js`, `mimeapps.list`, Kickoff favorites). New ISO installs get all three; the 3060 needs `flatpak install` by hand and a one-time pin (existing Plasma layout is not overwritten).
 7. Do **not** start Control Centre until licensing items above are settled.
@@ -257,4 +258,5 @@ Resolved: local build host — WSL2 Ubuntu 24.04 on the Windows workstation runs
 | 2026-07-29 | ISO build workflow: edit on Windows → push to GitHub → pull in WSL → build in WSL | Git is the transfer mechanism between workstation and build host. Avoids `/mnt/c` performance and permission problems, prevents the two checkouts drifting, and keeps the CI image and local ISO on the same commit. See `docs/BUILDING.md`. |
 | 2026-07-29 | Kickstart `%post` registry switch runs without `--erroronfail` | The GHCR package is private, so the installer cannot reach it and the switch fails. A registry lookup must never abort a tester's install. Consequence: installed systems track `localhost/arcalium-os-nvidia:dev` and need one manual `bootc switch` before they can update — documented in `docs/BUILDING.md`. Publishing the package removes the step. |
 | 2026-07-30 | Build host vs test host | Builds stay on this Windows/WSL workstation. Hardware validation runs on a separate RTX 3060 12 GB PC — never conflate the two. |
+| 2026-07-30 | ISO builds run detached, on a WSL VM with explicit memory and swap | The VM died at 90% of `mksquashfs` with no error and no exit status, losing ~40 minutes. Default WSL2 gets half of host RAM and no swap. `%USERPROFILE%\.wslconfig` now sets `memory=24GB`/`swap=8GB`, and the build runs under `setsid nohup` writing to `output/iso-build.log` so it survives a disconnecting terminal. Reruns are cheap: the payload image is cached, so only the squashfs is repeated. |
 | 2026-07-30 | Bazzite updates arrive only by re-pinning the base digest | Machines track `ghcr.io/kaal22/arcalium-os-nvidia:dev` and never rebase onto `bazzite-nvidia-open` — doing so would take them off Arcalium. The `Containerfile` pins the base by digest, so upstream moving `:stable` changes nothing until we re-pin, rebuild and publish; `bootc upgrade` then delivers Bazzite fixes and Arcalium changes as one atomic image with the previous deployment kept for rollback. Matches PRODUCT_SPEC §14 (Arcalium updates by receiving a new signed Arcalium image) and principle 7 (stay close to upstream). Accepted trade-off: upstream security and driver fixes do not flow automatically, so re-pinning needs a deliberate cadence. Procedure and digest-resolution command in `docs/BUILDING.md`. |

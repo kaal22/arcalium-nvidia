@@ -78,6 +78,21 @@ Use `build-iso-live` (Titanoboa), not `build-iso`. Bootc Image Builder cannot re
 
 Two reasons this order matters: the WSL clone and the Windows folder are separate checkouts that silently drift if you skip the pull, and pushing first means the CI-built image and the local ISO come from the same commit.
 
+Run the ISO step detached, because it outlives most terminals:
+
+```bash
+setsid nohup just build-iso-live > output/iso-build.log 2>&1 < /dev/null &
+tail -f output/iso-build.log
+```
+
+### The WSL VM can die mid-squashfs
+
+On 2026-07-30 the whole WSL VM disappeared at 90% of `mksquashfs`, taking the build container with it: no error in the log, no exit status, and `uptime` afterwards showed a freshly booted VM. Nothing was in the Windows event log, and the payload image survived, so a rerun resumed from cache and only redid the ISO step.
+
+Default WSL2 takes 50% of host RAM (16 GB of 32 GB) with no swap, so a spike has nowhere to go but the VM's death. `%USERPROFILE%\.wslconfig` now sets `memory=24GB`, `swap=8GB`, `processors=16`; apply changes with `wsl --shutdown`. Compressing a ~31 GB payload only needs ~3 GB resident, but page cache fills whatever is available, so leave the swap in place.
+
+If a build dies this way, don't start over — `just build-iso-live` reuses the cached payload image and goes straight back to squashfs.
+
 Setup for the WSL host is under [Building from a Windows workstation via WSL2](#building-from-a-windows-workstation-via-wsl2).
 
 ## Prerequisites
@@ -232,7 +247,9 @@ Source assets:
 - Wordmark → `/usr/share/arcalium/logo-wordmark.svg`
 - Both also under `/usr/share/icons/hicolor/scalable/apps/` as `arcalium-logo.svg` / `arcalium-wordmark.svg`
 
-Any existing `bazzite_logo.svgz` under Plasma look-and-feel packages is replaced with a gzipped copy of the wordmark so the desktop splash shows Arcalium without rewriting Splash.qml.
+Any existing `bazzite_logo.svgz` under Plasma look-and-feel packages is replaced with a gzipped copy of the wordmark so the desktop splash shows Arcalium without rewriting Splash.qml. Verify by comparing checksums rather than grepping for a marker: `gzip -dc <svgz> | sha256sum` must equal `sha256sum /usr/share/arcalium/logo-wordmark.svg`.
+
+Note how helper scripts are addressed: the `ctx` stage does `COPY build_files /`, so `build.sh`'s siblings are at `/ctx/install_logos.py`, **not** `/ctx/build_files/install_logos.py`. Getting this wrong fails the build immediately, which is how it was caught.
 
 Still outstanding for full branding: a ~149×43 Plymouth watermark PNG, a dark mark for light panels (current fills are white), and real `os-release` replacement (the snippet in `/usr/share/arcalium/` is not yet applied).
 

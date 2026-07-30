@@ -18,7 +18,7 @@ def clean_svg(src: Path, element_id: str) -> str:
     text = re.sub(r"<metadata>.*?</metadata>\s*", "", text, flags=re.S)
     text = re.sub(r'\s+xmlns:i="[^"]*"', "", text)
     text = re.sub(r"\s*<!-- Generator:.*?-->\s*", "\n", text)
-    text = re.sub(r'\nid="Layer_1"', f' id="{element_id}"', text)
+    text = re.sub(r'id="Layer_1"', f'id="{element_id}"', text, count=1)
     return text.replace("\r\n", "\n").strip() + "\n"
 
 
