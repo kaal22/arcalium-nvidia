@@ -8,37 +8,43 @@
 
 ---
 
-## Where we left off (2026-07-29 evening)
+## Where we left off (2026-07-30 morning)
 
-Phase 0 scaffolding is done. Local WSL builds work. The ISO installs and the installed system boots in VMware (UEFI).
+Phase 0 scaffolding is done. Local WSL builds work. The ISO installs and boots on bare metal.
+
+**Primary test machine:** bare-metal RTX **3060 12 GB** (not the 3090/2060 matrix from the original checklist). Further testing is hardware-first; VMware is no longer the install validation path.
 
 **Last successful artifacts (on the Windows Desktop and in WSL `~/arcalium-nvidia/output/`):**
 
 | Artifact | Location | Notes |
 |---|---|---|
 | Live ISO | `C:\Users\Kaal\Desktop\Arcalium-Live.iso` (5.8 GB) | zstd squashfs, Anaconda profile, Firefox, progress window, Steam suppressed |
-| QCOW2 | WSL `~/arcalium-nvidia/output/qcow2/disk.qcow2` (~5.8 GB) | Not yet boot-tested |
+| QCOW2 | WSL `~/arcalium-nvidia/output/qcow2/disk.qcow2` (~5.8 GB) | Not needed for current validation |
 | OCI image | WSL `localhost/arcalium-os-nvidia:dev` | 13.2 GB |
 | Payload image | WSL `localhost/arcalium-os-nvidia-payload:dev` | Live/installer layer |
 
-**Proven today**
+**Proven**
 
 - `just build` and `just build-qcow2` in WSL Ubuntu
 - Titanoboa live ISO path (`just build-iso-live`) — not Bootc Image Builder
-- UEFI boot of the live ISO in VMware Workstation
-- Live desktop comes up; welcome dialog appears
-- **Full chain: ISO → Anaconda install → boot to first-run setup**
-- WSL Ubuntu was recovered after a bad `mv` (not reinstalled)
+- Full chain on VMware, then **full chain on bare metal**
+- Bare-metal install on RTX 3060 12 GB: `bootc` tracks `:dev`, `nvidia-smi` OK, Wayland, Secure Boot disabled, `systemctl --failed` empty
 
-**Not finished — next session**
+**Bare-metal live-session notes**
 
-1. Repoint the installed VM off the `localhost` ref once the GHCR package is published. `bootc status` is confirmed showing `localhost/arcalium-os-nvidia:dev`, so `bootc upgrade` cannot work until then (see `docs/BUILDING.md`).
-2. Set GitHub Actions secret `SIGNING_SECRET` from local `cosign.key`, then get CI to publish the private `ghcr.io/kaal22/arcalium-os-nvidia:dev`.
-3. Hardware install on RTX 3090 / RTX 2060 — the VM install now works, so this is unblocked apart from hardware access.
-4. Retest in a VM with a preallocated disk and a Defender exclusion for the VM folder, to confirm the deploy step is disk-bound.
-5. Branding replaces the Bazzite first-run wizard and logo — but only after the spec's base+ISO gate, which is now met.
-6. Decide browser for the installed system: Firefox did not carry over from the live ISO (payload-only today). Candidate is Brave.
-7. Do **not** start Control Centre until the licensing and signing items above are settled (spec gate).
+- Default GRUB entry can black-screen for minutes on Nouveau; **Basic Graphics Mode** (`nomodeset`) gives a usable installer desktop
+- Ventoy: use **GRUB2** mode, then Arcalium Basic Graphics Mode
+- Deploy throughput ~17–30 MiB/s on bare metal vs ~7 MiB/s in VMware (disk-bound in the VM)
+
+**Not finished — next**
+
+1. Set GitHub Actions secret `SIGNING_SECRET` from local `cosign.key`, publish private `ghcr.io/kaal22/arcalium-os-nvidia:dev`, verify Cosign signature.
+2. On the 3060: `podman login ghcr.io` then `bootc switch` to the published ref so upgrades work.
+3. Rebuild ISO with progress-window race fix (`7e172de`) and Basic Graphics as the clearer default path if needed.
+4. Branding (first-run wizard, logo, Plymouth) — base+ISO gate is met.
+5. Decide browser for the installed system (Brave candidate; Firefox is live-payload only today).
+6. Do **not** start Control Centre until signing/licensing items above are settled.
+7. Optional later: second-GPU matrix (3090 / 2060) if those machines appear; not blocking alpha on the 3060.
 
 **Resume commands**
 
@@ -78,17 +84,18 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | Arcalium wallpaper | not started | |
 | Control Centre placeholder | not started | Spec forbids Control Centre until base+ISO proven |
 | First-boot placeholder | not started | Same gate |
-| QCOW2 workflow | tested | Built locally in WSL2, 5.8 GB; boot test still outstanding |
-| ISO workflow | tested | Live ISO boots in VMware UEFI; Install needs retest after Firefox was added to the payload |
+| QCOW2 workflow | tested | Built locally in WSL2, 5.8 GB; superseded by bare-metal validation |
+| ISO workflow | tested | Bare-metal install on RTX 3060 12 GB; live session needs Basic Graphics (`nomodeset`) on Nouveau |
 | Bootc Image Builder ISO (`just build-iso`) | blocked | Upstream BIB #1188 — do not use |
 
 ## Phase 2 — Hardware validation
 
 | Requirement | Status | Notes |
 |---|---|---|
+| Bare-metal install (primary test PC) | tested | RTX **3060 12 GB**: `:dev` image, `nvidia-smi` OK, Wayland, Secure Boot off, 0 failed units |
 | `arcaliumctl system summary` | not started | |
 | `arcaliumctl gpu status` | not started | |
-| NVIDIA / Vulkan / Wayland validation | not started | |
+| NVIDIA / Vulkan / Wayland validation | in progress | Drivers + Wayland confirmed; Vulkan/game path not yet exercised |
 | Diagnostics JSON schemas | not started | |
 
 ## Phase 3 — Setup wizard
@@ -129,7 +136,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | Requirement | Status | Notes |
 |---|---|---|
 | `0.1.0-alpha.1` signed image + ISO + QCOW2 | not started | |
-| Hardware matrix (RTX 3090 + 2× RTX 2060) | not started | |
+| Hardware matrix (RTX 3090 + 2× RTX 2060) | deferred | Primary alpha hardware is RTX **3060 12 GB**; original matrix optional if those GPUs appear |
 
 ## Phase 9 — Public-release preparation
 
@@ -159,9 +166,9 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | 7 | Build/publish private `dev` image to GHCR | in progress — repository pushed; signing secret pending |
 | 8 | Verify image signature | blocked — needs a CI-published image, which needs `SIGNING_SECRET` |
 | 9 | Build QCOW2 | complete — `output/qcow2/disk.qcow2`, built locally under WSL2 |
-| 10 | Boot-test unbranded image | complete (VM) — installed from the live ISO and booted to first-run setup in VMware |
+| 10 | Boot-test unbranded image | complete — VM then bare-metal RTX 3060 12 GB |
 | 11 | Build installer ISO | complete — `output/Arcalium-Live.iso` via titanoboa (`just build-iso-live`) |
-| 12–13 | Install on RTX 3090 / RTX 2060 | blocked — hardware |
+| 12–13 | Hardware install | complete (primary) — RTX 3060 12 GB; original 3090/2060 checklist deferred |
 | 14 | Record commands, failures, upstream changes | in progress — see below |
 | 15 | Do not begin Control Centre until base+ISO proven | complete (honoured) |
 
@@ -203,6 +210,10 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | 2026-07-29 | First-run setup completed; Steam installed on the installed system | **correct behaviour** — Steam belongs on the installed system and was only suppressed in the live installer session |
 | 2026-07-29 | Firefox present on live ISO, absent from installed system | Expected today — Firefox is installed only into the titanoboa payload for Anaconda Web UI, not into the shipped OS image. Candidate for the installed system: package Brave instead of (or alongside) Firefox. Decision deferred. |
 | 2026-07-29 | Installed system shows **Bazzite** first-run wizard and logo | Expected at this phase — no branding work has been done, and the spec gates Control Centre and branding behind proving base + ISO. Records the branding surfaces that need replacing: first-run wizard, logo, `os-release`, Plymouth. |
+| 2026-07-29 | Bare-metal live session on NVIDIA | Default GRUB entry: Bazzite splash → black screen + cursor for minutes → late Arcalium welcome. **Basic Graphics Mode** (`nomodeset`) shows desktop. Ventoy needs **GRUB2** mode. Live uses Nouveau; installed system uses nvidia-open. |
+| 2026-07-29 | Progress window closed immediately on bare metal | Race: monitor started before Anaconda process existed. Fixed in `7e172de` (next ISO). Manual restart of the script still works. |
+| 2026-07-29 | Bare-metal deploy throughput | ~17–30 MiB/s vs ~7 MiB/s in VMware — confirms VM slowness was virtual disk, not the image. |
+| 2026-07-30 | **Bare-metal install + boot on RTX 3060 12 GB** | **success** — `localhost/arcalium-os-nvidia:dev`, `nvidia-smi` OK, Wayland, Secure Boot disabled, 0 failed units. Primary hard-install test machine going forward; VMware dropped for install validation. Spec checklist 3090/2060 deferred. |
 
 ---
 
@@ -224,3 +235,4 @@ Resolved: local build host — WSL2 Ubuntu 24.04 on the Windows workstation runs
 | 2026-07-29 | ISOs will use titanoboa, not Bootc Image Builder | BIB's `anaconda-iso` depsolve is broken against Bazzite's Terra repos (BIB #1188), and titanoboa is what Bazzite uses for its own ISOs. Keeps Arcalium aligned with upstream instead of disabling signature checks. |
 | 2026-07-29 | ISO build workflow: edit on Windows → push to GitHub → pull in WSL → build in WSL | Git is the transfer mechanism between workstation and build host. Avoids `/mnt/c` performance and permission problems, prevents the two checkouts drifting, and keeps the CI image and local ISO on the same commit. See `docs/BUILDING.md`. |
 | 2026-07-29 | Kickstart `%post` registry switch runs without `--erroronfail` | The GHCR package is private, so the installer cannot reach it and the switch fails. A registry lookup must never abort a tester's install. Consequence: installed systems track `localhost/arcalium-os-nvidia:dev` and need one manual `bootc switch` before they can update — documented in `docs/BUILDING.md`. Publishing the package removes the step. |
+| 2026-07-30 | Primary hardware is RTX 3060 12 GB; no further VM install testing | Real GPU path is what matters. Spec's 3090/2060 matrix was wrong for this lab and is optional later. |
