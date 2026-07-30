@@ -1,0 +1,14 @@
+[Unit]
+Description=Rename stock Bazzite hostname to arcalium once
+Documentation=file:///usr/share/arcalium/README.txt
+ConditionPathExists=!/var/lib/arcalium/hostname-migrated
+After=local-fs.target systemd-hostnamed.service
+Before=display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/arcalium-migrate-hostname
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

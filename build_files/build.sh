@@ -80,5 +80,11 @@ cat >/etc/arcalium/image-info.json <<'EOF'
 }
 EOF
 
+# Hostname migration for machines that still carry the stock "bazzite" name
+# after rebasing. New installs already get DEFAULT_HOSTNAME=arcalium and
+# /etc/hostname from system_files.
+chmod 0755 /usr/libexec/arcalium-migrate-hostname
+systemctl enable arcalium-migrate-hostname.service
+
 # Keep podman.socket available (inherited template default; idempotent).
 systemctl enable podman.socket

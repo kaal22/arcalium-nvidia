@@ -98,6 +98,7 @@ chmod 0755 /usr/bin/arcalium-live-welcome.sh /usr/bin/arcalium-install.sh \
     /usr/bin/arcalium-install-progress.sh
 
 cat >>/usr/share/anaconda/interactive-defaults.ks <<EOF
+network --hostname=arcalium
 ostreecontainer --url=${INSTALL_IMAGE_PAYLOAD} --transport=containers-storage --no-signature-verification
 %include /usr/share/anaconda/post-scripts/arcalium-track-registry.ks
 EOF

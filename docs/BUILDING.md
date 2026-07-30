@@ -253,6 +253,16 @@ Plymouth (the “OS Loading” screen after GRUB) uses `/usr/share/plymouth/them
 
 Login / lock greeter wallpaper is **not** the desktop wallpaper setting. Bazzite hard-codes `/usr/share/wallpapers/convergence.jxl` in `/etc/xdg/kscreenlockerrc` (and the kde-settings profile copy). We override both to `/usr/share/wallpapers/arcalium-wallpaper.png`. That is why a manually chosen desktop wallpaper can stick while the login screen still shows Bazzite until this image lands.
 
+### Hostname and Konsole welcome
+
+The shell prompt’s `@bazzite` half is the machine hostname, not the OS name. Defaults:
+
+- `DEFAULT_HOSTNAME=arcalium` in `/usr/lib/os-release` (Anaconda suggestion)
+- `/etc/hostname` → `arcalium`
+- `arcalium-migrate-hostname.service` renames a stock `bazzite` / `localhost` hostname once after rebase; custom hostnames are left alone
+
+Konsole’s banner is the interactive MOTD (`/etc/profile.d/user-motd.sh`). We replaced Bazzite’s tip markdown with `fastfetch` using `/usr/share/arcalium/fastfetch.jsonc` and the ASCII mark in `/usr/share/arcalium/logo.txt`. `fastfetch` / `neofetch` aliases point at the same config. Per-user opt-out is unchanged: `touch ~/.config/no-show-user-motd` (or `ujust toggle-user-motd`).
+
 Note how helper scripts are addressed: the `ctx` stage does `COPY build_files /`, so `build.sh`'s siblings are at `/ctx/install_logos.py`, **not** `/ctx/build_files/install_logos.py`. Getting this wrong fails the build immediately, which is how it was caught.
 
 Still outstanding for full branding: a dark mark for light panels (current fills are white).

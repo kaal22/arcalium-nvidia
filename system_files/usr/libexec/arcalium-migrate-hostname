@@ -1,0 +1,20 @@
+#!/usr/bin/bash
+# One-shot helper for machines that still carry the stock Bazzite hostname
+# after rebasing onto Arcalium. Runs once; never overwrites a custom name.
+set -euo pipefail
+
+marker=/var/lib/arcalium/hostname-migrated
+mkdir -p /var/lib/arcalium
+
+if [[ -e $marker ]]; then
+  exit 0
+fi
+
+current="$(hostnamectl --static 2>/dev/null || hostname)"
+case "$current" in
+  bazzite|localhost|fedora|kinoite)
+    hostnamectl set-hostname arcalium
+    ;;
+esac
+
+touch "$marker"
