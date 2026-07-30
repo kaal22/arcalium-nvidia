@@ -44,14 +44,14 @@ Phase 0 scaffolding is done. Local WSL builds work. The ISO installs and boots o
 
 **Not finished — next**
 
-1. ~~Set GitHub Actions secret `SIGNING_SECRET`~~ — done 2026-07-30; CI build triggered.
-2. Wait for CI to publish and sign `ghcr.io/kaal22/arcalium-os-nvidia:dev`, then verify Cosign signature.
-2. On the 3060: `podman login ghcr.io` then `bootc switch` to the published ref so upgrades work.
-3. Rebuild ISO with progress-window race fix (`7e172de`) and Basic Graphics as the clearer default path if needed.
-4. Branding (first-run wizard, logo, Plymouth) — base+ISO gate is met.
-5. Decide browser for the installed system (Brave candidate; Firefox is live-payload only today).
-6. Do **not** start Control Centre until signing/licensing items above are settled.
-7. Optional later: second-GPU matrix (3090 / 2060) if those machines appear; not blocking alpha on the 3060.
+1. ~~Set GitHub Actions secret `SIGNING_SECRET`~~ — done 2026-07-30.
+2. ~~Publish and sign `ghcr.io/kaal22/arcalium-os-nvidia:dev`~~ — done 2026-07-30 ([run 30524876626](https://github.com/kaal22/arcalium-nvidia/actions/runs/30524876626)); digest `sha256:bbcea032d6369e77927d3497a3d64ade5dbb1dae6805198d2ec128c37c6ebe90`.
+3. On the 3060 test PC: `podman login ghcr.io` then `bootc switch ghcr.io/kaal22/arcalium-os-nvidia:dev`.
+4. Rebuild ISO with progress-window race fix (`7e172de`) and Basic Graphics as the clearer default path if needed.
+5. Branding (first-run wizard, logo, Plymouth) — base+ISO gate is met.
+6. Decide browser for the installed system (Brave candidate; Firefox is live-payload only today).
+7. Do **not** start Control Centre until licensing items above are settled.
+8. Optional later: second-GPU matrix (3090 / 2060) if those machines appear; not blocking alpha on the 3060.
 
 **Resume commands**
 
@@ -77,7 +77,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | Confirmed image tag `bazzite-nvidia-open:stable` | complete | GHCR tags include `stable`; digest pinned in Containerfile |
 | Confirmed build workflow | complete | `.github/workflows/build.yml` + `build-disk.yml` present |
 | Cosign setup (public key committed, private key secret) | in progress | `cosign.pub` generated; `cosign.key` local only — must set GitHub secret `SIGNING_SECRET` before publish |
-| Private GHCR `dev` image | in progress | Repository pushed to `kaal22/arcalium-nvidia`; Actions still needs `SIGNING_SECRET`. Package stays private per spec §17.2 |
+| Private GHCR `dev` image | complete | `ghcr.io/kaal22/arcalium-os-nvidia:dev` published and Cosign-signed 2026-07-30; package stays private per spec §17.2 |
 | Image signature verifies | blocked | Depends on first successful signed publish |
 | Test machine switch / QCOW2 boot | blocked | Depends on published image; bootstrap path is rebase from stock Bazzite, see `docs/BUILDING.md` |
 
@@ -170,8 +170,8 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | 4 | Add `docs/PRODUCT_SPEC.md` | complete |
 | 5 | Add `docs/IMPLEMENTATION_STATUS.md` | complete |
 | 6 | Configure Cosign (no private key in git) | complete — `cosign.pub` in repo; `SIGNING_SECRET` set in Actions 2026-07-30 |
-| 7 | Build/publish private `dev` image to GHCR | in progress — CI build triggered after secret upload |
-| 8 | Verify image signature | in progress — pending CI publish |
+| 7 | Build/publish private `dev` image to GHCR | complete — `ghcr.io/kaal22/arcalium-os-nvidia:dev` published 2026-07-30 |
+| 8 | Verify image signature | complete — CI Cosign sign step succeeded; digest `sha256:bbcea0…ebe90` |
 | 9 | Build QCOW2 | complete — `output/qcow2/disk.qcow2`, built locally under WSL2 |
 | 10 | Boot-test unbranded image | complete — VM then bare-metal RTX 3060 12 GB |
 | 11 | Build installer ISO | complete — `output/Arcalium-Live.iso` via titanoboa (`just build-iso-live`) |
@@ -221,6 +221,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | 2026-07-29 | Progress window closed immediately on bare metal | Race: monitor started before Anaconda process existed. Fixed in `7e172de` (next ISO). Manual restart of the script still works. |
 | 2026-07-29 | Bare-metal deploy throughput | ~17–30 MiB/s vs ~7 MiB/s in VMware — confirms VM slowness was virtual disk, not the image. |
 | 2026-07-30 | **Bare-metal install + boot on RTX 3060 12 GB** | **success** — `localhost/arcalium-os-nvidia:dev`, `nvidia-smi` OK, Wayland, Secure Boot disabled, 0 failed units. Primary hard-install test machine going forward; VMware dropped for install validation. Spec checklist 3090/2060 deferred. |
+| 2026-07-30 | CI publish + Cosign sign | **success** — `ghcr.io/kaal22/arcalium-os-nvidia:dev` and `:dev-20260730`; digest `sha256:bbcea032d6369e77927d3497a3d64ade5dbb1dae6805198d2ec128c37c6ebe90`; [Actions run 30524876626](https://github.com/kaal22/arcalium-nvidia/actions/runs/30524876626) |
 
 ---
 
