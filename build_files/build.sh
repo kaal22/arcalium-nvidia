@@ -16,7 +16,8 @@ install -Dm0644 /ctx/assets/arcalium-wallpaper.png \
 
 # Primary mark (arccleanSVG) → application menu / distributor icons.
 # Wordmark (ARG_fullSVG) → /usr/share/arcalium for splash and later Plymouth.
-python3 /ctx/build_files/install_logos.py /ctx/assets
+# The ctx stage copies build_files/ to /, so siblings of this script are at /ctx.
+python3 /ctx/install_logos.py /ctx/assets
 
 # Plasma splash currently loads images/bazzite_logo.svgz from the active
 # look-and-feel package. Replace that file in place wherever it exists so the
