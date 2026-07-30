@@ -43,7 +43,7 @@ def main() -> int:
     write_svg(mark, places / "distributor-logo.svg", "arcalium-mark")
     write_svg(mark, places / "distributor-logo-white.svg", "arcalium-mark-white")
     write_svg(mark, places / "start-here-kde.svg", "arcalium-start-here")
-    # Keep canonical copies for splash, Plymouth and docs to reference later.
+    # Keep canonical copies for splash, Plymouth watermark and docs to reference later.
     write_svg(mark, arcalium / "logo-mark.svg", "arcalium-mark")
     write_svg(wordmark, arcalium / "logo-wordmark.svg", "arcalium-wordmark")
 

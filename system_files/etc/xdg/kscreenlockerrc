@@ -1,0 +1,6 @@
+[Greeter]
+WallpaperPlugin=org.kde.image
+
+[Greeter][Wallpaper][org.kde.image][General]
+Image=/usr/share/wallpapers/arcalium-wallpaper.png
+PreviewImage=/usr/share/wallpapers/arcalium-wallpaper.png

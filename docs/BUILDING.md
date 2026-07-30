@@ -249,9 +249,13 @@ Source assets:
 
 Any existing `bazzite_logo.svgz` under Plasma look-and-feel packages is replaced with a gzipped copy of the wordmark so the desktop splash shows Arcalium without rewriting Splash.qml. Verify by comparing checksums rather than grepping for a marker: `gzip -dc <svgz> | sha256sum` must equal `sha256sum /usr/share/arcalium/logo-wordmark.svg`.
 
+Plymouth (the “OS Loading” screen after GRUB) uses `/usr/share/plymouth/themes/spinner/watermark.png`. `build.sh` rasterises `logo-wordmark.svg` to that path at ~256×121 with a transparent background via ImageMagick. The default `bgrt` theme reads the same ImageDir, so both themes pick it up. `NAME` / `PRETTY_NAME` in `/usr/lib/os-release` are rewritten to Arcalium at the same time (keeping `ID=bazzite` for the live Anaconda profile). After `bootc upgrade` and a reboot, the new watermark is inside the regenerated initramfs — no manual `plymouth-set-default-theme` is required.
+
+Login / lock greeter wallpaper is **not** the desktop wallpaper setting. Bazzite hard-codes `/usr/share/wallpapers/convergence.jxl` in `/etc/xdg/kscreenlockerrc` (and the kde-settings profile copy). We override both to `/usr/share/wallpapers/arcalium-wallpaper.png`. That is why a manually chosen desktop wallpaper can stick while the login screen still shows Bazzite until this image lands.
+
 Note how helper scripts are addressed: the `ctx` stage does `COPY build_files /`, so `build.sh`'s siblings are at `/ctx/install_logos.py`, **not** `/ctx/build_files/install_logos.py`. Getting this wrong fails the build immediately, which is how it was caught.
 
-Still outstanding for full branding: a ~149×43 Plymouth watermark PNG, a dark mark for light panels (current fills are white), and real `os-release` replacement (the snippet in `/usr/share/arcalium/` is not yet applied).
+Still outstanding for full branding: a dark mark for light panels (current fills are white).
 
 ### Install time and the deploy step
 

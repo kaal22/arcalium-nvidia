@@ -54,5 +54,5 @@ Third-party names are used only to describe compatibility.
 - Lock-screen wallpaper licence record
 - Font licence records (when fonts are added)
 - Proton-GE notices if an archive is ever bundled
-- Plymouth watermark PNG (~149×43) derived from the wordmark — boot splash still uses Bazzite's spinner watermark until this is produced
+- Plymouth watermark PNG — generated at image-build time from `assets/ARG_fullSVG.svg` into `/usr/share/plymouth/themes/spinner/watermark.png` (~256×121, transparent)
 - Dark (non-white) mark variant for light Plasma panels — current SVGs are white fill only
