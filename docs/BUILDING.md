@@ -9,7 +9,7 @@ ISOs are **milestone artifacts**, not per-commit ones. A live ISO build is ~6 GB
 | Change | Reaches machines via | Needs an ISO? |
 |---|---|---|
 | `system_files/`, `build_files/`, `Containerfile` — desktop defaults, taskbar pins, branding, layered packages | `just build` locally, or CI → `bootc upgrade` | No |
-| `installer/` — Anaconda profile, welcome dialog, progress window, live-session tweaks | live media only | **Yes** |
+| `installer/` — Anaconda profile, welcome dialog, live-session tweaks | live media only | **Yes** |
 | `installer/flatpaks` — bundled apps such as Brave | copied to disk by Anaconda at install time | **Yes** |
 | `disk_config/`, `Justfile` build recipes | whichever build you run | Only if testing that build |
 
@@ -190,9 +190,8 @@ Live-session extras under `installer/system_files/`:
 - Welcome dialog that launches `liveinst`
 - Visible **Install Arcalium OS** launcher
 - Steam and Bazzite announcement autostart disabled for the live session only
-- `arcalium-install-progress.sh`, a progress window covering the deploy step
 
-Both the welcome dialog and the desktop launcher go through `arcalium-install.sh`, so the progress window and error reporting apply however the installer is started.
+Both the welcome dialog and the desktop launcher go through `arcalium-install.sh`, so profile selection and error reporting apply however the installer is started.
 
 ### Default applications (`installer/flatpaks`)
 
@@ -205,7 +204,7 @@ app/com.vysp3r.ProtonPlus/x86_64/stable
 app/com.heroicgameslauncher.hgl/x86_64/stable
 ```
 
-The payload build adds the Flathub remote and installs the list into the live image's `/var/lib/flatpak`; Anaconda then copies that store onto the target, so the apps arrive without a network during the install. This is the same mechanism Bazzite uses for its defaults, and omitting it is why builds before this shipped with **no browser at all** — Firefox in the live session is an `anaconda-webui` dependency and never reaches the installed system.
+The payload build adds the Flathub remote and installs the list into the live image's `/var/lib/flatpak`. That store only reaches the installed system because `arcalium-install-flatpaks.ks` rsyncs it onto the deployment in a `%post --nochroot`, followed by an SELinux relabel — `ostreecontainer` deploys the container image and nothing else. Omitting that post-script silently produced installs with none of the bundled apps and, because `arcalium-pins.js` writes launchers that Plasma then drops when the `.desktop` does not resolve, an apparently empty taskbar. This is the same mechanism Bazzite uses for its defaults, and omitting it is why builds before this shipped with **no browser at all** — Firefox in the live session is an `anaconda-webui` dependency and never reaches the installed system.
 
 Two consequences worth knowing. Each entry pulls its runtimes as well, so the first browser added roughly a gigabyte to the ISO. And changes only reach machines that are installed from a **rebuilt ISO**: existing installs need `flatpak install` by hand, since `bootc upgrade` does not touch Flatpaks.
 
@@ -335,9 +334,14 @@ Heroic Flatpak does not ship a Wine/Proton runtime. Without one, Windows game in
 Arcalium wraps Heroic:
 
 - `/usr/bin/arcalium-heroic` — on first launch, if no `GE-Proton*` exists under Heroic's tools dir, shows a short dialog and runs `arcaliumctl proton install-recommended` (downloads latest GE-Proton into `~/.var/app/com.heroicgameslauncher.hgl/config/heroic/tools/proton/`, sets `defaultSettings.wineVersion`, ensures `~/Games/Heroic`).
-- Desktop entries: `arcalium-heroic.desktop` (pinned) and `com.heroicgameslauncher.hgl.desktop` (same `Exec` wrapper). New-user pins/favorites use `arcalium-heroic.desktop` so Flatpak's export cannot bypass the wrapper.
+- The wrapper is wired in through `/etc/skel/.local/share/applications/com.heroicgameslauncher.hgl.desktop`. `XDG_DATA_HOME` outranks `/var/lib/flatpak/exports/share`, so this overrides the Flatpak's own launcher for new users and keeps a **single** menu entry that still uses the Flatpak's icon. A copy under `/usr/share/applications` would not work: the Flatpak export outranks `/usr/share`, so it would be ignored when Heroic is installed and would show a duplicate, icon-less entry when it is not.
+- Existing users keep the stock Flatpak launcher; they provision once with `arcaliumctl proton install-recommended`.
 - Needs network once (~400 MB). Offline failure still opens Heroic and tells the user about Wine Manager.
 - Advanced users can still use Heroic's Wine Manager or `arcaliumctl proton install-recommended --force`.
+
+### Icon names must exist in Breeze
+
+Plasma's default theme is Breeze, and a desktop entry naming an icon Breeze does not carry renders blank. The ChatGPT launcher originally used `Icon=web-browser`, which only exists in `AdwaitaLegacy`, so it showed as an empty tile; it now uses `internet-web-browser`. Bundled Flatpaks supply their own icons (`com.heroicgameslauncher.hgl` and friends), so their entries look blank until the Flatpak itself is installed — check `find /usr/share/icons/breeze* -name '<name>.*'` before shipping an entry.
 
 ### Control Centre (Overview MVP)
 
@@ -348,14 +352,13 @@ Source: [`apps/control-centre/`](../apps/control-centre/). Tauri 2 + React; app 
 - The UI invokes only allowlisted `arcaliumctl` argv sequences (see `apps/control-centre/src-tauri/src/ctl.rs`). Quick actions open allowlisted `.desktop` files via `xdg-open`.
 - Local iteration: `just build-control-centre` (WSL + Podman) extracts artifacts to `output/control-centre/`.
 - Desktop entry: `io.arcalium.ControlCentre.desktop`; pinned for new Plasma users.
+- **NVIDIA/WebKitGTK:** on Wayland the webview process dies before a window appears (blank window on X11). Confirmed on the RTX 3060: the app runs under `__NV_DISABLE_EXPLICIT_SYNC=1` and dies without it. The desktop entry exports that variable through `Exec=env …`, and `main.rs` additionally sets the session-appropriate variable before WebKit initialises so terminal launches and X11 sessions are covered. Set `ARCALIUM_CC_NO_GPU_WORKAROUND=1` to opt out.
 
 Setup wizard shares this codebase later — not in the Overview MVP.
 
 ### Install time and the deploy step
 
-An install writes the whole OS image to disk, so it takes 15–40 minutes and spends nearly all of that inside one Anaconda step with no visible progress. Anaconda reports nothing during `ostree container deploy`, `hwclock` is the last line in the log before it starts, and testers reasonably read that as a hang. `arcalium-install-progress.sh` exists to disprove that: it polls the target mount and reports bytes written, elapsed time, and throughput.
-
-The bar pulsates rather than showing a percentage because the target is btrfs with `zstd:1`, so bytes on disk never approach the image size and any percentage would stall short of 100.
+An install writes the whole OS image to disk, so it takes 15–40 minutes and spends nearly all of that inside one Anaconda step with little visible progress. Anaconda reports nothing during `ostree container deploy`; `hwclock` is often the last log line before it starts. The former external progress tracker was removed because it launched as soon as Anaconda opened, before the user completed the installer wizard, which made its status misleading.
 
 To confirm progress by hand from a live-session terminal:
 

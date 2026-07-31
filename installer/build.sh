@@ -94,13 +94,47 @@ echo "Arcalium OS NVIDIA Edition ${VERSION_ID}" >/etc/system-release
 
 # Anaconda profile, welcome dialog, visible Install launcher
 cp -a "$SCRIPT_DIR/system_files"/. /
-chmod 0755 /usr/bin/arcalium-live-welcome.sh /usr/bin/arcalium-install.sh \
-    /usr/bin/arcalium-install-progress.sh
+chmod 0755 /usr/bin/arcalium-live-welcome.sh /usr/bin/arcalium-install.sh
 
 cat >>/usr/share/anaconda/interactive-defaults.ks <<EOF
 network --hostname=arcalium
 ostreecontainer --url=${INSTALL_IMAGE_PAYLOAD} --transport=containers-storage --no-signature-verification
+%include /usr/share/anaconda/post-scripts/arcalium-install-flatpaks.ks
+%include /usr/share/anaconda/post-scripts/arcalium-flatpak-selinux.ks
 %include /usr/share/anaconda/post-scripts/arcalium-track-registry.ks
+EOF
+
+# Copy the bundled Flatpak store onto the target. ostreecontainer deploys the
+# container image only; without this the live session's /var/lib/flatpak is
+# discarded and the installed system ships with none of the bundled apps, which
+# also leaves the taskbar pins pointing at desktop entries that do not resolve.
+# Mechanism follows ublue-os/bazzite install-flatpaks.ks.
+cat >/usr/share/anaconda/post-scripts/arcalium-install-flatpaks.ks <<'EOF'
+%post --erroronfail --nochroot --log=/tmp/arcalium-install-flatpaks.log
+set -eux
+sysroot=""
+for candidate in /mnt/sysimage /mnt/sysroot; do
+    if [ -d "$candidate/ostree/repo" ]; then
+        sysroot="$candidate"
+        break
+    fi
+done
+[ -n "$sysroot" ] || {
+    echo "no ostree repo under /mnt/sysimage or /mnt/sysroot" >&2
+    exit 1
+}
+deployment="$(ostree rev-parse --repo="$sysroot/ostree/repo" ostree/0/1/0)"
+target="$sysroot/ostree/deploy/default/deploy/$deployment.0/var/lib/"
+mkdir -p "$target"
+rsync -aAXUHK --open-noatime /var/lib/flatpak "$target"
+sync "$target"
+%end
+EOF
+
+cat >/usr/share/anaconda/post-scripts/arcalium-flatpak-selinux.ks <<'EOF'
+%post --erroronfail --log=/tmp/arcalium-flatpak-selinux.log
+chcon -R -t var_lib_t /var/lib/flatpak
+%end
 EOF
 
 # Point the installed system at the published image so bootc upgrades work.

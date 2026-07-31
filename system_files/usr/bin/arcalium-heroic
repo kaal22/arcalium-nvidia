@@ -28,12 +28,25 @@ _notify() {
   fi
 }
 
+_qdbus() {
+  # Plasma 6 ships the Qt6 binary under several names depending on the build.
+  local candidate
+  for candidate in qdbus6 qdbus-qt6 qdbus; do
+    if command -v "${candidate}" >/dev/null 2>&1; then
+      printf '%s' "${candidate}"
+      return 0
+    fi
+  done
+  return 1
+}
+
 _close_progress() {
-  local ref="${1:-}"
+  local ref="${1:-}" bin
   [[ -n "${ref}" ]] || return 0
+  bin="$(_qdbus)" || return 0
   # kdialog --progressbar prints: service objectPath
   # shellcheck disable=SC2086
-  qdbus ${ref} close >/dev/null 2>&1 || true
+  "${bin}" ${ref} close >/dev/null 2>&1 || true
 }
 
 if ! _has_ge_proton; then
@@ -42,8 +55,9 @@ if ! _has_ge_proton; then
 
 This is a one-time download of about 400 MB and may take a few minutes. Heroic will open when it finishes."
 
+  # Only raise a progress dialog if it can be closed again afterwards.
   progress_ref=""
-  if command -v kdialog >/dev/null 2>&1; then
+  if command -v kdialog >/dev/null 2>&1 && _qdbus >/dev/null; then
     progress_ref="$(kdialog --title "Arcalium" --progressbar "Downloading GE-Proton…" 0 2>/dev/null)" || progress_ref=""
   fi
 

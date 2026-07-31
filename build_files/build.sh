@@ -42,9 +42,26 @@ python3 /ctx/install_logos.py /ctx/assets
 
 # Plasma splash currently loads images/bazzite_logo.svgz from the active
 # look-and-feel package. Replace that file in place wherever it exists so the
-# wordmark appears on the boot-to-desktop splash without rewriting Splash.qml.
+# wordmark appears on the boot-to-desktop splash.
+#
+# Splash.qml pins both sourceSize.width and sourceSize.height to `size`, which
+# rasterises into a square. That suits Bazzite's square mark but squashes our
+# ~2.1:1 wordmark. Qt derives the missing dimension from the source aspect
+# ratio, so dropping the height line is enough. `sourceSize.height: size` is
+# unique to the logo (the spinner spells its own size out in grid units), and
+# the result is asserted so an upstream rewrite cannot silently reintroduce it.
 while IFS= read -r -d '' splash_logo; do
     gzip -nc /usr/share/arcalium/logo-wordmark.svg >"${splash_logo}"
+
+    splash_qml="$(dirname "${splash_logo}")/../Splash.qml"
+    [[ -f "${splash_qml}" ]] || continue
+
+    sed -i '/^[[:space:]]*sourceSize\.height: size[[:space:]]*$/d' "${splash_qml}"
+
+    grep -q 'sourceSize.width: size' "${splash_qml}" ||
+        { echo "ERROR: ${splash_qml} no longer sets sourceSize.width" >&2; exit 1; }
+    ! grep -q 'sourceSize.height: size' "${splash_qml}" ||
+        { echo "ERROR: ${splash_qml} still forces a square logo" >&2; exit 1; }
 done < <(find /usr/share/plasma/look-and-feel -type f -name 'bazzite_logo.svgz' -print0 2>/dev/null || true)
 
 # Plymouth boot splash (post-GRUB) uses the spinner theme's watermark.png —

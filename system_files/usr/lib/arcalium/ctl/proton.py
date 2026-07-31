@@ -243,46 +243,46 @@ def _extract_tarball(archive: Path, tools: Path) -> Path:
 
 
 def _merge_heroic_config(bin_path: Path, name: str, home: Path) -> bool:
-    """Set defaultSettings.wineVersion (and install path if missing). Returns True if written."""
+    """Point Heroic's existing default settings at the installed Proton build.
+
+    Only ever edits a config Heroic wrote itself. Creating one here is what made
+    Heroic refuse to open on a fresh install: it expects a fully populated
+    defaultSettings block and fails on a partial one without printing anything.
+    When the file is absent, Heroic writes a complete config on first run and
+    discovers builds under its tools directory on its own, so doing nothing is
+    both correct and safer.
+    """
     cfg_path = heroic_config_path(home)
-    cfg_path.parent.mkdir(parents=True, exist_ok=True)
-    existing: dict[str, Any] = {}
-    if cfg_path.is_file():
-        try:
-            loaded = json.loads(cfg_path.read_text(encoding="utf-8"))
-            if isinstance(loaded, dict):
-                existing = loaded
-        except (OSError, json.JSONDecodeError):
-            existing = {}
-
-    defaults = existing.get("defaultSettings")
+    if not cfg_path.is_file():
+        return False
+    try:
+        loaded = json.loads(cfg_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    if not isinstance(loaded, dict):
+        return False
+    defaults = loaded.get("defaultSettings")
     if not isinstance(defaults, dict):
-        defaults = {}
-        existing["defaultSettings"] = defaults
+        return False
 
-    wine = {
+    defaults["wineVersion"] = {
         "bin": str(bin_path),
         "name": f"Proton - {name}",
         "type": "proton",
     }
-    defaults["wineVersion"] = wine
 
-    games = games_heroic_dir(home)
-    if not defaults.get("defaultInstallPath"):
-        defaults["defaultInstallPath"] = str(games)
-    if not defaults.get("defaultWinePrefix"):
-        defaults["defaultWinePrefix"] = str(games / "Prefixes" / "default")
-
-    if "version" not in existing:
-        existing["version"] = "v0"
-
+    # Same-directory temp file plus rename: a half-written config.json is the
+    # documented way these get corrupted.
+    tmp = cfg_path.with_name(cfg_path.name + ".arcalium-tmp")
     try:
-        cfg_path.write_text(
-            json.dumps(existing, indent=2, sort_keys=False) + "\n",
-            encoding="utf-8",
-        )
+        tmp.write_text(json.dumps(loaded, indent=2) + "\n", encoding="utf-8")
+        os.replace(tmp, cfg_path)
     except OSError as exc:
-        raise ProtonError(ARC_PROTON_001, f"Could not write Heroic config: {exc}") from exc
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise ProtonError(ARC_PROTON_001, f"Could not update Heroic config: {exc}") from exc
     return True
 
 
@@ -356,7 +356,7 @@ def human_install(data: dict[str, Any]) -> list[str]:
         f"Build:       {data.get('name')}",
         f"Binary:      {data.get('bin')}",
         f"Games dir:   {data.get('gamesDir')}",
-        f"Config:      {'updated' if data.get('configUpdated') else 'unchanged'}",
+        f"Config:      {'updated' if data.get('configUpdated') else 'left to Heroic'}",
     ]
     if data.get("downloadedBytes"):
         mb = (data["downloadedBytes"] or 0) / (1024 * 1024)

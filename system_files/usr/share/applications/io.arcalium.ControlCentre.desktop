@@ -4,7 +4,7 @@ Version=1.0
 Name=Arcalium Control Centre
 GenericName=System Control Centre
 Comment=Hardware status, gaming setup and Arcalium diagnostics
-Exec=arcalium-control-centre
+Exec=env __NV_DISABLE_EXPLICIT_SYNC=1 arcalium-control-centre
 Icon=io.arcalium.ControlCentre
 Terminal=false
 Categories=Settings;System;X-Arcalium;

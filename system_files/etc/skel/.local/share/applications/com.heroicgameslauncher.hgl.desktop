@@ -3,14 +3,13 @@ Type=Application
 Version=1.0
 Name=Heroic Games Launcher
 GenericName=Game Launcher
-Comment=Play Epic, GOG and Amazon games (auto-sets up Proton on first launch)
+Comment=Play Epic, GOG and Amazon games
 Exec=/usr/bin/arcalium-heroic %u
 Icon=com.heroicgameslauncher.hgl
 Terminal=false
-Categories=Game;Utility;
+Categories=Game;
 Keywords=heroic;epic;gog;amazon;proton;games;
 StartupNotify=true
+StartupWMClass=Heroic
 MimeType=x-scheme-handler/heroic;
-# Same desktop ID as the Flatpak export so menu lookups that prefer /usr/share
-# hit the Arcalium wrapper. Pins use arcalium-heroic.desktop for reliability.
 X-Flatpak=com.heroicgameslauncher.hgl
