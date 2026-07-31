@@ -218,7 +218,7 @@ Verify any new ID on Flathub before committing it — PRODUCT_SPEC principle 4 f
 
 ### Taskbar and default browser
 
-New users get the daily-use bundled apps pinned on the Icon Tasks panel and in Kickoff favorites. Panel order (left → right): Files, Bazaar, Brave, Steam, Heroic, Spotify. Heroic uses the `/etc/skel` override that auto-provisions GE-Proton.
+New users get the daily-use bundled apps pinned on the Icon Tasks panel and in Kickoff favorites. Panel order (left → right): Files, Bazaar, Brave, Steam, Heroic, Spotify. Heroic opens directly; it does not download Proton before launch.
 
 Two deliberate absences from the panel:
 
@@ -344,17 +344,18 @@ arcaliumctl proton install-recommended --json
 
 JSON schemas ship in `/usr/share/arcalium/schemas/` from `config/schemas/` (Containerfile `COPY config /config`). Remaining stubs (`apps`, `storage`, `vpn`, `updates`, `diagnostics`) exit `3` with `ARC-CMD-002`. Hardware runbook: [`docs/PHASE2_VALIDATION.md`](PHASE2_VALIDATION.md).
 
-### Heroic first-run Proton
+### Heroic Proton setup
 
 Heroic Flatpak does not ship a Wine/Proton runtime. Without one, Windows game install/import fails and beginners have no idea to open **Settings → Wine Manager**.
 
-Arcalium wraps Heroic:
+The automatic pre-launch downloader was removed on 2026-07-31 because it did not behave reliably. Heroic now opens immediately. Proton setup is explicitly user-initiated through one of these paths:
 
-- `/usr/bin/arcalium-heroic` — on first launch, if no `GE-Proton*` exists under Heroic's tools dir, shows a short dialog and runs `arcaliumctl proton install-recommended` (downloads latest GE-Proton into `~/.var/app/com.heroicgameslauncher.hgl/config/heroic/tools/proton/`, sets `defaultSettings.wineVersion`, ensures `~/Games/Heroic`).
-- The wrapper is wired in through `/etc/skel/.local/share/applications/com.heroicgameslauncher.hgl.desktop`. `XDG_DATA_HOME` outranks `/var/lib/flatpak/exports/share`, so this overrides the Flatpak's own launcher for new users and keeps a **single** menu entry that still uses the Flatpak's icon. A copy under `/usr/share/applications` would not work: the Flatpak export outranks `/usr/share`, so it would be ignored when Heroic is installed and would show a duplicate, icon-less entry when it is not.
-- Existing users keep the stock Flatpak launcher; they provision once with `arcaliumctl proton install-recommended`.
-- Needs network once (~400 MB). Offline failure still opens Heroic and tells the user about Wine Manager.
-- Advanced users can still use Heroic's Wine Manager or `arcaliumctl proton install-recommended --force`.
+- Control Centre → Compatibility → **Install recommended**
+- Control Centre Overview → **Install Proton-GE**
+- Heroic → Settings → Wine Manager
+- `arcaliumctl proton install-recommended` (add `--force` to replace the recommended build)
+
+`/usr/bin/arcalium-heroic` remains as a direct-launch compatibility shim because existing user profiles may still reference it. The `/etc/skel` desktop entry launches the Flatpak directly for new profiles. Installing GE-Proton needs network once (~400 MB).
 
 ### Icon names must exist in Breeze
 
@@ -375,7 +376,7 @@ Source: [`apps/control-centre/`](../apps/control-centre/). Tauri 2 + React; app 
 - **In-app mark:** the sidebar mark was a CSS `clip-path` triangle placeholder. `App.tsx` now imports `assets/arccleanSVG.svg` from the repo root so the UI cannot drift from the OS icons. The import escapes the Vite root, which Rollup handles for builds; `server.fs.allow` covers `npm run dev`. The mark carries `.st0 { fill: #fff }`, which suits the dark sidebar.
 - **NVIDIA/WebKitGTK:** on Wayland the webview process dies before a window appears (blank window on X11). Confirmed on the RTX 3060: the app runs under `__NV_DISABLE_EXPLICIT_SYNC=1` and dies without it. The desktop entry exports that variable through `Exec=env …`, and `main.rs` additionally sets the session-appropriate variable before WebKit initialises so terminal launches and X11 sessions are covered. Set `ARCALIUM_CC_NO_GPU_WORKAROUND=1` to opt out.
 
-Setup wizard shares this codebase later.
+Setup wizard shares this codebase later. Visual polish of the Control Centre UI is deferred until every §9.2 page works (see `docs/IMPLEMENTATION_STATUS.md` Decisions).
 
 ### Install time and the deploy step
 

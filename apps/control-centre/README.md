@@ -10,6 +10,8 @@ Live pages call allowlisted `arcaliumctl … --json` commands only:
 
 Other nav pages remain stubs until later one-feature passes.
 
+**Deferred:** a dedicated UI polish pass (layout, typography, motion, empty states) after all Control Centre stages / §9.2 pages are working — see `docs/IMPLEMENTATION_STATUS.md` Decisions.
+
 ## Local build (WSL)
 
 ```bash

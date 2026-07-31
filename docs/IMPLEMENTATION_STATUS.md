@@ -10,12 +10,13 @@
 
 ## Where we left off (2026-07-31)
 
-Phase 0–2 complete on the RTX 3060. Control Centre Overview MVP is in `:dev`. Heroic first-run GE-Proton auto-setup (`arcaliumctl proton` + `arcalium-heroic` wrapper) is next in `:dev` after this push. Batched live ISO already has Control Centre (Desktop `Arcalium-Live-CC.iso`); no ISO rebuild for the Proton wrapper.
+Phase 0–2 complete on the RTX 3060. Control Centre Overview + Compatibility are implemented. Heroic opens directly; its unreliable pre-launch GE-Proton downloader has been removed. Manual Proton-GE installation remains available through Control Centre, Heroic Wine Manager, and `arcaliumctl`.
 
 **Next on 3060:** `sudo bootc upgrade && sudo systemctl reboot`, then:
 
 1. Open Control Centre Overview and confirm it matches `arcaliumctl`.
-2. Smoke Heroic first-run Proton: either use a fresh user, or `rm -rf ~/.var/app/com.heroicgameslauncher.hgl/config/heroic/tools/proton` and launch **Heroic** from the pin — expect a one-time download dialog, then a working install path without Wine Manager.
+2. Launch Heroic from the pin and confirm it opens immediately without a Proton download.
+3. Install Proton-GE explicitly from Control Centre → Compatibility and verify `arcaliumctl proton list --json`.
 
 **Roles**
 
@@ -135,7 +136,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 
 | Requirement | Status | Notes |
 |---|---|---|
-| Recommended-version manifest + install action | in progress | `arcaliumctl proton list` / `install-recommended` + Heroic first-launch wrapper. Control Centre **Compatibility** page + Overview Install Proton-GE quick action wire the same CLI (2026-07-31). |
+| Recommended-version manifest + install action | in progress | `arcaliumctl proton list` / `install-recommended`; Control Centre **Compatibility** page + Overview Install Proton-GE quick action wire the same CLI. Heroic pre-launch automation removed 2026-07-31; installation is explicit. |
 
 ## Phase 6 — Storage and VPN
 
@@ -148,7 +149,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 
 | Requirement | Status | Notes |
 |---|---|---|
-| All version 1 pages | in progress | Overview MVP live via `arcaliumctl`; other pages stubbed in nav shell |
+| All version 1 pages | in progress | Overview + Compatibility live via `arcaliumctl`; other pages stubbed. **UI polish deferred** until every §9.2 page works — see Decisions. |
 
 ## Phase 8 — Private alpha
 
@@ -260,7 +261,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 | 2026-07-31 | Blank menu icons after upgrade | Two causes. ChatGPT used `Icon=web-browser`, absent from Breeze (present only in `AdwaitaLegacy`) — changed to `internet-web-browser`. Heroic's icon ships with the Flatpak, so its entry stays blank until the Flatpak is installed. |
 | 2026-07-31 | Duplicate Heroic menu entry | Self-inflicted by the first-run Proton commit: shipping `com.heroicgameslauncher.hgl.desktop` under `/usr/share/applications` cannot override the Flatpak export (which outranks `/usr/share`) and instead added a second, icon-less entry. Replaced both it and `arcalium-heroic.desktop` with a single `/etc/skel/.local/share/applications/` override, since `XDG_DATA_HOME` does outrank the export. |
 | 2026-07-31 | Control Centre exits immediately | WebKitGTK versus the proprietary NVIDIA driver: documented as a blank window on X11 and a process that never starts on Wayland. **Confirmed on the RTX 3060** — `__NV_DISABLE_EXPLICIT_SYNC=1 arcalium-control-centre` runs, unset it and the process dies. Fixed in two places so no launch path depends on the other: the desktop entry exports the variable via `Exec=env …`, and `main.rs` sets the session-appropriate variable before WebKit initialises for terminal launches and X11. |
-| 2026-07-31 | Heroic first-run Proton | Beginners hit a missing Wine/Proton runtime (`which: no wine`) until Wine Manager is used. Shipped `arcaliumctl proton list` / `install-recommended` (latest GE-Proton into Heroic tools dir + `wineVersion`), `/usr/bin/arcalium-heroic` first-launch wrapper with kdialog, and pins to `arcalium-heroic.desktop`. No ISO bloat; network once. |
+| 2026-07-31 | Heroic first-run Proton (superseded) | Beginners hit a missing Wine/Proton runtime (`which: no wine`) until Wine Manager is used. Initially shipped `arcaliumctl proton list` / `install-recommended` plus an `/usr/bin/arcalium-heroic` pre-launch downloader. The automatic downloader did not work as intended and was removed later the same day. `arcaliumctl` and the Control Centre actions remain as explicit install methods; the wrapper is now only a direct-launch compatibility shim. |
 | 2026-07-30 | Heroic Games Launcher bundled | `com.heroicgameslauncher.hgl` added to `installer/flatpaks` and pinned next to Steam. ID matches the one already named in PRODUCT_SPEC §game-launchers; verified on Flathub (developer-verified via `heroicgameslauncher.com`, GPL-3.0) and confirmed **not** present in the Bazzite base — Bazzite only lists it in the Bazaar catalogue. Reaches machines via a rebuilt ISO only. |
 | 2026-07-30 | Login screen still Bazzite wallpaper | Plasma 6.7 replaced SDDM with `plasma-login-manager` (`plasmalogin.service`); there is no `sddm` binary. Wallpaper comes from `/usr/lib/plasmalogin/defaults.conf` under `[Greeter][Wallpaper][org.kde.image][General]`, not from `kscreenlockerrc`. Fixed by shipping that file; user overrides in `/etc/plasmalogin.conf` still win. |
 | 2026-07-30 | Hostname + Konsole welcome | Default hostname `arcalium` (`DEFAULT_HOSTNAME`, `/etc/hostname`, one-shot migrates stock `bazzite`). Konsole MOTD runs Arcalium `fastfetch` (ASCII mark + specs) instead of Bazzite tip markdown; `neofetch`/`fastfetch` aliases retargeted. |
@@ -294,5 +295,5 @@ Resolved: local build host — WSL2 Ubuntu 24.04 on the Windows workstation runs
 | 2026-07-29 | Kickstart `%post` registry switch runs without `--erroronfail` | The GHCR package is private, so the installer cannot reach it and the switch fails. A registry lookup must never abort a tester's install. Consequence: installed systems track `localhost/arcalium-os-nvidia:dev` and need one manual `bootc switch` before they can update — documented in `docs/BUILDING.md`. Publishing the package removes the step. |
 | 2026-07-30 | Build host vs test host | Builds stay on this Windows/WSL workstation. Hardware validation runs on a separate RTX 3060 12 GB PC — never conflate the two. |
 | 2026-07-30 | ISO builds run detached, on a WSL VM with explicit memory and swap | The VM died at 90% of `mksquashfs` with no error and no exit status, losing ~40 minutes. Default WSL2 gets half of host RAM and no swap. `%USERPROFILE%\.wslconfig` now sets `memory=24GB`/`swap=8GB`, and the build runs under `setsid nohup` writing to `output/iso-build.log` so it survives a disconnecting terminal. Reruns are cheap: the payload image is cached, so only the squashfs is repeated. |
-| 2026-07-31 | Taskbar pins are patched into the panel layout template, not shipped as an update script | The layout template runs when Plasma first creates a panel; every update script under `shells/.../updates/` runs afterwards and skips when `launchers` is already set. Our `arcalium-pins.js` was therefore dead from the start. `build_files/patch_panel_pins.py` now owns the list and rewrites both the template and `bazzite-pins.js`, so the result does not depend on ordering, and the build fails if upstream moves the template rather than silently shipping Bazzite's pins again. |
+| 2026-07-31 | Control Centre UI polish waits until all pages work | Ship one live page at a time with a functional shell. Visual polish (layout, typography, motion, empty states, copy tone) is a dedicated pass after every §9.2 page and the Setup wizard share a working codebase — not interleaved with feature wiring. |
 | 2026-07-30 | Bazzite updates arrive only by re-pinning the base digest | Machines track `ghcr.io/kaal22/arcalium-os-nvidia:dev` and never rebase onto `bazzite-nvidia-open` — doing so would take them off Arcalium. The `Containerfile` pins the base by digest, so upstream moving `:stable` changes nothing until we re-pin, rebuild and publish; `bootc upgrade` then delivers Bazzite fixes and Arcalium changes as one atomic image with the previous deployment kept for rollback. Matches PRODUCT_SPEC §14 (Arcalium updates by receiving a new signed Arcalium image) and principle 7 (stay close to upstream). Accepted trade-off: upstream security and driver fixes do not flow automatically, so re-pinning needs a deliberate cadence. Procedure and digest-resolution command in `docs/BUILDING.md`. |

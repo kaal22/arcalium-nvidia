@@ -152,8 +152,9 @@ export function CompatibilityPage() {
             </button>
           </div>
           <p className="muted small" style={{ marginTop: "0.75rem" }}>
-            Downloads the latest GE-Proton release into Heroic&apos;s tools directory. First launch of
-            Heroic can do the same automatically. Steam uses its own Proton builds separately.
+            Downloads the latest GE-Proton release into Heroic&apos;s tools directory when you choose
+            to install it. Heroic no longer starts this download automatically. Steam uses its own
+            Proton builds separately.
           </p>
         </article>
 
