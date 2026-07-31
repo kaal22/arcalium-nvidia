@@ -204,7 +204,7 @@ app/com.vysp3r.ProtonPlus/x86_64/stable
 app/com.heroicgameslauncher.hgl/x86_64/stable
 ```
 
-The payload build adds the Flathub remote and installs the list into the live image's `/var/lib/flatpak`. That store only reaches the installed system because `arcalium-install-flatpaks.ks` rsyncs it across in a `%post --nochroot` — `ostreecontainer` deploys the container image and nothing else. Omitting that post-script silently produced installs with none of the bundled apps and, because `arcalium-pins.js` writes launchers that Plasma then drops when the `.desktop` does not resolve, an apparently empty taskbar.
+The payload build adds the Flathub remote and installs the list into the live image's `/var/lib/flatpak`. That store only reaches the installed system because `arcalium-install-flatpaks.ks` rsyncs it across in a `%post --nochroot` — `ostreecontainer` deploys the container image and nothing else. Omitting that post-script silently produced installs with none of the bundled apps.
 
 Two things about that script are easy to get wrong:
 
@@ -219,13 +219,19 @@ Verify any new ID on Flathub before committing it — PRODUCT_SPEC principle 4 f
 
 ### Taskbar and default browser
 
-New users get every bundled Arcalium app pinned on the Icon Tasks panel and in Kickoff favorites: Brave, the ChatGPT web app, Spotify, ProtonPlus and Heroic (via `arcalium-heroic.desktop`, which auto-provisions GE-Proton). Existing Bazzite defaults Steam and Bazaar remain pinned too, with Heroic sitting next to Steam so the game launchers group together.
+New users get every bundled Arcalium app pinned on the Icon Tasks panel and in Kickoff favorites: Brave, the ChatGPT web app, Spotify, ProtonPlus and Heroic (via the `/etc/skel` override that auto-provisions GE-Proton). Bazzite's Steam and Bazaar stay pinned too, with Heroic next to Steam so the game launchers group together.
 
-- `system_files/.../updates/arcalium-pins.js` — runs before Bazzite's `bazzite-pins.js` (alphabetical) and only writes when `launchers` is empty, per PRODUCT_SPEC §11.2
+The pins come from the **panel layout template**, which is the part that trips people up. Plasma runs `/usr/share/plasma/layout-templates/org.kde.plasma.desktop.defaultPanel/contents/layout.js` when it first creates a panel for a new user, and Bazzite patches that file to write its own launcher list. Update scripts under `shells/org.kde.plasma.desktop/contents/updates/` run *after* that and every one of them guards on `launchers` being empty — so by the time they run there is nothing left to do.
+
+We originally shipped `arcalium-pins.js` as an update script and it never had any effect. Fresh installs came up with Bazzite's list, and because `preferred://browser` resolves through our `mimeapps.list` default, Brave appeared pinned while nothing else of ours did. That looked like a partial success and was actually zero.
+
+- `build_files/patch_panel_pins.py` — rewrites the launcher array in the layout template, and in `bazzite-pins.js` as a defensive second writer. Owns the pin order; it is the only place the list is defined. Fails the build if upstream moves or renames the template.
 - `system_files/etc/xdg/mimeapps.list` — Brave as the default for `http`/`https`/`text/html` (keeps Bazzite's Bazaar `.flatpakref` association)
 - `system_files/.../kicker-extra-favoritesrc` — the same bundled apps in application-launcher favorites
 
-These live in the **bootc image**, not the live ISO payload. They reach machines via `just build` + `bootc upgrade`/`switch`, or a fresh ISO install. Existing users whose taskbar was already configured are left alone — pin Brave once by hand if needed.
+The browser slot deliberately stays `preferred://browser` rather than naming `com.brave.Browser.desktop`. It is the one entry confirmed to pin correctly on a fresh install, and it follows the user's default browser if they change it.
+
+These live in the **bootc image**, not the live ISO payload, so they reach machines via `just build` + `bootc upgrade`/`switch`, or a fresh ISO install. Only brand-new user profiles get them: the template does not run for a user whose panel already exists, which is intended — PRODUCT_SPEC §11.2 forbids reapplying the desktop layout over a user's own changes.
 
 ### ChatGPT web app
 

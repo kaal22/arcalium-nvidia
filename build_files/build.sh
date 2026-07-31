@@ -40,6 +40,9 @@ fi
 # The ctx stage copies build_files/ to /, so siblings of this script are at /ctx.
 python3 /ctx/install_logos.py /ctx/assets
 
+# Taskbar pins come from the panel layout template, not from an update script.
+python3 /ctx/patch_panel_pins.py
+
 # Plasma splash currently loads images/bazzite_logo.svgz from the active
 # look-and-feel package. Replace that file in place wherever it exists so the
 # wordmark appears on the boot-to-desktop splash.
