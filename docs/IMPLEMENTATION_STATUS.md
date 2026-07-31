@@ -10,7 +10,9 @@
 
 ## Where we left off (2026-07-31)
 
-Phase 0–2 hardware validation is **done** on the RTX 3060 (CLI JSON + Steam/Heroic game path). Building Control Centre Overview MVP (Tauri), then a batched live ISO (Heroic + Plymouth initramfs + login wallpaper + hostname/Konsole + CC).
+Phase 0–2 complete on the RTX 3060. Control Centre Overview MVP is in `:dev` ([run 30626397101](https://github.com/kaal22/arcalium-nvidia/actions/runs/30626397101)). Batched live ISO rebuilt (7.7 GB) with Heroic + Plymouth initramfs + login wallpaper + hostname/Konsole + Control Centre — Desktop `Arcalium-Live-CC.iso`, Ventoy `F:\Arcalium-Live.iso`.
+
+**Next on 3060:** `sudo bootc upgrade && sudo systemctl reboot`, then open **Arcalium Control Centre** and confirm Overview matches `arcaliumctl`. Optional: clean-install from the new ISO.
 
 **Roles**
 
@@ -24,8 +26,8 @@ Phase 0–2 hardware validation is **done** on the RTX 3060 (CLI JSON + Steam/He
 
 | Artifact | Location | Notes |
 |---|---|---|
-| Live ISO — **current** | WSL `~/arcalium-nvidia/output/Arcalium-Live.iso` (6.9 GB) | Commit `89b31ba`; adds Brave/Spotify/ProtonPlus Flatpaks, ChatGPT launcher, wallpaper, logo mark + splash wordmark. Grew 5.8 → 6.9 GB from the Flatpaks and their runtimes |
-| Live ISO — previous | same folder, `.iso.prev` (5.8 GB) | Kept as the known-good fallback: this is the build that installed on the 3060 |
+| Live ISO — **current** | Desktop `Arcalium-Live-CC.iso` + Ventoy `F:\Arcalium-Live.iso` + WSL `~/arcalium-nvidia/output/Arcalium-Live.iso` (7.7 GB) | Commit `49b5e7d`; Heroic, Plymouth initramfs, plasmalogin wallpaper, hostname/Konsole ASCII, Control Centre Overview MVP |
+| Live ISO — previous | Desktop `Arcalium-Live.iso` (5.8 GB, locked) / `Arcalium-Live-20260730-89b31ba.iso` (6.9 GB) | Prior known-good / mid-branding builds |
 | QCOW2 | WSL `~/arcalium-nvidia/output/qcow2/disk.qcow2` (~5.8 GB) | Not needed for current validation |
 | OCI image | WSL `localhost/arcalium-os-nvidia:dev` | 13.2 GB |
 | Payload image | WSL `localhost/arcalium-os-nvidia-payload:dev` | 31.4 GB live/installer layer |
@@ -242,6 +244,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 | 2026-07-31 | Lutris dropped from catalogue | Product decision: do not offer Lutris. Heroic covers Epic/GOG/Amazon; dual launchers would duplicate that role. Spec + Flatpak ID list updated; Lutris was never in `installer/flatpaks`. |
 | 2026-07-31 | Phase 2 game path on RTX 3060 | **pass** — Steam and Heroic exercised (owner-confirmed). Phase 2 hardware validation complete; Control Centre gate open for private alpha. |
 | 2026-07-31 | Control Centre Overview MVP | Tauri 2 + React app `io.arcalium.ControlCentre`: nav shell for all §9.2 pages, Overview live from allowlisted `arcaliumctl` JSON, stubs elsewhere. Built in Containerfile `control-centre` stage; installed to `/usr/bin/arcalium-control-centre` with WebKit runtime + taskbar/Kickoff pins. |
+| 2026-07-31 | Batched live ISO with Control Centre | **built** — 7.7 GB `Arcalium-Live.iso` from `49b5e7d`. Desktop copy as `Arcalium-Live-CC.iso` (old Desktop ISO locked); Ventoy `F:\Arcalium-Live.iso`. GHCR `:dev` published [run 30626397101](https://github.com/kaal22/arcalium-nvidia/actions/runs/30626397101). |
 | 2026-07-30 | Heroic Games Launcher bundled | `com.heroicgameslauncher.hgl` added to `installer/flatpaks` and pinned next to Steam. ID matches the one already named in PRODUCT_SPEC §game-launchers; verified on Flathub (developer-verified via `heroicgameslauncher.com`, GPL-3.0) and confirmed **not** present in the Bazzite base — Bazzite only lists it in the Bazaar catalogue. Reaches machines via a rebuilt ISO only. |
 | 2026-07-30 | Login screen still Bazzite wallpaper | Plasma 6.7 replaced SDDM with `plasma-login-manager` (`plasmalogin.service`); there is no `sddm` binary. Wallpaper comes from `/usr/lib/plasmalogin/defaults.conf` under `[Greeter][Wallpaper][org.kde.image][General]`, not from `kscreenlockerrc`. Fixed by shipping that file; user overrides in `/etc/plasmalogin.conf` still win. |
 | 2026-07-30 | Hostname + Konsole welcome | Default hostname `arcalium` (`DEFAULT_HOSTNAME`, `/etc/hostname`, one-shot migrates stock `bazzite`). Konsole MOTD runs Arcalium `fastfetch` (ASCII mark + specs) instead of Bazzite tip markdown; `neofetch`/`fastfetch` aliases retargeted. |
