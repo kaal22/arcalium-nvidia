@@ -10,9 +10,12 @@
 
 ## Where we left off (2026-07-31)
 
-Phase 0–2 complete on the RTX 3060. Control Centre Overview MVP is in `:dev` ([run 30626397101](https://github.com/kaal22/arcalium-nvidia/actions/runs/30626397101)). Batched live ISO rebuilt (7.7 GB) with Heroic + Plymouth initramfs + login wallpaper + hostname/Konsole + Control Centre — Desktop `Arcalium-Live-CC.iso`, Ventoy `F:\Arcalium-Live.iso`.
+Phase 0–2 complete on the RTX 3060. Control Centre Overview MVP is in `:dev`. Heroic first-run GE-Proton auto-setup (`arcaliumctl proton` + `arcalium-heroic` wrapper) is next in `:dev` after this push. Batched live ISO already has Control Centre (Desktop `Arcalium-Live-CC.iso`); no ISO rebuild for the Proton wrapper.
 
-**Next on 3060:** `sudo bootc upgrade && sudo systemctl reboot`, then open **Arcalium Control Centre** and confirm Overview matches `arcaliumctl`. Optional: clean-install from the new ISO.
+**Next on 3060:** `sudo bootc upgrade && sudo systemctl reboot`, then:
+
+1. Open Control Centre Overview and confirm it matches `arcaliumctl`.
+2. Smoke Heroic first-run Proton: either use a fresh user, or `rm -rf ~/.var/app/com.heroicgameslauncher.hgl/config/heroic/tools/proton` and launch **Heroic** from the pin — expect a one-time download dialog, then a working install path without Wine Manager.
 
 **Roles**
 
@@ -132,7 +135,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 
 | Requirement | Status | Notes |
 |---|---|---|
-| Recommended-version manifest + install action | not started | |
+| Recommended-version manifest + install action | in progress | Early subset: `arcaliumctl proton list` / `install-recommended` + Heroic first-launch wrapper. Full Control Centre Proton page still later. |
 
 ## Phase 6 — Storage and VPN
 
@@ -245,6 +248,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 | 2026-07-31 | Phase 2 game path on RTX 3060 | **pass** — Steam and Heroic exercised (owner-confirmed). Phase 2 hardware validation complete; Control Centre gate open for private alpha. |
 | 2026-07-31 | Control Centre Overview MVP | Tauri 2 + React app `io.arcalium.ControlCentre`: nav shell for all §9.2 pages, Overview live from allowlisted `arcaliumctl` JSON, stubs elsewhere. Built in Containerfile `control-centre` stage; installed to `/usr/bin/arcalium-control-centre` with WebKit runtime + taskbar/Kickoff pins. |
 | 2026-07-31 | Batched live ISO with Control Centre | **built** — 7.7 GB `Arcalium-Live.iso` from `49b5e7d`. Desktop copy as `Arcalium-Live-CC.iso` (old Desktop ISO locked); Ventoy `F:\Arcalium-Live.iso`. GHCR `:dev` published [run 30626397101](https://github.com/kaal22/arcalium-nvidia/actions/runs/30626397101). |
+| 2026-07-31 | Heroic first-run Proton | Beginners hit a missing Wine/Proton runtime (`which: no wine`) until Wine Manager is used. Shipped `arcaliumctl proton list` / `install-recommended` (latest GE-Proton into Heroic tools dir + `wineVersion`), `/usr/bin/arcalium-heroic` first-launch wrapper with kdialog, and pins to `arcalium-heroic.desktop`. No ISO bloat; network once. |
 | 2026-07-30 | Heroic Games Launcher bundled | `com.heroicgameslauncher.hgl` added to `installer/flatpaks` and pinned next to Steam. ID matches the one already named in PRODUCT_SPEC §game-launchers; verified on Flathub (developer-verified via `heroicgameslauncher.com`, GPL-3.0) and confirmed **not** present in the Bazzite base — Bazzite only lists it in the Bazaar catalogue. Reaches machines via a rebuilt ISO only. |
 | 2026-07-30 | Login screen still Bazzite wallpaper | Plasma 6.7 replaced SDDM with `plasma-login-manager` (`plasmalogin.service`); there is no `sddm` binary. Wallpaper comes from `/usr/lib/plasmalogin/defaults.conf` under `[Greeter][Wallpaper][org.kde.image][General]`, not from `kscreenlockerrc`. Fixed by shipping that file; user overrides in `/etc/plasmalogin.conf` still win. |
 | 2026-07-30 | Hostname + Konsole welcome | Default hostname `arcalium` (`DEFAULT_HOSTNAME`, `/etc/hostname`, one-shot migrates stock `bazzite`). Konsole MOTD runs Arcalium `fastfetch` (ASCII mark + specs) instead of Bazzite tip markdown; `neofetch`/`fastfetch` aliases retargeted. |

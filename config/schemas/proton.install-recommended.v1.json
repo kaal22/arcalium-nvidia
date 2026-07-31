@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arcalium.local/schemas/proton.install-recommended.v1.json",
+  "title": "arcalium.proton.install-recommended/v1",
+  "type": "object",
+  "required": ["schema", "ok", "action", "name", "bin", "toolsDir", "gamesDir", "configUpdated"],
+  "properties": {
+    "schema": { "const": "arcalium.proton.install-recommended/v1" },
+    "ok": { "type": "boolean" },
+    "action": {
+      "type": "string",
+      "enum": ["installed", "already_present", "updated"]
+    },
+    "name": { "type": "string" },
+    "bin": { "type": "string" },
+    "path": { "type": "string" },
+    "toolsDir": { "type": "string" },
+    "gamesDir": { "type": "string" },
+    "configUpdated": { "type": "boolean" },
+    "downloadedBytes": { "type": "integer", "minimum": 0 },
+    "releaseTag": { "type": "string" },
+    "assetName": { "type": "string" },
+    "forced": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}

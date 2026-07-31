@@ -106,6 +106,7 @@ EOF
 # /etc/hostname from system_files.
 chmod 0755 /usr/libexec/arcalium-migrate-hostname
 chmod 0755 /usr/bin/arcaliumctl
+chmod 0755 /usr/bin/arcalium-heroic
 systemctl enable arcalium-migrate-hostname.service
 
 # Phase 2 diagnostics JSON schemas (PRODUCT_SPEC §10.2).

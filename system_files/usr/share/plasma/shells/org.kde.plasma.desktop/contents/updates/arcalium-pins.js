@@ -25,7 +25,7 @@ for (let i = 0; i < allPanels.length; ++i) {
                     "applications:com.spotify.Client.desktop",
                     "applications:com.vysp3r.ProtonPlus.desktop",
                     "applications:steam.desktop",
-                    "applications:com.heroicgameslauncher.hgl.desktop",
+                    "applications:arcalium-heroic.desktop",
                     "applications:io.github.kolunmi.Bazaar.desktop",
                     "preferred://filemanager"
                 ]);

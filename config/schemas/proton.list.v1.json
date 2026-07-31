@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arcalium.local/schemas/proton.list.v1.json",
+  "title": "arcalium.proton.list/v1",
+  "type": "object",
+  "required": ["schema", "ok", "toolsDir", "installed", "recommendedPresent", "count"],
+  "properties": {
+    "schema": { "const": "arcalium.proton.list/v1" },
+    "ok": { "type": "boolean" },
+    "toolsDir": { "type": "string" },
+    "configPath": { "type": "string" },
+    "gamesDir": { "type": "string" },
+    "installed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "path", "bin"],
+        "properties": {
+          "name": { "type": "string" },
+          "path": { "type": "string" },
+          "bin": { "type": "string" }
+        }
+      }
+    },
+    "recommendedPresent": { "type": "boolean" },
+    "count": { "type": "integer", "minimum": 0 }
+  },
+  "additionalProperties": true
+}

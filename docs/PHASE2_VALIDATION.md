@@ -82,7 +82,16 @@ Heroic is in the batched ISO set; on this upgrade-only machine install once if n
 flatpak install --system flathub com.heroicgameslauncher.hgl
 ```
 
-Then open Heroic, sign in to Epic or GOG if you use them, and launch one library title (or confirm the library UI loads).
+Launch via **Heroic Games Launcher** (`arcalium-heroic` / the taskbar pin). On first open with no GE-Proton installed, Arcalium downloads the latest build automatically (~400 MB, needs network). You should not need Settings → Wine Manager for a basic install.
+
+Then sign in to Epic or GOG if you use them, and launch one library title.
+
+Manual check / re-provision:
+
+```bash
+arcaliumctl proton list --json
+arcaliumctl proton install-recommended --json
+```
 
 ## 4. What to paste back
 

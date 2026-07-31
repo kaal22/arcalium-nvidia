@@ -6,14 +6,14 @@ import argparse
 import sys
 from typing import Any
 
-from . import gpu, system, vulkan
+from . import gpu, proton, system, vulkan
 from .errors import ARC_CMD_001, ARC_CMD_002
 from .jsonutil import emit
+from .proton import ProtonError
 
 
 STUB_COMMANDS = {
     "apps": "Application provisioning (Phase 4)",
-    "proton": "Proton-GE management (Phase 5)",
     "storage": "Storage scan (Phase 6)",
     "vpn": "VPN import (Phase 6)",
     "updates": "Update status (Phase 7)",
@@ -41,6 +41,19 @@ def _build_parser() -> argparse.ArgumentParser:
     vulkan_p = sub.add_parser("vulkan", help="Vulkan checks")
     vulkan_sub = vulkan_p.add_subparsers(dest="action", required=True)
     vulkan_sub.add_parser("test", help="Vulkan device readiness")
+
+    proton_p = sub.add_parser("proton", help="GE-Proton for Heroic Games Launcher")
+    proton_sub = proton_p.add_subparsers(dest="action", required=True)
+    proton_sub.add_parser("list", help="List GE-Proton builds installed for Heroic")
+    install_p = proton_sub.add_parser(
+        "install-recommended",
+        help="Download latest GE-Proton into Heroic's tools directory",
+    )
+    install_p.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-download even if a GE-Proton build is already present",
+    )
 
     for name, help_text in STUB_COMMANDS.items():
         sub.add_parser(name, help=f"{help_text} — not implemented yet")
@@ -100,6 +113,25 @@ def main(argv: list[str] | None = None) -> int:
     if command == "vulkan" and action == "test":
         data = vulkan.test()
         emit(data, as_json=as_json, human_lines=vulkan.human_lines(data))
+        return 0
+
+    if command == "proton" and action == "list":
+        data = proton.list_installed()
+        emit(data, as_json=as_json, human_lines=proton.human_list(data))
+        return 0
+
+    if command == "proton" and action == "install-recommended":
+        try:
+            data = proton.install_recommended(force=bool(getattr(args, "force", False)))
+        except ProtonError as exc:
+            payload = proton.error_payload(exc, command="proton", action="install-recommended")
+            emit(
+                payload,
+                as_json=as_json or True,
+                human_lines=[f"{exc.error.code}: {exc.detail or exc.error.message}"],
+            )
+            return exc.error.exit_code
+        emit(data, as_json=as_json, human_lines=proton.human_install(data))
         return 0
 
     payload = {

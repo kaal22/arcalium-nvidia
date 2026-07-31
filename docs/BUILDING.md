@@ -213,13 +213,13 @@ Verify any new ID on Flathub before committing it — PRODUCT_SPEC principle 4 f
 
 ### Taskbar and default browser
 
-New users get every bundled Arcalium app pinned on the Icon Tasks panel and in Kickoff favorites: Brave, the ChatGPT web app, Spotify, ProtonPlus and Heroic. Existing Bazzite defaults Steam and Bazaar remain pinned too, with Heroic sitting next to Steam so the game launchers group together.
+New users get every bundled Arcalium app pinned on the Icon Tasks panel and in Kickoff favorites: Brave, the ChatGPT web app, Spotify, ProtonPlus and Heroic (via `arcalium-heroic.desktop`, which auto-provisions GE-Proton). Existing Bazzite defaults Steam and Bazaar remain pinned too, with Heroic sitting next to Steam so the game launchers group together.
 
 - `system_files/.../updates/arcalium-pins.js` — runs before Bazzite's `bazzite-pins.js` (alphabetical) and only writes when `launchers` is empty, per PRODUCT_SPEC §11.2
 - `system_files/etc/xdg/mimeapps.list` — Brave as the default for `http`/`https`/`text/html` (keeps Bazzite's Bazaar `.flatpakref` association)
 - `system_files/.../kicker-extra-favoritesrc` — the same bundled apps in application-launcher favorites
 
-These live in the **bootc image**, not the live ISO payload. They reach machines via `just build` + `bootc upgrade`/`switch`, or a fresh ISO install. Existing users whose taskbar was already configured are left alone — pin Brave once by hand if needed. Control Centre is omitted until it exists.
+These live in the **bootc image**, not the live ISO payload. They reach machines via `just build` + `bootc upgrade`/`switch`, or a fresh ISO install. Existing users whose taskbar was already configured are left alone — pin Brave once by hand if needed.
 
 ### ChatGPT web app
 
@@ -315,16 +315,29 @@ Still outstanding for full branding: a dark mark for light panels (current fills
 
 ### Phase 2 — `arcaliumctl`
 
-`/usr/bin/arcaliumctl` is a Phase-2-only Python CLI (library under `/usr/lib/arcalium/ctl/`). It only runs allowlisted binaries (`nvidia-smi`, `vulkaninfo`, `lspci`, `lsmod`, `bootc`, `uname`) — never a user shell fragment. Implemented commands:
+`/usr/bin/arcaliumctl` is a Python CLI (library under `/usr/lib/arcalium/ctl/`). Diagnostic commands only run allowlisted binaries (`nvidia-smi`, `vulkaninfo`, `lspci`, `lsmod`, `bootc`, `uname`) — never a user shell fragment. Proton install uses Python's `urllib` + `tarfile` against the GloriousEggroll GitHub releases API. Implemented commands:
 
 ```bash
 arcaliumctl system summary --json
 arcaliumctl gpu status --json
 arcaliumctl gpu validate --json
 arcaliumctl vulkan test --json
+arcaliumctl proton list --json
+arcaliumctl proton install-recommended --json
 ```
 
-JSON schemas ship in `/usr/share/arcalium/schemas/` from `config/schemas/` (Containerfile `COPY config /config`). Later commands (`apps`, `proton`, …) exit `3` with `ARC-CMD-002`. Hardware runbook: [`docs/PHASE2_VALIDATION.md`](PHASE2_VALIDATION.md).
+JSON schemas ship in `/usr/share/arcalium/schemas/` from `config/schemas/` (Containerfile `COPY config /config`). Remaining stubs (`apps`, `storage`, `vpn`, `updates`, `diagnostics`) exit `3` with `ARC-CMD-002`. Hardware runbook: [`docs/PHASE2_VALIDATION.md`](PHASE2_VALIDATION.md).
+
+### Heroic first-run Proton
+
+Heroic Flatpak does not ship a Wine/Proton runtime. Without one, Windows game install/import fails and beginners have no idea to open **Settings → Wine Manager**.
+
+Arcalium wraps Heroic:
+
+- `/usr/bin/arcalium-heroic` — on first launch, if no `GE-Proton*` exists under Heroic's tools dir, shows a short dialog and runs `arcaliumctl proton install-recommended` (downloads latest GE-Proton into `~/.var/app/com.heroicgameslauncher.hgl/config/heroic/tools/proton/`, sets `defaultSettings.wineVersion`, ensures `~/Games/Heroic`).
+- Desktop entries: `arcalium-heroic.desktop` (pinned) and `com.heroicgameslauncher.hgl.desktop` (same `Exec` wrapper). New-user pins/favorites use `arcalium-heroic.desktop` so Flatpak's export cannot bypass the wrapper.
+- Needs network once (~400 MB). Offline failure still opens Heroic and tells the user about Wine Manager.
+- Advanced users can still use Heroic's Wine Manager or `arcaliumctl proton install-recommended --force`.
 
 ### Control Centre (Overview MVP)
 
