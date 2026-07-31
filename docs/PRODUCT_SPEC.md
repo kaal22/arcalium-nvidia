@@ -344,11 +344,12 @@ The first-boot wizard should offer grouped optional applications.
 
 ### Game launchers
 
-- Heroic Games Launcher.
-- Lutris.
+- Heroic Games Launcher (Epic, GOG, Amazon — replaces Lutris in the Arcalium catalogue).
 - Bottles.
 - Prism Launcher.
 - itch.io launcher where a suitable maintained package exists.
+
+Do **not** offer Lutris. Heroic covers the non-Steam store role; bundling both would duplicate that surface.
 
 ### Communication
 
@@ -406,7 +407,6 @@ Initial expected IDs must be verified before implementation. Candidate IDs inclu
 Spotify: com.spotify.Client
 ProtonPlus: com.vysp3r.ProtonPlus
 Heroic: com.heroicgameslauncher.hgl
-Lutris: net.lutris.Lutris
 Bottles: com.usebottles.bottles
 Discord: com.discordapp.Discord
 Vesktop: dev.vencord.Vesktop
@@ -818,10 +818,11 @@ Show installed launchers and actions for:
 
 - Steam.
 - Heroic.
-- Lutris.
 - Bottles.
 - Prism Launcher.
 - Other supported launchers.
+
+Lutris is out of scope (Heroic is the non-Steam launcher).
 
 Functions:
 

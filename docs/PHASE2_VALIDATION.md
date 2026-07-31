@@ -3,6 +3,10 @@
 No ISO rebuild for this milestone. After CI publishes the image that includes
 `arcaliumctl`, upgrade the existing install and run the checks below.
 
+**Status (2026-07-31):** CLI section **passed** on the RTX 3060 upgrade install
+(`system summary`, `gpu status`, `gpu validate`, `vulkan test` — all `--json`).
+Game-path checklist below is still open.
+
 ## 1. Upgrade
 
 ```bash

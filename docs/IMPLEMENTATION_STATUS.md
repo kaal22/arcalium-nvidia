@@ -10,7 +10,7 @@
 
 ## Where we left off (2026-07-31)
 
-Phase 0–1 are largely done. Phase 2 (`arcaliumctl` hardware diagnostics) is in the image; validate on the **existing** RTX 3060 upgrade install — **no ISO rebuild** for this milestone. Batched ISO (Heroic + Plymouth initramfs + login wallpaper + hostname/Konsole) remains pending.
+Phase 0–1 are largely done. Phase 2 CLI on the RTX 3060 is **tested** (`system summary`, `gpu status`, `gpu validate`, `vulkan test` all `--json` as expected). Remaining for Phase 2: Steam/Heroic game-path checklist. Batched ISO (Heroic + Plymouth initramfs + login wallpaper + hostname/Konsole) remains pending.
 
 **Roles**
 
@@ -52,8 +52,8 @@ Phase 0–1 are largely done. Phase 2 (`arcaliumctl` hardware diagnostics) is in
    - **ISO rebuild pending (deliberately batched, 2026-07-30).** The Heroic bundle is an app-set change and so an ISO trigger, but it was batched rather than cut immediately. The next ISO must cover: Heroic Flatpak + pin, the initramfs Plymouth watermark, the plasmalogin login wallpaper, and the hostname/Konsole welcome. Until then Heroic reaches existing machines only via `flatpak install`.
 5. Branding — Plymouth watermark now lands in the **initramfs** (boot splash was still Bazzite because Plymouth boots from initrd and shuts down from `/usr`); login greeter wallpaper now goes through `plasmalogin` `defaults.conf` (Plasma 6.7 replaced SDDM, so `kscreenlockerrc` alone never reached the login screen). Remaining: dark-panel mark, first-run wizard.
 6. ~~Decide browser for the installed system~~ — Brave Flatpak + taskbar pin + default-browser (`arcalium-pins.js`, `mimeapps.list`, Kickoff favorites). New ISO installs get all three; the 3060 needs `flatpak install` by hand and a one-time pin (existing Plasma layout is not overwritten).
-7. **Phase 2 on 3060** — after this image publishes: `bootc upgrade`, then follow [`docs/PHASE2_VALIDATION.md`](PHASE2_VALIDATION.md) (`arcaliumctl … --json` + Steam/Heroic game path). Paste results back for the verification log.
-8. Do **not** start Control Centre until Phase 2 results are recorded and licensing items are settled.
+7. ~~**Phase 2 CLI on 3060**~~ — done 2026-07-31: all four `arcaliumctl … --json` commands passed as expected. Still open: Steam/Heroic game-path checklist in [`docs/PHASE2_VALIDATION.md`](PHASE2_VALIDATION.md).
+8. Do **not** start Control Centre until Phase 2 game-path results are recorded and licensing items are settled.
 9. Optional later: second-GPU matrix (3090 / 2060) if those machines appear; not blocking alpha on the 3060.
 
 **Resume commands**
@@ -105,9 +105,9 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 | Requirement | Status | Notes |
 |---|---|---|
 | Bare-metal install (primary test PC) | tested | RTX **3060 12 GB**: `:dev` image, `nvidia-smi` OK, Wayland, Secure Boot off, 0 failed units |
-| `arcaliumctl system summary` | in progress | Shipped in image; awaiting 3060 run — see `docs/PHASE2_VALIDATION.md` |
-| `arcaliumctl gpu status` | in progress | Same |
-| NVIDIA / Vulkan / Wayland validation | in progress | `arcaliumctl gpu validate` + `vulkan test`; drivers + Wayland already confirmed earlier; Vulkan/game path not yet exercised via CLI |
+| `arcaliumctl system summary` | tested | RTX 3060: `--json` passed as expected (2026-07-31) |
+| `arcaliumctl gpu status` | tested | Same |
+| NVIDIA / Vulkan / Wayland validation | tested | `gpu validate` + `vulkan test` `--json` passed on 3060; Wayland confirmed earlier. Steam/Heroic game path still open |
 | Diagnostics JSON schemas | complete | `/usr/share/arcalium/schemas/*.json` from `config/schemas/` |
 
 ## Phase 3 — Setup wizard
@@ -122,7 +122,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 | Requirement | Status | Notes |
 |---|---|---|
 | Declarative app catalogue | not started | Flatpak IDs must be re-validated on Flathub before commit |
-| Spotify / ProtonPlus / optional launchers | in progress | Spotify, ProtonPlus and Heroic bundled and pinned; Lutris, Bottles and Prism Launcher from PRODUCT_SPEC §game-launchers still unbundled. Setup UI, retry/uninstall and Spotify community-package disclosure UI remain |
+| Spotify / ProtonPlus / optional launchers | in progress | Spotify, ProtonPlus and Heroic bundled and pinned. **Lutris dropped** (2026-07-31) — Heroic is the non-Steam launcher. Bottles and Prism Launcher from PRODUCT_SPEC §game-launchers still unbundled. Setup UI, retry/uninstall and Spotify community-package disclosure UI remain |
 
 ## Phase 5 — Proton-GE
 
@@ -235,7 +235,9 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 | 2026-07-30 | Logo mark + wordmark wired | Sources `assets/arccleanSVG.svg` (Kickoff/distributor mark) and `assets/ARG_fullSVG.svg` (wordmark). `install_logos.py` strips Illustrator metadata (~46 KB→~1 KB mark, ~68 KB→~7 KB wordmark) and installs into hicolor places + `/usr/share/arcalium/`. Plasma splash `bazzite_logo.svgz` replaced with gzipped wordmark where present. Plymouth watermark PNG and dark-panel mark still needed. |
 | 2026-07-30 | Plymouth + login wallpaper | Spinner `watermark.png` rasterised from `ARG_fullSVG.svg` (~256×121 RGBA). `/usr/lib/os-release` NAME/PRETTY_NAME rewritten to Arcalium (ID stays `bazzite` for Anaconda). Lock greeter (`kscreenlockerrc`) retargeted from `convergence.jxl`. |
 | 2026-07-30 | Boot still Bazzite after watermark change | Expected given the mechanism: Plymouth boots from the initramfs and shuts down from `/usr`, so a `/usr`-only change produces exactly "Arcalium on shutdown, Bazzite on boot". bootc does not regenerate the initramfs on deploy. Fixed by rebuilding `/usr/lib/modules/<kver>/initramfs.img` in `build.sh` with the args `lsinitrd` records, then asserting watermark byte-identity and `NAME="Arcalium OS"` in `initrd-release`. |
-| 2026-07-31 | Phase 2 `arcaliumctl` | Shipped Phase-2-only CLI: `system summary`, `gpu status`, `gpu validate`, `vulkan test` with allowlisted subprocesses, ARC-* codes, and JSON schemas under `/usr/share/arcalium/schemas/`. Runbook: `docs/PHASE2_VALIDATION.md`. Awaiting 3060 `bootc upgrade` + paste-back. |
+| 2026-07-31 | Phase 2 `arcaliumctl` | Shipped Phase-2-only CLI: `system summary`, `gpu status`, `gpu validate`, `vulkan test` with allowlisted subprocesses, ARC-* codes, and JSON schemas under `/usr/share/arcalium/schemas/`. Runbook: `docs/PHASE2_VALIDATION.md`. |
+| 2026-07-31 | Phase 2 CLI on RTX 3060 | **pass** — `arcaliumctl system summary|gpu status|gpu validate|vulkan test --json` all behaved as expected on the upgrade install. Game-path checklist still open. |
+| 2026-07-31 | Lutris dropped from catalogue | Product decision: do not offer Lutris. Heroic covers Epic/GOG/Amazon; dual launchers would duplicate that role. Spec + Flatpak ID list updated; Lutris was never in `installer/flatpaks`. |
 | 2026-07-30 | Heroic Games Launcher bundled | `com.heroicgameslauncher.hgl` added to `installer/flatpaks` and pinned next to Steam. ID matches the one already named in PRODUCT_SPEC §game-launchers; verified on Flathub (developer-verified via `heroicgameslauncher.com`, GPL-3.0) and confirmed **not** present in the Bazzite base — Bazzite only lists it in the Bazaar catalogue. Reaches machines via a rebuilt ISO only. |
 | 2026-07-30 | Login screen still Bazzite wallpaper | Plasma 6.7 replaced SDDM with `plasma-login-manager` (`plasmalogin.service`); there is no `sddm` binary. Wallpaper comes from `/usr/lib/plasmalogin/defaults.conf` under `[Greeter][Wallpaper][org.kde.image][General]`, not from `kscreenlockerrc`. Fixed by shipping that file; user overrides in `/etc/plasmalogin.conf` still win. |
 | 2026-07-30 | Hostname + Konsole welcome | Default hostname `arcalium` (`DEFAULT_HOSTNAME`, `/etc/hostname`, one-shot migrates stock `bazzite`). Konsole MOTD runs Arcalium `fastfetch` (ASCII mark + specs) instead of Bazzite tip markdown; `neofetch`/`fastfetch` aliases retargeted. |
