@@ -100,7 +100,6 @@ cat >>/usr/share/anaconda/interactive-defaults.ks <<EOF
 network --hostname=arcalium
 ostreecontainer --url=${INSTALL_IMAGE_PAYLOAD} --transport=containers-storage --no-signature-verification
 %include /usr/share/anaconda/post-scripts/arcalium-install-flatpaks.ks
-%include /usr/share/anaconda/post-scripts/arcalium-flatpak-selinux.ks
 %include /usr/share/anaconda/post-scripts/arcalium-track-registry.ks
 EOF
 
@@ -108,32 +107,68 @@ EOF
 # container image only; without this the live session's /var/lib/flatpak is
 # discarded and the installed system ships with none of the bundled apps, which
 # also leaves the taskbar pins pointing at desktop entries that do not resolve.
-# Mechanism follows ublue-os/bazzite install-flatpaks.ks.
+#
+# The copy target is the deployment's own var/lib, which ostree-prepare-root
+# bind-mounts as /var on boot. Verified on hardware: an install using this path
+# came up with all bundled Flatpaks present. Note the ostree deployment docs
+# describe a shared per-stateroot /var instead; do not "fix" this to
+# /ostree/deploy/$stateroot/var on the strength of that doc alone.
+#
+# The relabel must happen here, in --nochroot, against the path just written.
+# Anaconda's chroot does not see the deployment's /var, so a chroot %post
+# running `chcon /var/lib/flatpak` operates on a directory that does not exist.
+#
+# Deliberately never fatal. An earlier revision used --erroronfail (copied from
+# ublue-os/bazzite) on a separate chroot relabel script, and its failure aborted
+# an otherwise complete install with "critical error running post installation
+# scripts". Missing bundled apps are recoverable with `flatpak install`; a dead
+# install is not. Failures leave a marker at /var/log/arcalium-flatpaks-failed.
 cat >/usr/share/anaconda/post-scripts/arcalium-install-flatpaks.ks <<'EOF'
-%post --erroronfail --nochroot --log=/tmp/arcalium-install-flatpaks.log
-set -eux
+%post --nochroot --log=/tmp/arcalium-install-flatpaks.log
+set -x
+
 sysroot=""
 for candidate in /mnt/sysimage /mnt/sysroot; do
-    if [ -d "$candidate/ostree/repo" ]; then
+    if [ -d "$candidate/ostree/deploy" ]; then
         sysroot="$candidate"
         break
     fi
 done
-[ -n "$sysroot" ] || {
-    echo "no ostree repo under /mnt/sysimage or /mnt/sysroot" >&2
-    exit 1
-}
-deployment="$(ostree rev-parse --repo="$sysroot/ostree/repo" ostree/0/1/0)"
-target="$sysroot/ostree/deploy/default/deploy/$deployment.0/var/lib/"
-mkdir -p "$target"
-rsync -aAXUHK --open-noatime /var/lib/flatpak "$target"
-sync "$target"
-%end
-EOF
+if [ -z "$sysroot" ]; then
+    echo "ARCALIUM: no ostree sysroot under /mnt/sysimage or /mnt/sysroot"
+    exit 0
+fi
+echo "ARCALIUM: sysroot=$sysroot"
 
-cat >/usr/share/anaconda/post-scripts/arcalium-flatpak-selinux.ks <<'EOF'
-%post --erroronfail --log=/tmp/arcalium-flatpak-selinux.log
-chcon -R -t var_lib_t /var/lib/flatpak
+if [ ! -d /var/lib/flatpak ]; then
+    echo "ARCALIUM: live session has no /var/lib/flatpak to copy"
+    exit 0
+fi
+
+copied=0
+for deployment in "$sysroot"/ostree/deploy/*/deploy/*.[0-9]; do
+    [ -d "$deployment" ] || continue
+    echo "ARCALIUM: copying Flatpaks into $deployment/var/lib"
+    mkdir -p "$deployment/var/lib"
+    if rsync -aAXUHK --open-noatime /var/lib/flatpak "$deployment/var/lib/"; then
+        chcon -R -t var_lib_t "$deployment/var/lib/flatpak" || true
+        copied=1
+    else
+        echo "ARCALIUM: rsync into $deployment/var/lib failed"
+    fi
+done
+sync
+
+if [ "$copied" != 1 ]; then
+    echo "ARCALIUM: bundled Flatpaks were NOT installed"
+    for deployment in "$sysroot"/ostree/deploy/*/deploy/*.[0-9]; do
+        [ -d "$deployment/var" ] || continue
+        mkdir -p "$deployment/var/log"
+        echo "flatpak copy failed during install" \
+            > "$deployment/var/log/arcalium-flatpaks-failed"
+    done
+fi
+exit 0
 %end
 EOF
 
