@@ -92,9 +92,9 @@ source /etc/os-release
 rm -f /etc/system-release
 echo "Arcalium OS NVIDIA Edition ${VERSION_ID}" >/etc/system-release
 
-# Anaconda profile, welcome dialog, visible Install launcher
+# Anaconda profile + desktop Install launcher (no autostart welcome dialog)
 cp -a "$SCRIPT_DIR/system_files"/. /
-chmod 0755 /usr/bin/arcalium-live-welcome.sh /usr/bin/arcalium-install.sh
+chmod 0755 /usr/bin/arcalium-install.sh
 
 cat >>/usr/share/anaconda/interactive-defaults.ks <<EOF
 network --hostname=arcalium

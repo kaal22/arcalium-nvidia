@@ -26,7 +26,7 @@ export function AboutPage() {
         <dl>
           <div>
             <dt>Control Centre</dt>
-            <dd>0.1.0 — Overview MVP</dd>
+            <dd>0.1.0 — Overview + Compatibility</dd>
           </div>
           <div>
             <dt>Image</dt>

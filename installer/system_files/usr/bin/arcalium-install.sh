@@ -1,6 +1,6 @@
 #!/usr/bin/bash
-# Single entry point for starting the installer, used by both the welcome dialog and
-# the desktop launcher so every route gets consistent error reporting.
+# Desktop "Install Arcalium OS" launcher entry point. Keeps profile selection and
+# error reporting consistent whenever Anaconda is started from the live desktop.
 
 set -uo pipefail
 

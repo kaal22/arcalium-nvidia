@@ -9,7 +9,7 @@ ISOs are **milestone artifacts**, not per-commit ones. A live ISO build is ~6 GB
 | Change | Reaches machines via | Needs an ISO? |
 |---|---|---|
 | `system_files/`, `build_files/`, `Containerfile` — desktop defaults, taskbar pins, branding, layered packages | `just build` locally, or CI → `bootc upgrade` | No |
-| `installer/` — Anaconda profile, welcome dialog, live-session tweaks | live media only | **Yes** |
+| `installer/` — Anaconda profile, Install launcher, live-session tweaks | live media only | **Yes** |
 | `installer/flatpaks` — bundled apps such as Brave | copied to disk by Anaconda at install time | **Yes** |
 | `disk_config/`, `Justfile` build recipes | whichever build you run | Only if testing that build |
 
@@ -187,11 +187,10 @@ The payload image (`localhost/arcalium-os-nvidia-payload:dev`, ~27 GB) layers li
 Live-session extras under `installer/system_files/`:
 
 - Anaconda profile matching Bazzite's `os_id` (without it, Install exits silently)
-- Welcome dialog that launches `liveinst`
-- Visible **Install Arcalium OS** launcher
+- Visible **Install Arcalium OS** launcher (`arcalium-install.sh` → `liveinst --profile bazzite`)
 - Steam and Bazzite announcement autostart disabled for the live session only
 
-Both the welcome dialog and the desktop launcher go through `arcalium-install.sh`, so profile selection and error reporting apply however the installer is started.
+There is no autostart welcome dialog — testers open Install from the desktop or application menu. The previous popup framed the live session as a "test environment" and was removed once the stock desktop launcher proved reliable.
 
 ### Default applications (`installer/flatpaks`)
 
@@ -219,7 +218,14 @@ Verify any new ID on Flathub before committing it — PRODUCT_SPEC principle 4 f
 
 ### Taskbar and default browser
 
-New users get every bundled Arcalium app pinned on the Icon Tasks panel and in Kickoff favorites: Brave, the ChatGPT web app, Spotify, ProtonPlus and Heroic (via the `/etc/skel` override that auto-provisions GE-Proton). Bazzite's Steam and Bazaar stay pinned too, with Heroic next to Steam so the game launchers group together.
+New users get the daily-use bundled apps pinned on the Icon Tasks panel and in Kickoff favorites. Panel order (left → right): Files, Bazaar, Brave, Steam, Heroic, Spotify. Heroic uses the `/etc/skel` override that auto-provisions GE-Proton.
+
+Two deliberate absences from the panel:
+
+- **Control Centre** — its icon is the Arcalium mark, the same artwork as the Kickoff launcher button at the far left, so pinning it placed two identical marks side by side. It stays in Kickoff favorites. If it ever gets its own distinct icon, it can be pinned again.
+- **ProtonPlus** — a setup/utility tool rather than a daily launcher, so Kickoff favorites only.
+
+The ChatGPT Brave web-app launcher was removed entirely (2026-07-31); Brave itself remains the default browser.
 
 The pins come from the **panel layout template**, which is the part that trips people up. Plasma runs `/usr/share/plasma/layout-templates/org.kde.plasma.desktop.defaultPanel/contents/layout.js` when it first creates a panel for a new user, and Bazzite patches that file to write its own launcher list. Update scripts under `shells/org.kde.plasma.desktop/contents/updates/` run *after* that and every one of them guards on `launchers` being empty — so by the time they run there is nothing left to do.
 
@@ -235,9 +241,7 @@ These live in the **bootc image**, not the live ISO payload, so they reach machi
 
 ### ChatGPT web app
 
-`system_files/usr/share/applications/arcalium-chatgpt.desktop` adds ChatGPT to the application menu and launches the official `https://chatgpt.com/` site in a dedicated Brave app window. It is also included in the new-user taskbar defaults.
-
-This is a launcher, not a redistributed ChatGPT client: OpenAI does not publish an official Linux app as of 2026-07-30, and unofficial wrappers would make users trust third-party code with their OpenAI credentials. The launcher adds negligible image size and reaches existing systems through the bootc image, but requires the Brave Flatpak to be installed.
+Removed 2026-07-31. The previous Brave `--app=https://chatgpt.com/` launcher (`arcalium-chatgpt.desktop`) is gone from the image, Kickoff favorites and the panel pins. Users open ChatGPT in Brave themselves if they want it.
 
 ### Desktop wallpaper
 
@@ -354,20 +358,24 @@ Arcalium wraps Heroic:
 
 ### Icon names must exist in Breeze
 
-Plasma's default theme is Breeze, and a desktop entry naming an icon Breeze does not carry renders blank. The ChatGPT launcher originally used `Icon=web-browser`, which only exists in `AdwaitaLegacy`, so it showed as an empty tile; it now uses `internet-web-browser`. Bundled Flatpaks supply their own icons (`com.heroicgameslauncher.hgl` and friends), so their entries look blank until the Flatpak itself is installed — check `find /usr/share/icons/breeze* -name '<name>.*'` before shipping an entry.
+Plasma's default theme is Breeze, and a desktop entry naming an icon Breeze does not carry renders blank. Bundled Flatpaks supply their own icons (`com.heroicgameslauncher.hgl` and friends), so their entries look blank until the Flatpak itself is installed — check `find /usr/share/icons/breeze* -name '<name>.*'` before shipping an entry.
 
-### Control Centre (Overview MVP)
+### Control Centre
 
 Source: [`apps/control-centre/`](../apps/control-centre/). Tauri 2 + React; app ID `io.arcalium.ControlCentre`.
 
 - The Containerfile `control-centre` stage builds the Linux binary on Fedora 42 and places it in the `ctx` mount as `/control-centre/arcalium-control-centre`.
 - `build_files/build.sh` installs it to `/usr/bin/arcalium-control-centre`, ensures `webkit2gtk4.1` is present, and installs the hicolor icon.
-- The UI invokes only allowlisted `arcaliumctl` argv sequences (see `apps/control-centre/src-tauri/src/ctl.rs`). Quick actions open allowlisted `.desktop` files via `xdg-open`.
+- The UI invokes only allowlisted `arcaliumctl` argv sequences (see `apps/control-centre/src-tauri/src/ctl.rs`). Live pages: Overview, Compatibility, About. Compatibility uses `proton list` / `install-recommended` (install timeout 30 minutes). Quick actions launch allowlisted `.desktop` files via `gio launch` (fallback `gtk-launch` / `kioclient exec`) — never `xdg-open` on the path, which opens the file in Kate on Plasma. Resolution checks `/usr/share/applications`, Flatpak exports, and `~/.local/share/applications`.
 - Local iteration: `just build-control-centre` (WSL + Podman) extracts artifacts to `output/control-centre/`.
-- Desktop entry: `io.arcalium.ControlCentre.desktop`; pinned for new Plasma users.
+- Desktop entry: `io.arcalium.ControlCentre.desktop`; in Kickoff favorites for new Plasma users, deliberately not pinned to the panel (its icon is the Arcalium mark and would duplicate the launcher button).
+- **Window icon:** we build with `--no-bundle`, so `bundle.icon` in `tauri.conf.json` is only consumed by bundlers and never reaches the running window — the window showed the toolkit's default mark instead. Two fixes are needed because the two display servers source the icon differently:
+  - X11 reads `_NET_WM_ICON`, so `lib.rs` calls `window.set_icon()` with `include_bytes!("../icons/256x256.png")` (requires the `image-png` feature on the `tauri` crate). `apps/control-centre/build.sh` generates those PNGs from `assets/arccleanSVG.svg` before cargo runs, so the include always resolves.
+  - Wayland has no per-window icon protocol in GTK3, so KWin takes the icon from the `.desktop` file it matches by `app_id`. GTK reports the program name (`arcalium-control-centre`), which does not match `io.arcalium.ControlCentre.desktop`, hence `StartupWMClass=arcalium-control-centre` in the entry. To confirm the value on a live machine, run `qdbus6 org.kde.KWin /KWin org.kde.KWin.queryWindowInfo` and click the window; `resourceClass` must equal `StartupWMClass`.
+- **In-app mark:** the sidebar mark was a CSS `clip-path` triangle placeholder. `App.tsx` now imports `assets/arccleanSVG.svg` from the repo root so the UI cannot drift from the OS icons. The import escapes the Vite root, which Rollup handles for builds; `server.fs.allow` covers `npm run dev`. The mark carries `.st0 { fill: #fff }`, which suits the dark sidebar.
 - **NVIDIA/WebKitGTK:** on Wayland the webview process dies before a window appears (blank window on X11). Confirmed on the RTX 3060: the app runs under `__NV_DISABLE_EXPLICIT_SYNC=1` and dies without it. The desktop entry exports that variable through `Exec=env …`, and `main.rs` additionally sets the session-appropriate variable before WebKit initialises so terminal launches and X11 sessions are covered. Set `ARCALIUM_CC_NO_GPU_WORKAROUND=1` to opt out.
 
-Setup wizard shares this codebase later — not in the Overview MVP.
+Setup wizard shares this codebase later.
 
 ### Install time and the deploy step
 

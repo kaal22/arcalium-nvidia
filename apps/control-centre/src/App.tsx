@@ -1,6 +1,10 @@
 import { useState } from "react";
+// Repo-root brand asset, the same source the OS icons are generated from, so the
+// UI mark cannot drift from the taskbar/menu icon.
+import brandMark from "../../../assets/arccleanSVG.svg";
 import { NAV, PageId } from "./nav";
 import { OverviewPage } from "./pages/Overview";
+import { CompatibilityPage } from "./pages/Compatibility";
 import { AboutPage } from "./pages/About";
 import { StubPage } from "./pages/Stub";
 
@@ -12,7 +16,7 @@ export default function App() {
     <div className="shell">
       <aside className="nav">
         <div className="brand">
-          <div className="brand-mark" aria-hidden />
+          <img className="brand-mark" src={brandMark} alt="" aria-hidden />
           <div>
             <div className="brand-name">Arcalium</div>
             <div className="brand-sub">Control Centre</div>
@@ -33,8 +37,9 @@ export default function App() {
       </aside>
       <main className="content">
         {page === "overview" && <OverviewPage />}
+        {page === "compatibility" && <CompatibilityPage />}
         {page === "about" && <AboutPage />}
-        {page !== "overview" && page !== "about" && (
+        {page !== "overview" && page !== "compatibility" && page !== "about" && (
           <StubPage title={current.label} note={current.stubNote || ""} />
         )}
       </main>

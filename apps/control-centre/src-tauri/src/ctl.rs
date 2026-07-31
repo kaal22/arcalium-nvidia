@@ -7,7 +7,9 @@ use std::time::{Duration, Instant};
 use thiserror::Error;
 
 const ARCALIUMCTL: &str = "/usr/bin/arcaliumctl";
-const TIMEOUT_SECS: u64 = 60;
+const TIMEOUT_DEFAULT_SECS: u64 = 60;
+/// GE-Proton downloads are large; matches arcaliumctl's DOWNLOAD_TIMEOUT.
+const TIMEOUT_PROTON_INSTALL_SECS: u64 = 1800;
 
 /// Exact argv sequences the UI may request (without the binary name).
 const ALLOWED: &[&[&str]] = &[
@@ -15,6 +17,8 @@ const ALLOWED: &[&[&str]] = &[
     &["gpu", "status", "--json"],
     &["gpu", "validate", "--json"],
     &["vulkan", "test", "--json"],
+    &["proton", "list", "--json"],
+    &["proton", "install-recommended", "--json"],
 ];
 
 #[derive(Debug, Error)]
@@ -25,12 +29,20 @@ pub enum CtlError {
     MissingBinary,
     #[error("failed to spawn arcaliumctl: {0}")]
     Spawn(String),
-    #[error("arcaliumctl timed out after {TIMEOUT_SECS}s")]
-    Timeout,
+    #[error("arcaliumctl timed out after {0}s")]
+    Timeout(u64),
     #[error("arcaliumctl exited {code}: {stderr}")]
     Exit { code: i32, stderr: String },
     #[error("invalid JSON from arcaliumctl: {0}")]
     Json(String),
+}
+
+fn timeout_for(args: &[String]) -> u64 {
+    if args.len() >= 2 && args[0] == "proton" && args[1] == "install-recommended" {
+        TIMEOUT_PROTON_INSTALL_SECS
+    } else {
+        TIMEOUT_DEFAULT_SECS
+    }
 }
 
 pub fn run_arcaliumctl(args: &[String]) -> Result<Value, CtlError> {
@@ -44,6 +56,8 @@ pub fn run_arcaliumctl(args: &[String]) -> Result<Value, CtlError> {
         return Err(CtlError::MissingBinary);
     }
 
+    let timeout_secs = timeout_for(args);
+
     let mut child = Command::new(ARCALIUMCTL)
         .args(args)
         .stdin(Stdio::null())
@@ -52,7 +66,7 @@ pub fn run_arcaliumctl(args: &[String]) -> Result<Value, CtlError> {
         .spawn()
         .map_err(|e| CtlError::Spawn(e.to_string()))?;
 
-    let deadline = Instant::now() + Duration::from_secs(TIMEOUT_SECS);
+    let deadline = Instant::now() + Duration::from_secs(timeout_secs);
     loop {
         match child.try_wait() {
             Ok(Some(status)) => {
@@ -76,7 +90,7 @@ pub fn run_arcaliumctl(args: &[String]) -> Result<Value, CtlError> {
                 if Instant::now() > deadline {
                     let _ = child.kill();
                     let _ = child.wait();
-                    return Err(CtlError::Timeout);
+                    return Err(CtlError::Timeout(timeout_secs));
                 }
                 std::thread::sleep(Duration::from_millis(50));
             }

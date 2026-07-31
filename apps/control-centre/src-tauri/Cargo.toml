@@ -13,7 +13,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# image-png lets us set the window icon at runtime. Bundling is disabled
+# (--no-bundle), so bundle.icon never reaches the running window on Linux.
+tauri = { version = "2", features = ["image-png"] }
 tauri-plugin-shell = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

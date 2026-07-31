@@ -31,7 +31,7 @@ Anything listed in `installer/flatpaks` is copied into the ISO, so we redistribu
 
 | Launcher | URL | Redistribution note |
 |---|---|---|
-| ChatGPT | `https://chatgpt.com/` | Shortcut only: launches the official website in Brave's app-window mode. Arcalium does not redistribute a ChatGPT client, OpenAI assets or credentials. There is no official Linux ChatGPT application as of 2026-07-30; do not replace this with an unofficial wrapper without a separate security and licensing review. |
+| ChatGPT | — | Removed 2026-07-31. Previously a Brave `--app=` shortcut to `https://chatgpt.com/` only; no OpenAI client or assets were redistributed. |
 
 ## Branding and trademarks
 

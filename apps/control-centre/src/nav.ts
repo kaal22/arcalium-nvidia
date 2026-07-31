@@ -20,11 +20,7 @@ export const NAV: { id: PageId; label: string; stubNote?: string }[] = [
     label: "Gaming",
     stubNote: "Phase 4+ — launcher install/launch actions not in this build.",
   },
-  {
-    id: "compatibility",
-    label: "Compatibility",
-    stubNote: "Phase 5 — Proton-GE and ProtonPlus workflows not in this build.",
-  },
+  { id: "compatibility", label: "Compatibility" },
   {
     id: "gpu",
     label: "GPU and Display",

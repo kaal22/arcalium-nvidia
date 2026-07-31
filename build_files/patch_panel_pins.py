@@ -22,16 +22,21 @@ import sys
 # The browser slot stays `preferred://browser` rather than naming Brave's
 # desktop file. It resolves through our mimeapps.list default and is the one
 # entry already confirmed to pin correctly on a fresh install.
+#
+# The Control Centre is deliberately absent. Its icon is the Arcalium mark, the
+# same artwork as the Kickoff launcher at the far left of the panel, so pinning
+# it put two identical marks side by side. It stays in the Kickoff favourites,
+# where there is no adjacency to the launcher button.
+#
+# ProtonPlus is also absent from the panel: it is a setup/utility tool, not a
+# daily launcher, so it belongs in Kickoff favourites rather than Icon Tasks.
 LAUNCHERS = [
-    "applications:io.arcalium.ControlCentre.desktop",
+    "preferred://filemanager",
+    "applications:io.github.kolunmi.Bazaar.desktop",
     "preferred://browser",
-    "applications:arcalium-chatgpt.desktop",
-    "applications:com.spotify.Client.desktop",
-    "applications:com.vysp3r.ProtonPlus.desktop",
     "applications:steam.desktop",
     "applications:com.heroicgameslauncher.hgl.desktop",
-    "applications:io.github.kolunmi.Bazaar.desktop",
-    "preferred://filemanager",
+    "applications:com.spotify.Client.desktop",
 ]
 
 # The template is authoritative; the update script is patched defensively so it

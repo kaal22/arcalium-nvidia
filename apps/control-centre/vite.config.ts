@@ -10,6 +10,11 @@ export default defineConfig(async () => ({
     port: 1420,
     strictPort: true,
     host: host || false,
+    // The brand mark is imported from the repo-root assets/ directory, which sits
+    // outside this Vite root.
+    fs: {
+      allow: [".", "../../assets"],
+    },
     hmr: host
       ? {
           protocol: "ws",

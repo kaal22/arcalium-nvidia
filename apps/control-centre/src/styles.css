@@ -56,8 +56,8 @@ button {
 .brand-mark {
   width: 28px;
   height: 28px;
-  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
-  background: linear-gradient(135deg, #7ef0d6, #3aa6ff);
+  object-fit: contain;
+  flex: 0 0 auto;
 }
 
 .brand-name {
@@ -200,6 +200,33 @@ button {
 .banner.error {
   border-color: var(--danger);
   background: rgba(255, 107, 122, 0.08);
+}
+
+.banner.ok {
+  border-color: var(--accent-dim);
+  background: rgba(94, 224, 196, 0.08);
+}
+
+.btn.primary {
+  background: rgba(94, 224, 196, 0.12);
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+.plain-list {
+  margin: 0.75rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.plain-list li + li {
+  margin-top: 0.35rem;
+}
+
+.mono {
+  font-family: ui-monospace, "Cascadia Mono", "Noto Sans Mono", monospace;
+  font-size: 0.8rem;
 }
 
 .errors {

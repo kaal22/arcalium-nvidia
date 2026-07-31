@@ -2,8 +2,13 @@
 
 Tauri 2 + React + TypeScript app (`io.arcalium.ControlCentre`).
 
-Overview MVP calls allowlisted `arcaliumctl … --json` commands only. Other nav
-pages are stubs until later phases.
+Live pages call allowlisted `arcaliumctl … --json` commands only:
+
+- **Overview** — system / GPU / Vulkan summary; quick actions including Install Proton-GE
+- **Compatibility** — `proton list`, `proton install-recommended`, Open ProtonPlus, static ProtonDB / anti-cheat guidance
+- **About** — image identity
+
+Other nav pages remain stubs until later one-feature passes.
 
 ## Local build (WSL)
 

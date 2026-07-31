@@ -31,6 +31,9 @@ export function OverviewPage() {
   const [gpu, setGpu] = useState<JsonValue | null>(null);
   const [validate, setValidate] = useState<JsonValue | null>(null);
   const [vulkan, setVulkan] = useState<JsonValue | null>(null);
+  const [installingProton, setInstallingProton] = useState(false);
+  const [protonActionMsg, setProtonActionMsg] = useState<string | null>(null);
+  const [protonActionErr, setProtonActionErr] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setState("loading");
@@ -56,6 +59,26 @@ export function OverviewPage() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const installProton = useCallback(async () => {
+    setInstallingProton(true);
+    setProtonActionMsg(null);
+    setProtonActionErr(null);
+    try {
+      const result = await arcaliumctl(["proton", "install-recommended", "--json"]);
+      const action = str(pick(result, "action"), "done");
+      const name = str(pick(result, "name"), "GE-Proton");
+      if (action === "already_present") {
+        setProtonActionMsg(`${name} is already installed.`);
+      } else {
+        setProtonActionMsg(`Installed ${name}. See Compatibility for details.`);
+      }
+    } catch (e) {
+      setProtonActionErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setInstallingProton(false);
+    }
+  }, []);
 
   const smiGpus = (pick(gpu, "nvidiaSmi.gpus") as JsonValue[] | undefined) || [];
   const primarySmi = smiGpus[0] || null;
@@ -187,6 +210,13 @@ export function OverviewPage() {
         </article>
       </section>
 
+      {(protonActionMsg || protonActionErr) && (
+        <div className={protonActionErr ? "banner error" : "banner ok"}>
+          <strong>{protonActionErr ? "Proton install failed." : protonActionMsg}</strong>
+          {protonActionErr && <div>{protonActionErr}</div>}
+        </div>
+      )}
+
       <section className="actions">
         <h2>Quick actions</h2>
         <div className="action-row">
@@ -202,6 +232,14 @@ export function OverviewPage() {
           </button>
           <button
             type="button"
+            className="btn primary"
+            disabled={installingProton}
+            onClick={() => void installProton()}
+          >
+            {installingProton ? "Installing Proton-GE…" : "Install Proton-GE"}
+          </button>
+          <button
+            type="button"
             className="btn"
             onClick={() => void openDesktop("systemsettings.desktop")}
           >
@@ -209,8 +247,10 @@ export function OverviewPage() {
           </button>
         </div>
         <p className="muted small">
-          Opens allowlisted desktop entries via xdg-open. Install Proton-GE, add a game drive, and
-          health-check actions arrive with later pages.
+          Launches allowlisted apps via gio launch (not xdg-open — that opened
+          the .desktop file in Kate). Install Proton-GE downloads the latest
+          GE-Proton into Heroic&apos;s tools directory (same as Compatibility). Add
+          game drive and health-check actions arrive with later pages.
         </p>
       </section>
     </div>
