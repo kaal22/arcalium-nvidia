@@ -5,7 +5,7 @@ No ISO rebuild for this milestone. After CI publishes the image that includes
 
 **Status (2026-07-31):** CLI section **passed** on the RTX 3060 upgrade install
 (`system summary`, `gpu status`, `gpu validate`, `vulkan test` — all `--json`).
-Game-path checklist below is still open.
+Steam/Heroic game path **passed** (owner-confirmed). Phase 2 complete on this machine.
 
 ## 1. Upgrade
 

@@ -4,3 +4,7 @@ output
 _build-*/**
 .cache/
 __pycache__/
+apps/control-centre/node_modules/
+apps/control-centre/dist/
+apps/control-centre/src-tauri/target/
+apps/control-centre/src-tauri/gen/

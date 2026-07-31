@@ -1,9 +1,23 @@
+# Build Arcalium Control Centre (Tauri) on Fedora so glibc matches the Bazzite base.
+FROM registry.fedoraproject.org/fedora:42 AS control-centre
+RUN dnf -y install \
+        nodejs npm rust cargo gcc gcc-c++ make pkgconf-pkg-config \
+        webkit2gtk4.1-devel openssl-devel gtk3-devel librsvg2-devel \
+        ImageMagick \
+    && dnf clean all
+COPY apps/control-centre /src/apps/control-centre
+COPY assets /src/assets
+WORKDIR /src
+RUN chmod +x /src/apps/control-centre/build.sh \
+    && /src/apps/control-centre/build.sh /out
+
 # Allow build scripts to be referenced without being copied into the final image
 FROM scratch AS ctx
 COPY build_files /
 COPY system_files /system_files
 COPY assets /assets
 COPY config /config
+COPY --from=control-centre /out /control-centre
 
 # Base Image — Arcalium OS NVIDIA Edition
 # Source of truth: docs/PRODUCT_SPEC.md

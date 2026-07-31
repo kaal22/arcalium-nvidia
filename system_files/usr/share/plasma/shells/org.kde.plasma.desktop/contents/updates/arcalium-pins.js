@@ -19,6 +19,7 @@ for (let i = 0; i < allPanels.length; ++i) {
 
             if (!currentLaunchers || currentLaunchers.trim() === "") {
                 widget.writeConfig("launchers", [
+                    "applications:io.arcalium.ControlCentre.desktop",
                     "applications:com.brave.Browser.desktop",
                     "applications:arcalium-chatgpt.desktop",
                     "applications:com.spotify.Client.desktop",

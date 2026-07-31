@@ -326,6 +326,18 @@ arcaliumctl vulkan test --json
 
 JSON schemas ship in `/usr/share/arcalium/schemas/` from `config/schemas/` (Containerfile `COPY config /config`). Later commands (`apps`, `proton`, …) exit `3` with `ARC-CMD-002`. Hardware runbook: [`docs/PHASE2_VALIDATION.md`](PHASE2_VALIDATION.md).
 
+### Control Centre (Overview MVP)
+
+Source: [`apps/control-centre/`](../apps/control-centre/). Tauri 2 + React; app ID `io.arcalium.ControlCentre`.
+
+- The Containerfile `control-centre` stage builds the Linux binary on Fedora 42 and places it in the `ctx` mount as `/control-centre/arcalium-control-centre`.
+- `build_files/build.sh` installs it to `/usr/bin/arcalium-control-centre`, ensures `webkit2gtk4.1` is present, and installs the hicolor icon.
+- The UI invokes only allowlisted `arcaliumctl` argv sequences (see `apps/control-centre/src-tauri/src/ctl.rs`). Quick actions open allowlisted `.desktop` files via `xdg-open`.
+- Local iteration: `just build-control-centre` (WSL + Podman) extracts artifacts to `output/control-centre/`.
+- Desktop entry: `io.arcalium.ControlCentre.desktop`; pinned for new Plasma users.
+
+Setup wizard shares this codebase later — not in the Overview MVP.
+
 ### Install time and the deploy step
 
 An install writes the whole OS image to disk, so it takes 15–40 minutes and spends nearly all of that inside one Anaconda step with no visible progress. Anaconda reports nothing during `ostree container deploy`, `hwclock` is the last line in the log before it starts, and testers reasonably read that as a hang. `arcalium-install-progress.sh` exists to disprove that: it polls the target mount and reports bytes written, elapsed time, and throughput.

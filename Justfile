@@ -340,6 +340,24 @@ build-raw $target_image=("localhost/" + image_name) $tag=default_tag: && (_build
 # (osbuild/bootc-image-builder#1188), so this recipe fails on this base. Kept because
 # it is upstream template surface and will work again once BIB is fixed.
 
+# Build Arcalium Control Centre (Tauri) into output/control-centre/
+# Prefer the Containerfile control-centre stage for CI; this recipe is for local WSL iteration.
+[group('Build')]
+build-control-centre:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    out="${PWD}/output/control-centre"
+    mkdir -p "${out}"
+    sudo podman build \
+      --target control-centre \
+      --tag localhost/arcalium-control-centre:build \
+      -f Containerfile \
+      .
+    cid="$(sudo podman create localhost/arcalium-control-centre:build)"
+    sudo podman cp "${cid}:/out/." "${out}/"
+    sudo podman rm "${cid}"
+    echo "Control Centre artifacts in ${out}"
+
 # Build an ISO virtual machine image (broken on this base, use build-iso-live)
 [group('Build Virtal Machine Image')]
 build-iso $target_image=("localhost/" + image_name) $tag=default_tag: && (_build-bib target_image tag "iso" "disk_config/iso.toml")

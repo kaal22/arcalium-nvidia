@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Arcalium Control Centre
+GenericName=System Control Centre
+Comment=Hardware status, gaming setup and Arcalium diagnostics
+Exec=arcalium-control-centre
+Icon=io.arcalium.ControlCentre
+Terminal=false
+Categories=Settings;System;X-Arcalium;
+Keywords=arcalium;gpu;nvidia;steam;diagnostics;
+StartupNotify=true
+X-GNOME-UsesNotifications=false

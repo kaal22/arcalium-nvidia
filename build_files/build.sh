@@ -8,11 +8,32 @@ cp -avf "/ctx/system_files"/. /
 ### Phase 0 / Phase 1 — minimal Arcalium identity
 # Do not layer ordinary desktop apps into the immutable image.
 # Do not replace the Bazzite kernel or NVIDIA stack.
-# Control Centre and first-boot wizard come after the base image + ISO workflow is proven.
+# Control Centre Overview MVP is built in the Containerfile control-centre stage
+# and installed below from /ctx/control-centre/.
 
 mkdir -p /usr/share/arcalium /etc/arcalium
 install -Dm0644 /ctx/assets/arcalium-wallpaper.png \
     /usr/share/wallpapers/arcalium-wallpaper.png
+
+# Runtime WebKit for the Tauri Control Centre binary.
+if ! rpm -q webkit2gtk4.1 >/dev/null 2>&1; then
+    dnf5 -y install webkit2gtk4.1 || dnf -y install webkit2gtk4.1
+fi
+
+if [[ -x /ctx/control-centre/arcalium-control-centre ]]; then
+    install -Dm0755 /ctx/control-centre/arcalium-control-centre \
+        /usr/bin/arcalium-control-centre
+    if [[ -f /ctx/control-centre/io.arcalium.ControlCentre.png ]]; then
+        for size in 48 64 128 256; do
+            install -d "/usr/share/icons/hicolor/${size}x${size}/apps"
+            # Same master PNG for each size; Plasma scales as needed.
+            install -Dm0644 /ctx/control-centre/io.arcalium.ControlCentre.png \
+                "/usr/share/icons/hicolor/${size}x${size}/apps/io.arcalium.ControlCentre.png"
+        done
+    fi
+else
+    echo "WARNING: Control Centre binary missing from /ctx/control-centre/" >&2
+fi
 
 # Primary mark (arccleanSVG) → application menu / distributor icons.
 # Wordmark (ARG_fullSVG) → /usr/share/arcalium for splash and Plymouth.
