@@ -290,7 +290,7 @@ The shell prompt’s `@bazzite` half is the machine hostname, not the OS name. D
 - `/etc/hostname` → `arcalium`
 - `arcalium-migrate-hostname.service` renames a stock `bazzite` / `localhost` hostname once after rebase; custom hostnames are left alone
 
-Konsole’s banner is the interactive MOTD (`/etc/profile.d/user-motd.sh`). We replaced Bazzite’s tip markdown with `fastfetch` using `/usr/share/arcalium/fastfetch.jsonc` and the ASCII mark in `/usr/share/arcalium/logo.txt`. `fastfetch` / `neofetch` aliases point at the same config. Per-user opt-out is unchanged: `touch ~/.config/no-show-user-motd` (or `ujust toggle-user-motd`).
+Konsole’s banner is the interactive MOTD (`/etc/profile.d/user-motd.sh`). We replaced Bazzite’s tip markdown with `fastfetch` using `/usr/share/arcalium/fastfetch.jsonc` and the ASCII mark in `/usr/share/arcalium/logo.txt`. The mark traces `assets/arccleanSVG.svg` — a bold `A` crossed by the swoosh — using Block Elements (`█ ▄ ▀`) rather than slashes, because Konsole draws that range itself so the strokes stay solid instead of breaking into dashes. `fastfetch` / `neofetch` aliases point at the same config. Per-user opt-out is unchanged: `touch ~/.config/no-show-user-motd` (or `ujust toggle-user-motd`).
 
 Note how helper scripts are addressed: the `ctx` stage does `COPY build_files /`, so `build.sh`'s siblings are at `/ctx/install_logos.py`, **not** `/ctx/build_files/install_logos.py`. Getting this wrong fails the build immediately, which is how it was caught.
 
