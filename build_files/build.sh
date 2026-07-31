@@ -84,7 +84,14 @@ EOF
 # after rebasing. New installs already get DEFAULT_HOSTNAME=arcalium and
 # /etc/hostname from system_files.
 chmod 0755 /usr/libexec/arcalium-migrate-hostname
+chmod 0755 /usr/bin/arcaliumctl
 systemctl enable arcalium-migrate-hostname.service
+
+# Phase 2 diagnostics JSON schemas (PRODUCT_SPEC §10.2).
+install -d /usr/share/arcalium/schemas
+if [[ -d /ctx/config/schemas ]]; then
+    cp -av /ctx/config/schemas/. /usr/share/arcalium/schemas/
+fi
 
 # Keep podman.socket available (inherited template default; idempotent).
 systemctl enable podman.socket

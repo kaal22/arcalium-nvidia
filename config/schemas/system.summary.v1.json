@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arcalium.local/schemas/system.summary.v1.json",
+  "title": "arcalium.system.summary/v1",
+  "type": "object",
+  "required": ["schema", "hostname", "kernel", "sessionType"],
+  "properties": {
+    "schema": { "const": "arcalium.system.summary/v1" },
+    "product": { "type": ["string", "null"] },
+    "edition": { "type": ["string", "null"] },
+    "imageName": { "type": ["string", "null"] },
+    "channel": { "type": ["string", "null"] },
+    "prettyName": { "type": ["string", "null"] },
+    "osId": { "type": ["string", "null"] },
+    "hostname": { "type": "string" },
+    "kernel": { "type": "string" },
+    "cpuModel": { "type": ["string", "null"] },
+    "memoryBytes": { "type": ["integer", "null"] },
+    "memoryGiB": { "type": ["number", "null"] },
+    "sessionType": { "type": "string" },
+    "waylandDisplay": { "type": "boolean" },
+    "architecture": { "type": "string" },
+    "bootc": { "type": "object" },
+    "imageInfoPath": { "type": "string" },
+    "imageInfoPresent": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}

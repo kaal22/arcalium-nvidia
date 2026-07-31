@@ -296,6 +296,19 @@ Note how helper scripts are addressed: the `ctx` stage does `COPY build_files /`
 
 Still outstanding for full branding: a dark mark for light panels (current fills are white).
 
+### Phase 2 — `arcaliumctl`
+
+`/usr/bin/arcaliumctl` is a Phase-2-only Python CLI (library under `/usr/lib/arcalium/ctl/`). It only runs allowlisted binaries (`nvidia-smi`, `vulkaninfo`, `lspci`, `lsmod`, `bootc`, `uname`) — never a user shell fragment. Implemented commands:
+
+```bash
+arcaliumctl system summary --json
+arcaliumctl gpu status --json
+arcaliumctl gpu validate --json
+arcaliumctl vulkan test --json
+```
+
+JSON schemas ship in `/usr/share/arcalium/schemas/` from `config/schemas/` (Containerfile `COPY config /config`). Later commands (`apps`, `proton`, …) exit `3` with `ARC-CMD-002`. Hardware runbook: [`docs/PHASE2_VALIDATION.md`](PHASE2_VALIDATION.md).
+
 ### Install time and the deploy step
 
 An install writes the whole OS image to disk, so it takes 15–40 minutes and spends nearly all of that inside one Anaconda step with no visible progress. Anaconda reports nothing during `ostree container deploy`, `hwclock` is the last line in the log before it starts, and testers reasonably read that as a hang. `arcalium-install-progress.sh` exists to disprove that: it polls the target mount and reports bytes written, elapsed time, and throughput.

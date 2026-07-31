@@ -8,9 +8,9 @@
 
 ---
 
-## Where we left off (2026-07-30 evening)
+## Where we left off (2026-07-31)
 
-Phase 0 scaffolding is done. Local WSL builds work. The ISO installs and boots on bare metal. The branding and bundled-app milestone is published as an image and cut to a fresh ISO, which has **not yet been installed on hardware**.
+Phase 0–1 are largely done. Phase 2 (`arcaliumctl` hardware diagnostics) is in the image; validate on the **existing** RTX 3060 upgrade install — **no ISO rebuild** for this milestone. Batched ISO (Heroic + Plymouth initramfs + login wallpaper + hostname/Konsole) remains pending.
 
 **Roles**
 
@@ -52,8 +52,9 @@ Phase 0 scaffolding is done. Local WSL builds work. The ISO installs and boots o
    - **ISO rebuild pending (deliberately batched, 2026-07-30).** The Heroic bundle is an app-set change and so an ISO trigger, but it was batched rather than cut immediately. The next ISO must cover: Heroic Flatpak + pin, the initramfs Plymouth watermark, the plasmalogin login wallpaper, and the hostname/Konsole welcome. Until then Heroic reaches existing machines only via `flatpak install`.
 5. Branding — Plymouth watermark now lands in the **initramfs** (boot splash was still Bazzite because Plymouth boots from initrd and shuts down from `/usr`); login greeter wallpaper now goes through `plasmalogin` `defaults.conf` (Plasma 6.7 replaced SDDM, so `kscreenlockerrc` alone never reached the login screen). Remaining: dark-panel mark, first-run wizard.
 6. ~~Decide browser for the installed system~~ — Brave Flatpak + taskbar pin + default-browser (`arcalium-pins.js`, `mimeapps.list`, Kickoff favorites). New ISO installs get all three; the 3060 needs `flatpak install` by hand and a one-time pin (existing Plasma layout is not overwritten).
-7. Do **not** start Control Centre until licensing items above are settled.
-8. Optional later: second-GPU matrix (3090 / 2060) if those machines appear; not blocking alpha on the 3060.
+7. **Phase 2 on 3060** — after this image publishes: `bootc upgrade`, then follow [`docs/PHASE2_VALIDATION.md`](PHASE2_VALIDATION.md) (`arcaliumctl … --json` + Steam/Heroic game path). Paste results back for the verification log.
+8. Do **not** start Control Centre until Phase 2 results are recorded and licensing items are settled.
+9. Optional later: second-GPU matrix (3090 / 2060) if those machines appear; not blocking alpha on the 3060.
 
 **Resume commands**
 
@@ -64,7 +65,9 @@ just build && just build-iso-live
 cp output/Arcalium-Live.iso /mnt/c/Users/Kaal/Desktop/
 ```
 
-Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox installer fix (`6399708` and parents).
+On the 3060 after upgrade: see `docs/PHASE2_VALIDATION.md`.
+
+Repo: https://github.com/kaal22/arcalium-nvidia
 
 ---
 
@@ -91,7 +94,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | Arcalium image metadata | complete | `image-template.env` + `/etc/arcalium/image-info.json` |
 | Basic branding | in progress | Wallpaper (desktop + lock + login), logo mark/wordmark, Plasma splash, Plymouth watermark + initrd-release NAME wired; dark-panel mark still needed |
 | Arcalium wallpaper | in progress | 5504×3072 asset installed for new Plasma desktops; lock screen via `kscreenlockerrc`; login screen via `/usr/lib/plasmalogin/defaults.conf` (not SDDM). Redistribution licence record pending |
-| Control Centre placeholder | not started | Spec forbids Control Centre until base+ISO proven |
+| Control Centre placeholder | not started | Spec forbids Control Centre until base+ISO proven; Phase 2 CLI lands first |
 | First-boot placeholder | not started | Same gate |
 | QCOW2 workflow | tested | Built locally in WSL2, 5.8 GB; superseded by bare-metal validation |
 | ISO workflow | tested | Bare-metal install on RTX 3060 12 GB; live session needs Basic Graphics (`nomodeset`) on Nouveau |
@@ -102,10 +105,10 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | Requirement | Status | Notes |
 |---|---|---|
 | Bare-metal install (primary test PC) | tested | RTX **3060 12 GB**: `:dev` image, `nvidia-smi` OK, Wayland, Secure Boot off, 0 failed units |
-| `arcaliumctl system summary` | not started | |
-| `arcaliumctl gpu status` | not started | |
-| NVIDIA / Vulkan / Wayland validation | in progress | Drivers + Wayland confirmed; Vulkan/game path not yet exercised |
-| Diagnostics JSON schemas | not started | |
+| `arcaliumctl system summary` | in progress | Shipped in image; awaiting 3060 run — see `docs/PHASE2_VALIDATION.md` |
+| `arcaliumctl gpu status` | in progress | Same |
+| NVIDIA / Vulkan / Wayland validation | in progress | `arcaliumctl gpu validate` + `vulkan test`; drivers + Wayland already confirmed earlier; Vulkan/game path not yet exercised via CLI |
+| Diagnostics JSON schemas | complete | `/usr/share/arcalium/schemas/*.json` from `config/schemas/` |
 
 ## Phase 3 — Setup wizard
 
@@ -232,6 +235,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia — HEAD includes the Firefox in
 | 2026-07-30 | Logo mark + wordmark wired | Sources `assets/arccleanSVG.svg` (Kickoff/distributor mark) and `assets/ARG_fullSVG.svg` (wordmark). `install_logos.py` strips Illustrator metadata (~46 KB→~1 KB mark, ~68 KB→~7 KB wordmark) and installs into hicolor places + `/usr/share/arcalium/`. Plasma splash `bazzite_logo.svgz` replaced with gzipped wordmark where present. Plymouth watermark PNG and dark-panel mark still needed. |
 | 2026-07-30 | Plymouth + login wallpaper | Spinner `watermark.png` rasterised from `ARG_fullSVG.svg` (~256×121 RGBA). `/usr/lib/os-release` NAME/PRETTY_NAME rewritten to Arcalium (ID stays `bazzite` for Anaconda). Lock greeter (`kscreenlockerrc`) retargeted from `convergence.jxl`. |
 | 2026-07-30 | Boot still Bazzite after watermark change | Expected given the mechanism: Plymouth boots from the initramfs and shuts down from `/usr`, so a `/usr`-only change produces exactly "Arcalium on shutdown, Bazzite on boot". bootc does not regenerate the initramfs on deploy. Fixed by rebuilding `/usr/lib/modules/<kver>/initramfs.img` in `build.sh` with the args `lsinitrd` records, then asserting watermark byte-identity and `NAME="Arcalium OS"` in `initrd-release`. |
+| 2026-07-31 | Phase 2 `arcaliumctl` | Shipped Phase-2-only CLI: `system summary`, `gpu status`, `gpu validate`, `vulkan test` with allowlisted subprocesses, ARC-* codes, and JSON schemas under `/usr/share/arcalium/schemas/`. Runbook: `docs/PHASE2_VALIDATION.md`. Awaiting 3060 `bootc upgrade` + paste-back. |
 | 2026-07-30 | Heroic Games Launcher bundled | `com.heroicgameslauncher.hgl` added to `installer/flatpaks` and pinned next to Steam. ID matches the one already named in PRODUCT_SPEC §game-launchers; verified on Flathub (developer-verified via `heroicgameslauncher.com`, GPL-3.0) and confirmed **not** present in the Bazzite base — Bazzite only lists it in the Bazaar catalogue. Reaches machines via a rebuilt ISO only. |
 | 2026-07-30 | Login screen still Bazzite wallpaper | Plasma 6.7 replaced SDDM with `plasma-login-manager` (`plasmalogin.service`); there is no `sddm` binary. Wallpaper comes from `/usr/lib/plasmalogin/defaults.conf` under `[Greeter][Wallpaper][org.kde.image][General]`, not from `kscreenlockerrc`. Fixed by shipping that file; user overrides in `/etc/plasmalogin.conf` still win. |
 | 2026-07-30 | Hostname + Konsole welcome | Default hostname `arcalium` (`DEFAULT_HOSTNAME`, `/etc/hostname`, one-shot migrates stock `bazzite`). Konsole MOTD runs Arcalium `fastfetch` (ASCII mark + specs) instead of Bazzite tip markdown; `neofetch`/`fastfetch` aliases retargeted. |

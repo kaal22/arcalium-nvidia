@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arcalium.local/schemas/gpu.status.v1.json",
+  "title": "arcalium.gpu.status/v1",
+  "type": "object",
+  "required": ["schema", "pciDevices", "nvidiaModulesLoaded", "nouveauLoaded", "nvidiaSmi"],
+  "properties": {
+    "schema": { "const": "arcalium.gpu.status/v1" },
+    "pciDevices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "raw": { "type": "string" },
+          "pciId": { "type": "string" },
+          "name": { "type": "string" }
+        }
+      }
+    },
+    "nvidiaModulesLoaded": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "nouveauLoaded": { "type": "boolean" },
+    "nvidiaSmi": {
+      "type": "object",
+      "properties": {
+        "ok": { "type": "boolean" },
+        "gpus": { "type": "array" },
+        "error": { "type": ["string", "null"] }
+      }
+    },
+    "primaryGpuName": { "type": ["string", "null"] },
+    "primaryPciId": { "type": ["string", "null"] },
+    "driverVersion": { "type": ["string", "null"] }
+  },
+  "additionalProperties": true
+}

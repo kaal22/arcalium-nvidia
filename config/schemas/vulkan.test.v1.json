@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arcalium.local/schemas/vulkan.test.v1.json",
+  "title": "arcalium.vulkan.test/v1",
+  "type": "object",
+  "required": ["schema", "available", "hasNvidiaDevice", "softwareRenderer", "devices"],
+  "properties": {
+    "schema": { "const": "arcalium.vulkan.test/v1" },
+    "available": { "type": "boolean" },
+    "hasNvidiaDevice": { "type": "boolean" },
+    "softwareRenderer": { "type": "boolean" },
+    "devices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "raw": { "type": "string" }
+        }
+      }
+    },
+    "nvidiaDevices": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "apiVersion": { "type": ["string", "null"] },
+    "error": { "type": ["string", "null"] },
+    "detail": { "type": ["string", "null"] }
+  },
+  "additionalProperties": true
+}
