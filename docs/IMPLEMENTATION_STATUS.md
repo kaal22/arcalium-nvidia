@@ -10,7 +10,7 @@
 
 ## Where we left off (2026-07-31)
 
-Phase 0–2 complete on the RTX 3060. Control Centre Overview + Compatibility are implemented. Heroic opens directly; its unreliable pre-launch GE-Proton downloader has been removed. Manual Proton-GE installation remains available through Control Centre, Heroic Wine Manager, and `arcaliumctl`.
+Phase 0–2 complete on the RTX 3060. Control Centre has all §9.2 pages wired (status + user Flatpak ops; bootc apply/rollback as guidance). Heroic opens directly; Proton-GE install is explicit via Compatibility / `arcaliumctl`. Setup wizard and UI polish are still deferred.
 
 **Next on 3060:** `sudo bootc upgrade && sudo systemctl reboot`, then:
 
@@ -149,7 +149,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 
 | Requirement | Status | Notes |
 |---|---|---|
-| All version 1 pages | in progress | Overview + Compatibility live via `arcaliumctl`; other pages stubbed. **UI polish deferred** until every §9.2 page works — see Decisions. |
+| All version 1 pages | in progress | All §9.2 pages live (2026-07-31): GPU, Gaming, Applications, Storage, Network, Controllers, Streaming, Updates (status + guidance), Diagnostics (+ user support bundle), Settings, About. User Flatpak install/uninstall; no Polkit / no bootc mutate from UI. **UI polish deferred**. Setup wizard still out of scope. |
 
 ## Phase 8 — Private alpha
 

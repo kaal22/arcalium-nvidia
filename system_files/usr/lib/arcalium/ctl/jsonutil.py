@@ -20,6 +20,11 @@ ALLOWED_BINARIES: dict[str, str] = {
     "lsmod": "/usr/sbin/lsmod",
     "bootc": "/usr/bin/bootc",
     "uname": "/usr/bin/uname",
+    "flatpak": "/usr/bin/flatpak",
+    "lsblk": "/usr/bin/lsblk",
+    "findmnt": "/usr/bin/findmnt",
+    "ip": "/usr/sbin/ip",
+    "nmcli": "/usr/bin/nmcli",
 }
 
 # Alternate paths some Fedora layouts use
@@ -30,9 +35,15 @@ _FALLBACK_PATHS: dict[str, tuple[str, ...]] = {
     "vulkaninfo": ("/usr/bin/vulkaninfo",),
     "bootc": ("/usr/bin/bootc",),
     "uname": ("/usr/bin/uname",),
+    "flatpak": ("/usr/bin/flatpak",),
+    "lsblk": ("/usr/bin/lsblk", "/usr/sbin/lsblk"),
+    "findmnt": ("/usr/bin/findmnt", "/usr/sbin/findmnt"),
+    "ip": ("/usr/sbin/ip", "/usr/bin/ip"),
+    "nmcli": ("/usr/bin/nmcli",),
 }
 
 DEFAULT_TIMEOUT = 15
+FLATPAK_TIMEOUT = 1800
 
 
 def resolve_binary(name: str) -> str | None:

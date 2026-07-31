@@ -2,15 +2,31 @@
 
 Tauri 2 + React + TypeScript app (`io.arcalium.ControlCentre`).
 
-Live pages call allowlisted `arcaliumctl … --json` commands only:
+All §9.2 navigation pages are live. They call allowlisted `arcaliumctl … --json`
+commands and/or `gio launch` for desktop entries:
 
-- **Overview** — system / GPU / Vulkan summary; quick actions including Install Proton-GE
-- **Compatibility** — `proton list`, `proton install-recommended`, Open ProtonPlus, static ProtonDB / anti-cheat guidance
-- **About** — image identity
+| Page | Backend |
+|---|---|
+| Overview | `system` / `gpu` / `vulkan` + quick actions |
+| Gaming | `apps list` / install / uninstall + launch |
+| Compatibility | `proton list` / `install-recommended`, ProtonPlus, Protontricks |
+| GPU and Display | `gpu status` / `validate`, `vulkan test` |
+| Applications | catalogue-driven `apps` ops |
+| Storage | `storage scan` (read-only) |
+| Network and VPN | `network status` + Proton VPN Flatpak |
+| Controllers | `controllers list` |
+| Streaming | Sunshine / Moonlight / OBS via `apps` |
+| Updates and Recovery | `updates status` (guidance only for apply/rollback) |
+| Diagnostics | `diagnostics run` / `bundle` |
+| Settings | local preferences + System Settings link |
+| About | image identity |
 
-Other nav pages remain stubs until later one-feature passes.
+Privileged policy: user Flatpak install/uninstall only. No Polkit helper yet;
+`bootc` mutate stays as copyable commands.
 
-**Deferred:** a dedicated UI polish pass (layout, typography, motion, empty states) after all Control Centre stages / §9.2 pages are working — see `docs/IMPLEMENTATION_STATUS.md` Decisions.
+Catalogue source: `config/catalogue/apps.v1.json` → `/usr/share/arcalium/catalogue/`.
+
+**Deferred:** UI polish after every page works; Setup wizard next.
 
 ## Local build (WSL)
 

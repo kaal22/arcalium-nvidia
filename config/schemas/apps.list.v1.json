@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arcalium.local/schemas/apps.list.v1.json",
+  "title": "arcalium.apps.list/v1",
+  "type": "object",
+  "required": ["schema", "apps"],
+  "properties": {
+    "schema": { "const": "arcalium.apps.list/v1" },
+    "apps": { "type": "array" },
+    "flatpakAvailable": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}

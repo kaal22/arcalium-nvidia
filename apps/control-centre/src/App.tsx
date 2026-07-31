@@ -1,16 +1,34 @@
-import { useState } from "react";
-// Repo-root brand asset, the same source the OS icons are generated from, so the
-// UI mark cannot drift from the taskbar/menu icon.
+import { useEffect, useState } from "react";
 import brandMark from "../../../assets/arccleanSVG.svg";
 import { NAV, PageId } from "./nav";
 import { OverviewPage } from "./pages/Overview";
+import { GamingPage } from "./pages/Gaming";
 import { CompatibilityPage } from "./pages/Compatibility";
+import { GpuPage } from "./pages/Gpu";
+import { ApplicationsPage } from "./pages/Applications";
+import { StoragePage } from "./pages/Storage";
+import { NetworkPage } from "./pages/Network";
+import { ControllersPage } from "./pages/Controllers";
+import { StreamingPage } from "./pages/Streaming";
+import { UpdatesPage } from "./pages/Updates";
+import { DiagnosticsPage } from "./pages/Diagnostics";
+import { SettingsPage } from "./pages/Settings";
 import { AboutPage } from "./pages/About";
-import { StubPage } from "./pages/Stub";
+
+const LAST_PAGE_KEY = "arcalium.cc.lastPage";
+
+function isPageId(v: string | null): v is PageId {
+  return !!v && NAV.some((n) => n.id === v);
+}
 
 export default function App() {
   const [page, setPage] = useState<PageId>("overview");
-  const current = NAV.find((n) => n.id === page)!;
+
+  useEffect(() => {
+    if (localStorage.getItem("arcalium.cc.rememberPage") === "0") return;
+    const saved = localStorage.getItem(LAST_PAGE_KEY);
+    if (isPageId(saved)) setPage(saved);
+  }, []);
 
   return (
     <div className="shell">
@@ -37,11 +55,20 @@ export default function App() {
       </aside>
       <main className="content">
         {page === "overview" && <OverviewPage />}
+        {page === "gaming" && <GamingPage />}
         {page === "compatibility" && <CompatibilityPage />}
-        {page === "about" && <AboutPage />}
-        {page !== "overview" && page !== "compatibility" && page !== "about" && (
-          <StubPage title={current.label} note={current.stubNote || ""} />
+        {page === "gpu" && <GpuPage />}
+        {page === "applications" && <ApplicationsPage />}
+        {page === "storage" && <StoragePage />}
+        {page === "network" && <NetworkPage />}
+        {page === "controllers" && <ControllersPage />}
+        {page === "streaming" && <StreamingPage />}
+        {page === "updates" && <UpdatesPage />}
+        {page === "diagnostics" && <DiagnosticsPage />}
+        {page === "settings" && (
+          <SettingsPage currentPage={page} onRestorePage={setPage} />
         )}
+        {page === "about" && <AboutPage />}
       </main>
     </div>
   );

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arcalium.local/schemas/diagnostics.run.v1.json",
+  "title": "arcalium.diagnostics.run/v1",
+  "type": "object",
+  "required": ["schema", "overall", "checks"],
+  "properties": {
+    "schema": { "const": "arcalium.diagnostics.run/v1" },
+    "overall": { "type": "string" },
+    "checks": { "type": "array" }
+  },
+  "additionalProperties": true
+}

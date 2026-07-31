@@ -134,6 +134,11 @@ install -d /usr/share/arcalium/schemas
 if [[ -d /ctx/config/schemas ]]; then
     cp -av /ctx/config/schemas/. /usr/share/arcalium/schemas/
 fi
+# Declarative application catalogue for Control Centre / arcaliumctl apps.
+install -d /usr/share/arcalium/catalogue
+if [[ -d /ctx/config/catalogue ]]; then
+    cp -av /ctx/config/catalogue/. /usr/share/arcalium/catalogue/
+fi
 
 # Keep podman.socket available (inherited template default; idempotent).
 systemctl enable podman.socket

@@ -150,6 +150,19 @@ export function CompatibilityPage() {
             >
               Open ProtonPlus
             </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() =>
+                void openDesktop("com.github.Matoking.protontricks.desktop").catch(() => {
+                  setInstallErr(
+                    "Protontricks is not installed. Install it from Applications, then try again.",
+                  );
+                })
+              }
+            >
+              Open Protontricks
+            </button>
           </div>
           <p className="muted small" style={{ marginTop: "0.75rem" }}>
             Downloads the latest GE-Proton release into Heroic&apos;s tools directory when you choose

@@ -27,6 +27,22 @@ Anything listed in `installer/flatpaks` is copied into the ISO, so we redistribu
 | `com.vysp3r.ProtonPlus` | Yes — verified via `vysp3r.com`, publisher Vysp3r | GPL-3.0-or-later | Compatibility-tool manager, not Proton VPN and not affiliated with Proton AG. |
 | `com.heroicgameslauncher.hgl` | Yes — verified via `heroicgameslauncher.com` | GPL-3.0 | Open-source launcher for Epic, GOG and Amazon libraries. Arcalium redistributes only the launcher: no store client, game content or store credentials. Users authenticate to those stores themselves, and Arcalium is not affiliated with Epic Games, GOG or Amazon. |
 
+## Catalogue Flatpaks (install-on-demand, not ISO-bundled)
+
+Offered by Control Centre `apps install` / Applications pages. Not copied into the live ISO unless also listed under `installer/flatpaks`. Confirm redistribution before any public ISO that bundles them.
+
+| Flatpak ID | Verified on Flathub | Notes |
+|---|---|---|
+| `com.usebottles.bottles` | Yes | Optional Wine prefix manager |
+| `org.prismlauncher.PrismLauncher` | Yes | Minecraft launcher |
+| `com.github.Matoking.protontricks` | Yes | Proton helper |
+| `com.github.tchx84.Flatseal` | Yes | Flatpak permissions |
+| `com.discordapp.Discord` | Yes | Proprietary client |
+| `com.obsproject.Studio` | Yes | Streaming/recording |
+| `dev.lizardbyte.app.Sunshine` | Yes | Opt-in host; extra Flatpak install script; firewall not opened by Arcalium |
+| `com.moonlight_stream.Moonlight` | Yes | GameStream client |
+| `com.protonvpn.www` | Yes | Optional VPN GUI; secrets not imported by Control Centre |
+
 ## Web-app launchers
 
 | Launcher | URL | Redistribution note |

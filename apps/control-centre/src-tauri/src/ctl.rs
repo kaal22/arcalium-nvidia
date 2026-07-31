@@ -8,17 +8,59 @@ use thiserror::Error;
 
 const ARCALIUMCTL: &str = "/usr/bin/arcaliumctl";
 const TIMEOUT_DEFAULT_SECS: u64 = 60;
-/// GE-Proton downloads are large; matches arcaliumctl's DOWNLOAD_TIMEOUT.
 const TIMEOUT_PROTON_INSTALL_SECS: u64 = 1800;
+const TIMEOUT_FLATPAK_SECS: u64 = 1800;
+const TIMEOUT_DIAGNOSTICS_SECS: u64 = 120;
 
-/// Exact argv sequences the UI may request (without the binary name).
-const ALLOWED: &[&[&str]] = &[
+/// Flatpak source IDs permitted for apps install/uninstall (must match catalogue).
+const ALLOWED_FLATPAK_IDS: &[&str] = &[
+    "com.heroicgameslauncher.hgl",
+    "com.usebottles.bottles",
+    "org.prismlauncher.PrismLauncher",
+    "com.brave.Browser",
+    "com.spotify.Client",
+    "com.vysp3r.ProtonPlus",
+    "com.github.Matoking.protontricks",
+    "com.github.tchx84.Flatseal",
+    "com.discordapp.Discord",
+    "com.obsproject.Studio",
+    "dev.lizardbyte.app.Sunshine",
+    "com.moonlight_stream.Moonlight",
+    "com.protonvpn.www",
+];
+
+/// Catalogue ids also accepted as apps install/uninstall targets.
+const ALLOWED_CATALOGUE_IDS: &[&str] = &[
+    "heroic",
+    "bottles",
+    "prism",
+    "brave",
+    "spotify",
+    "protonplus",
+    "protontricks",
+    "flatseal",
+    "discord",
+    "obs",
+    "sunshine",
+    "moonlight",
+    "protonvpn",
+];
+
+const ALLOWED_EXACT: &[&[&str]] = &[
     &["system", "summary", "--json"],
     &["gpu", "status", "--json"],
     &["gpu", "validate", "--json"],
     &["vulkan", "test", "--json"],
     &["proton", "list", "--json"],
     &["proton", "install-recommended", "--json"],
+    &["apps", "catalogue", "--json"],
+    &["apps", "list", "--json"],
+    &["storage", "scan", "--json"],
+    &["network", "status", "--json"],
+    &["controllers", "list", "--json"],
+    &["updates", "status", "--json"],
+    &["diagnostics", "run", "--json"],
+    &["diagnostics", "bundle", "--json"],
 ];
 
 #[derive(Debug, Error)]
@@ -37,19 +79,39 @@ pub enum CtlError {
     Json(String),
 }
 
+fn is_allowed(args: &[String]) -> bool {
+    if ALLOWED_EXACT.iter().any(|seq| {
+        seq.len() == args.len() && seq.iter().zip(args.iter()).all(|(a, b)| *a == b.as_str())
+    }) {
+        return true;
+    }
+    // apps install|uninstall <id> --json
+    if args.len() == 4
+        && args[0] == "apps"
+        && (args[1] == "install" || args[1] == "uninstall")
+        && args[3] == "--json"
+    {
+        let id = args[2].as_str();
+        return ALLOWED_FLATPAK_IDS.contains(&id) || ALLOWED_CATALOGUE_IDS.contains(&id);
+    }
+    false
+}
+
 fn timeout_for(args: &[String]) -> u64 {
     if args.len() >= 2 && args[0] == "proton" && args[1] == "install-recommended" {
-        TIMEOUT_PROTON_INSTALL_SECS
-    } else {
-        TIMEOUT_DEFAULT_SECS
+        return TIMEOUT_PROTON_INSTALL_SECS;
     }
+    if args.len() >= 2 && args[0] == "apps" && (args[1] == "install" || args[1] == "uninstall") {
+        return TIMEOUT_FLATPAK_SECS;
+    }
+    if args.len() >= 2 && args[0] == "diagnostics" {
+        return TIMEOUT_DIAGNOSTICS_SECS;
+    }
+    TIMEOUT_DEFAULT_SECS
 }
 
 pub fn run_arcaliumctl(args: &[String]) -> Result<Value, CtlError> {
-    let allowed = ALLOWED.iter().any(|seq| {
-        seq.len() == args.len() && seq.iter().zip(args.iter()).all(|(a, b)| *a == b.as_str())
-    });
-    if !allowed {
+    if !is_allowed(args) {
         return Err(CtlError::NotAllowlisted(args.to_vec()));
     }
     if !std::path::Path::new(ARCALIUMCTL).is_file() {

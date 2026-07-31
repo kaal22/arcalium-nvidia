@@ -245,9 +245,74 @@ button {
   margin: 0 0 0.75rem;
 }
 
-.action-row {
+.action-row,
+.btn-row {
   display: flex;
   flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.grid.two {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  margin-bottom: 1rem;
+}
+
+.kv {
+  margin: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.kv > div {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 0.5rem;
+}
+
+.kv dt {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.kv dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.banner.bad {
+  border-color: var(--danger);
+  background: rgba(255, 107, 122, 0.08);
+}
+
+.badge {
+  display: inline-block;
+  min-width: 4.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  border-radius: 6px;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid var(--border);
+  text-transform: uppercase;
+}
+
+.badge.ok {
+  color: var(--ok);
+  border-color: var(--accent-dim);
+}
+
+.badge.warn {
+  color: #f0c674;
+}
+
+.badge.bad {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
   gap: 0.6rem;
   margin-bottom: 0.75rem;
 }

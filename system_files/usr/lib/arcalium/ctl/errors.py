@@ -31,6 +31,8 @@ ARC_VLK_002 = ArcError("ARC-VLK-002", "Vulkan has no NVIDIA device")
 ARC_TOOL_001 = ArcError("ARC-TOOL-001", "Required diagnostic tool missing or failed")
 ARC_TOOL_002 = ArcError("ARC-TOOL-002", "Diagnostic tool timed out")
 
-# Network / Proton
+# Network / Proton / Apps
 ARC_NET_001 = ArcError("ARC-NET-001", "Network request failed")
 ARC_PROTON_001 = ArcError("ARC-PROTON-001", "Proton install failed")
+ARC_APPS_001 = ArcError("ARC-APPS-001", "Application operation failed")
+ARC_APPS_002 = ArcError("ARC-APPS-002", "Application id not in catalogue")

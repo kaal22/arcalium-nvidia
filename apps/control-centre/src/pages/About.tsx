@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { arcaliumctl, JsonValue } from "../api";
+import { pick, str } from "../lib/json";
 
 export function AboutPage() {
   const [summary, setSummary] = useState<JsonValue | null>(null);
@@ -11,7 +12,7 @@ export function AboutPage() {
   }, []);
 
   const image = summary
-    ? `${String(summary.imageName ?? "arcalium-os-nvidia")}:${String(summary.channel ?? "dev")}`
+    ? `${str(pick(summary, "imageName"), "arcalium-os-nvidia")}:${str(pick(summary, "channel"), "dev")}`
     : "arcalium-os-nvidia:dev";
 
   return (
@@ -23,14 +24,26 @@ export function AboutPage() {
         </div>
       </header>
       <article className="card">
-        <dl>
+        <dl className="kv">
           <div>
             <dt>Control Centre</dt>
-            <dd>0.1.0 — Overview + Compatibility</dd>
+            <dd>0.1.0 — all §9.2 pages</dd>
+          </div>
+          <div>
+            <dt>Product</dt>
+            <dd>{str(pick(summary, "product"), "Arcalium OS")}</dd>
           </div>
           <div>
             <dt>Image</dt>
-            <dd>{image}</dd>
+            <dd className="mono">{image}</dd>
+          </div>
+          <div>
+            <dt>Pretty name</dt>
+            <dd>{str(pick(summary, "prettyName"))}</dd>
+          </div>
+          <div>
+            <dt>Kernel</dt>
+            <dd className="mono">{str(pick(summary, "kernel"))}</dd>
           </div>
           <div>
             <dt>App ID</dt>
@@ -41,11 +54,11 @@ export function AboutPage() {
             <dd>/usr/bin/arcaliumctl (allowlisted JSON only)</dd>
           </div>
         </dl>
-        <p className="muted">
-          Arcalium OS is an independent project built on Bazzite and is not affiliated with or
-          endorsed by Valve, NVIDIA, Spotify, Proton AG, Fedora, Universal Blue or the Bazzite
-          project. Repository tooling retains the Apache-2.0 licence from Universal Blue’s
-          image-template.
+        <p className="muted" style={{ marginTop: "1rem" }}>
+          Arcalium OS is an independent project <strong>built on Bazzite</strong> and is not
+          affiliated with or endorsed by Valve, NVIDIA, Spotify, Proton AG, Fedora, Universal Blue
+          or the Bazzite project. Repository tooling retains the Apache-2.0 licence from Universal
+          Blue&apos;s image-template.
         </p>
         <p className="muted">
           Docs and support:{" "}

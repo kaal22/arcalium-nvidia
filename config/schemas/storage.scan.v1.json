@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arcalium.local/schemas/storage.scan.v1.json",
+  "title": "arcalium.storage.scan/v1",
+  "type": "object",
+  "required": ["schema", "devices", "warnings"],
+  "properties": {
+    "schema": { "const": "arcalium.storage.scan/v1" },
+    "devices": { "type": "array" },
+    "warnings": { "type": "array" },
+    "root": { "type": "object" },
+    "home": { "type": "object" }
+  },
+  "additionalProperties": true
+}

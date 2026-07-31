@@ -6,25 +6,17 @@ import argparse
 import sys
 from typing import Any
 
-from . import gpu, proton, system, vulkan
-from .errors import ARC_CMD_001, ARC_CMD_002
+from . import apps, controllers, diagnostics, gpu, network, proton, storage, system, updates, vulkan
+from .apps import AppsError
+from .errors import ARC_CMD_001, ARC_CMD_003
 from .jsonutil import emit
 from .proton import ProtonError
-
-
-STUB_COMMANDS = {
-    "apps": "Application provisioning (Phase 4)",
-    "storage": "Storage scan (Phase 6)",
-    "vpn": "VPN import (Phase 6)",
-    "updates": "Update status (Phase 7)",
-    "diagnostics": "Support bundle (Phase 7)",
-}
 
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="arcaliumctl",
-        description="Arcalium OS diagnostics and management CLI (Phase 2 subset).",
+        description="Arcalium OS diagnostics and management CLI.",
     )
     parser.add_argument("--json", action="store_true", help="Emit stable JSON (required for UI).")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -55,15 +47,41 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Re-download even if a GE-Proton build is already present",
     )
 
-    for name, help_text in STUB_COMMANDS.items():
-        sub.add_parser(name, help=f"{help_text} — not implemented yet")
+    apps_p = sub.add_parser("apps", help="Application catalogue and Flatpak ops")
+    apps_sub = apps_p.add_subparsers(dest="action", required=True)
+    apps_sub.add_parser("catalogue", help="Declarative application catalogue")
+    apps_sub.add_parser("list", help="Catalogue entries with install state")
+    apps_install = apps_sub.add_parser("install", help="Install catalogue Flatpak as --user")
+    apps_install.add_argument("app_id", help="Catalogue id or Flatpak sourceId")
+    apps_uninstall = apps_sub.add_parser("uninstall", help="Uninstall user Flatpak from catalogue")
+    apps_uninstall.add_argument("app_id", help="Catalogue id or Flatpak sourceId")
+
+    storage_p = sub.add_parser("storage", help="Storage scan")
+    storage_sub = storage_p.add_subparsers(dest="action", required=True)
+    storage_sub.add_parser("scan", help="Read-only drive and mount inventory")
+
+    network_p = sub.add_parser("network", help="Network status")
+    network_sub = network_p.add_subparsers(dest="action", required=True)
+    network_sub.add_parser("status", help="Addresses, DNS, VPN hint")
+
+    controllers_p = sub.add_parser("controllers", help="Game controllers")
+    controllers_sub = controllers_p.add_subparsers(dest="action", required=True)
+    controllers_sub.add_parser("list", help="Detect connected controllers")
+
+    updates_p = sub.add_parser("updates", help="Update status (read-only)")
+    updates_sub = updates_p.add_subparsers(dest="action", required=True)
+    updates_sub.add_parser("status", help="bootc deployment summary and guidance")
+
+    diagnostics_p = sub.add_parser("diagnostics", help="Health checks and support bundle")
+    diagnostics_sub = diagnostics_p.add_subparsers(dest="action", required=True)
+    diagnostics_sub.add_parser("run", help="Aggregate health checklist")
+    diagnostics_sub.add_parser("bundle", help="Write redacted support bundle under ~/.local/state/arcalium")
 
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    # Allow `arcaliumctl system summary --json` with --json anywhere
     as_json = False
     if "--json" in argv:
         as_json = True
@@ -78,22 +96,6 @@ def main(argv: list[str] | None = None) -> int:
     command = args.command
     action = getattr(args, "action", None)
 
-    if command in STUB_COMMANDS:
-        payload: dict[str, Any] = {
-            "schema": "arcalium.error/v1",
-            "ok": False,
-            "code": ARC_CMD_002.code,
-            "message": ARC_CMD_002.message,
-            "command": command,
-            "detail": STUB_COMMANDS[command],
-        }
-        emit(
-            payload,
-            as_json=as_json or True,
-            human_lines=[f"{ARC_CMD_002.code}: {STUB_COMMANDS[command]} — not implemented yet"],
-        )
-        return ARC_CMD_002.exit_code
-
     if command == "system" and action == "summary":
         data = system.summarize()
         emit(data, as_json=as_json, human_lines=system.human_lines(data))
@@ -107,7 +109,6 @@ def main(argv: list[str] | None = None) -> int:
     if command == "gpu" and action == "validate":
         data = gpu.validate()
         emit(data, as_json=as_json, human_lines=gpu.human_validate(data))
-        # Command succeeded; overall readiness is in JSON. Exit 0 so UI can parse.
         return 0
 
     if command == "vulkan" and action == "test":
@@ -134,7 +135,75 @@ def main(argv: list[str] | None = None) -> int:
         emit(data, as_json=as_json, human_lines=proton.human_install(data))
         return 0
 
-    payload = {
+    if command == "apps" and action == "catalogue":
+        data = apps.catalogue()
+        emit(data, as_json=as_json, human_lines=apps.human_catalogue(data))
+        return 0
+
+    if command == "apps" and action == "list":
+        data = apps.list_apps()
+        emit(data, as_json=as_json, human_lines=apps.human_list(data))
+        return 0
+
+    if command == "apps" and action == "install":
+        try:
+            data = apps.install_app(args.app_id)
+        except AppsError as exc:
+            payload = apps.error_payload(exc, command="apps", action="install")
+            emit(
+                payload,
+                as_json=as_json or True,
+                human_lines=[f"{exc.error.code}: {exc.detail or exc.error.message}"],
+            )
+            return exc.error.exit_code
+        emit(data, as_json=as_json, human_lines=apps.human_mutate(data))
+        return 0
+
+    if command == "apps" and action == "uninstall":
+        try:
+            data = apps.uninstall_app(args.app_id)
+        except AppsError as exc:
+            payload = apps.error_payload(exc, command="apps", action="uninstall")
+            emit(
+                payload,
+                as_json=as_json or True,
+                human_lines=[f"{exc.error.code}: {exc.detail or exc.error.message}"],
+            )
+            return exc.error.exit_code
+        emit(data, as_json=as_json, human_lines=apps.human_mutate(data))
+        return 0
+
+    if command == "storage" and action == "scan":
+        data = storage.scan()
+        emit(data, as_json=as_json, human_lines=storage.human_lines(data))
+        return 0
+
+    if command == "network" and action == "status":
+        data = network.status()
+        emit(data, as_json=as_json, human_lines=network.human_lines(data))
+        return 0
+
+    if command == "controllers" and action == "list":
+        data = controllers.list_controllers()
+        emit(data, as_json=as_json, human_lines=controllers.human_lines(data))
+        return 0
+
+    if command == "updates" and action == "status":
+        data = updates.status()
+        emit(data, as_json=as_json, human_lines=updates.human_lines(data))
+        return 0
+
+    if command == "diagnostics" and action == "run":
+        data = diagnostics.run()
+        emit(data, as_json=as_json, human_lines=diagnostics.human_run(data))
+        return 0
+
+    if command == "diagnostics" and action == "bundle":
+        data = diagnostics.bundle()
+        emit(data, as_json=as_json, human_lines=diagnostics.human_bundle(data))
+        return 0 if data.get("ok") else ARC_CMD_003.exit_code
+
+    payload: dict[str, Any] = {
         "schema": "arcalium.error/v1",
         "ok": False,
         "code": ARC_CMD_001.code,

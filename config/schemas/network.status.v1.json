@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arcalium.local/schemas/network.status.v1.json",
+  "title": "arcalium.network.status/v1",
+  "type": "object",
+  "required": ["schema", "addresses", "vpn"],
+  "properties": {
+    "schema": { "const": "arcalium.network.status/v1" },
+    "addresses": { "type": "array" },
+    "vpn": { "type": "object" },
+    "internetReachable": { "type": ["boolean", "null"] }
+  },
+  "additionalProperties": true
+}

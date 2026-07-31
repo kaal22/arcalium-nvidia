@@ -67,15 +67,27 @@ def _lsmod_names() -> set[str]:
 
 
 def _nvidia_smi() -> dict[str, Any]:
+    query = (
+        "name,driver_version,pci.bus_id,memory.total,memory.used,"
+        "utilization.gpu,temperature.gpu,power.draw,encoder.stats.sessionCount"
+    )
     result = run_allowlisted(
         "nvidia-smi",
         [
-            "--query-gpu=name,driver_version,pci.bus_id,memory.total",
-            "--format=csv,noheader",
+            f"--query-gpu={query}",
+            "--format=csv,noheader,nounits",
         ],
     )
     if not result.ok:
-        # Fall back to plain nvidia-smi for presence
+        # Fall back to a smaller query, then plain presence.
+        result = run_allowlisted(
+            "nvidia-smi",
+            [
+                "--query-gpu=name,driver_version,pci.bus_id,memory.total",
+                "--format=csv,noheader",
+            ],
+        )
+    if not result.ok:
         plain = run_allowlisted("nvidia-smi")
         return {
             "ok": plain.ok,
@@ -83,18 +95,28 @@ def _nvidia_smi() -> dict[str, Any]:
             "stderr": (result.stderr or plain.stderr)[:500],
             "gpus": [],
         }
-    gpus: list[dict[str, str]] = []
+    gpus: list[dict[str, Any]] = []
     for line in result.stdout.splitlines():
         parts = [p.strip() for p in line.split(",")]
-        if len(parts) >= 2:
-            gpus.append(
-                {
-                    "name": parts[0],
-                    "driverVersion": parts[1],
-                    "pciBusId": parts[2] if len(parts) > 2 else "",
-                    "memoryTotal": parts[3] if len(parts) > 3 else "",
-                }
-            )
+        if len(parts) < 2:
+            continue
+        entry: dict[str, Any] = {
+            "name": parts[0],
+            "driverVersion": parts[1],
+            "pciBusId": parts[2] if len(parts) > 2 else "",
+            "memoryTotal": parts[3] if len(parts) > 3 else "",
+        }
+        if len(parts) > 4:
+            entry["memoryUsed"] = parts[4]
+        if len(parts) > 5:
+            entry["utilizationGpu"] = parts[5]
+        if len(parts) > 6:
+            entry["temperatureC"] = parts[6]
+        if len(parts) > 7:
+            entry["powerDrawW"] = parts[7]
+        if len(parts) > 8:
+            entry["encoderSessions"] = parts[8]
+        gpus.append(entry)
     return {"ok": True, "gpus": gpus, "error": None}
 
 
@@ -104,16 +126,40 @@ def status() -> dict[str, Any]:
     smi = _nvidia_smi()
     nvidia_mods = sorted(m for m in modules if m.startswith("nvidia"))
     nouveau = "nouveau" in modules
+    session = os.environ.get("XDG_SESSION_TYPE") or (
+        "wayland" if os.environ.get("WAYLAND_DISPLAY") else "unknown"
+    )
+    primary = smi["gpus"][0] if smi.get("gpus") else {}
     return {
         "schema": "arcalium.gpu.status/v1",
         "pciDevices": pci,
         "nvidiaModulesLoaded": nvidia_mods,
         "nouveauLoaded": nouveau,
         "nvidiaSmi": smi,
-        "primaryGpuName": (smi["gpus"][0]["name"] if smi.get("gpus") else (pci[0]["name"] if pci else None)),
+        "primaryGpuName": (primary.get("name") if primary else (pci[0]["name"] if pci else None)),
         "primaryPciId": (pci[0]["pciId"] if pci else None),
-        "driverVersion": (smi["gpus"][0]["driverVersion"] if smi.get("gpus") else None),
+        "driverVersion": primary.get("driverVersion"),
+        "memoryTotal": primary.get("memoryTotal"),
+        "memoryUsed": primary.get("memoryUsed"),
+        "utilizationGpu": primary.get("utilizationGpu"),
+        "temperatureC": primary.get("temperatureC"),
+        "powerDrawW": primary.get("powerDrawW"),
+        "encoderSessions": primary.get("encoderSessions"),
+        "sessionType": session,
+        "waylandDisplay": bool(os.environ.get("WAYLAND_DISPLAY")) or session == "wayland",
+        "nvidiaSettingsDesktop": _find_nvidia_settings_desktop(),
     }
+
+
+def _find_nvidia_settings_desktop() -> str | None:
+    candidates = (
+        "/usr/share/applications/nvidia-settings.desktop",
+        "/usr/share/applications/org.nvidia.Settings.desktop",
+    )
+    for path in candidates:
+        if os.path.isfile(path):
+            return os.path.basename(path)
+    return None
 
 
 def _check(

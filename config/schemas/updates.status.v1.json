@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arcalium.local/schemas/updates.status.v1.json",
+  "title": "arcalium.updates.status/v1",
+  "type": "object",
+  "required": ["schema", "bootc", "guidance"],
+  "properties": {
+    "schema": { "const": "arcalium.updates.status/v1" },
+    "bootc": { "type": "object" },
+    "guidance": { "type": "object" }
+  },
+  "additionalProperties": true
+}
