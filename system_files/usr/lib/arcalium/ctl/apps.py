@@ -9,11 +9,23 @@ from typing import Any
 from .errors import ARC_APPS_001, ARC_APPS_002, ArcError
 from .jsonutil import FLATPAK_TIMEOUT, read_json_file, run_allowlisted
 
-CATALOGUE_PATHS = (
-    Path("/usr/share/arcalium/catalogue/apps.v1.json"),
-    # Dev checkout fallback when running arcaliumctl from a worktree without an image install.
-    Path(__file__).resolve().parents[5] / "config" / "catalogue" / "apps.v1.json",
-)
+def _catalogue_paths() -> tuple[Path, ...]:
+    """Installed location first, then a repo-checkout fallback.
+
+    On an installed system this file is /usr/lib/arcalium/ctl/apps.py, which has
+    fewer than six parents, so the checkout path must be probed by length rather
+    than indexed blindly — indexing raised IndexError at import time and took
+    every arcaliumctl command down with it.
+    """
+    paths = [Path("/usr/share/arcalium/catalogue/apps.v1.json")]
+    # Checkout layout: <repo>/system_files/usr/lib/arcalium/ctl/apps.py
+    parents = Path(__file__).resolve().parents
+    if len(parents) > 5:
+        paths.append(parents[5] / "config" / "catalogue" / "apps.v1.json")
+    return tuple(paths)
+
+
+CATALOGUE_PATHS = _catalogue_paths()
 
 
 class AppsError(Exception):

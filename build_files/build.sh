@@ -139,6 +139,13 @@ install -d /usr/share/arcalium/catalogue
 if [[ -d /ctx/config/catalogue ]]; then
     cp -av /ctx/config/catalogue/. /usr/share/arcalium/catalogue/
 fi
+test -f /usr/share/arcalium/catalogue/apps.v1.json
+
+# An import-time error in any ctl module breaks every arcaliumctl command, and
+# therefore the whole Control Centre, so prove the CLI imports and that the
+# catalogue parses before the image ships. --help exercises every import.
+arcaliumctl --help >/dev/null
+python3 -c 'import json,sys; json.load(open("/usr/share/arcalium/catalogue/apps.v1.json"))'
 
 # Keep podman.socket available (inherited template default; idempotent).
 systemctl enable podman.socket
