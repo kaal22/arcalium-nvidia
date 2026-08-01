@@ -87,6 +87,25 @@ def _installed_flatpaks() -> set[str]:
 
 FLATHUB_URL = "https://dl.flathub.org/repo/flathub.flatpakrepo"
 
+# A .flatpakrepo file carries the Flathub signing key; the bare OSTree URL does
+# not, and a keyless remote fails every download with "public key not found".
+_FLATHUB_REPO_FILES: tuple[str, ...] = (
+    "/etc/flatpak/remotes.d/flathub.flatpakrepo",
+    "/usr/share/flatpak/remotes.d/flathub.flatpakrepo",
+    "/usr/etc/flatpak/remotes.d/flathub.flatpakrepo",
+)
+
+_SYSTEM_FLATHUB_KEYRINGS: tuple[str, ...] = (
+    "/var/lib/flatpak/repo/flathub.trustedkeys.gpg",
+)
+
+_SIGNATURE_FAILURE_MARKERS: tuple[str, ...] = (
+    "public key not found",
+    "can't check signature",
+    "none are in trusted keyring",
+    "gpg verification",
+)
+
 
 def _remotes(scope: str) -> dict[str, str]:
     """Remote name -> URL for --user or --system."""
@@ -106,20 +125,75 @@ def _remotes(scope: str) -> dict[str, str]:
     return remotes
 
 
+def _flathub_source() -> str:
+    """Prefer a local .flatpakrepo definition, else Flathub's hosted one."""
+    for candidate in _FLATHUB_REPO_FILES:
+        if Path(candidate).is_file():
+            return candidate
+    return FLATHUB_URL
+
+
+def _user_flathub_keyring() -> Path | None:
+    home = os.environ.get("HOME")
+    if not home:
+        return None
+    return Path(home) / ".local/share/flatpak/repo/flathub.trustedkeys.gpg"
+
+
+def _user_flathub_has_key() -> bool:
+    keyring = _user_flathub_keyring()
+    if keyring is None:
+        return True  # Cannot tell without HOME; let flatpak decide.
+    try:
+        return keyring.is_file() and keyring.stat().st_size > 0
+    except OSError:
+        return False
+
+
+def _add_user_flathub():
+    return run_allowlisted(
+        "flatpak",
+        ["remote-add", "--user", "--if-not-exists", "flathub", _flathub_source()],
+        timeout=120,
+    )
+
+
+def _is_signature_failure(text: str) -> bool:
+    lowered = text.lower()
+    return any(marker in lowered for marker in _SIGNATURE_FAILURE_MARKERS)
+
+
+def repair_user_flathub() -> bool:
+    """Give the user's flathub remote its signing key back.
+
+    Earlier builds copied the system remote's bare OSTree URL, which imports no
+    GPG key, so downloads died on "Can't check signature: public key not found".
+    """
+    for keyring in _SYSTEM_FLATHUB_KEYRINGS:
+        if not Path(keyring).is_file():
+            continue
+        result = run_allowlisted(
+            "flatpak",
+            ["remote-modify", "--user", f"--gpg-import={keyring}", "flathub"],
+            timeout=60,
+        )
+        if result.ok and _user_flathub_has_key():
+            return True
+    run_allowlisted("flatpak", ["remote-delete", "--user", "--force", "flathub"], timeout=60)
+    return _add_user_flathub().ok
+
+
 def _ensure_user_flathub() -> None:
-    """Give the user installation a flathub remote.
+    """Give the user installation a usable flathub remote.
 
     Bazzite configures flathub system-wide, so a plain `--user` install fails
     with "Remote \"flathub\" not found" on a fresh account.
     """
     if "flathub" in _remotes("--user"):
+        if not _user_flathub_has_key():
+            repair_user_flathub()
         return
-    url = _remotes("--system").get("flathub") or FLATHUB_URL
-    result = run_allowlisted(
-        "flatpak",
-        ["remote-add", "--user", "--if-not-exists", "flathub", url],
-        timeout=120,
-    )
+    result = _add_user_flathub()
     if not result.ok and "flathub" not in _remotes("--user"):
         raise AppsError(
             ARC_APPS_001,
@@ -231,6 +305,12 @@ def install_app(app_id: str) -> dict[str, Any]:
     _ensure_user_flathub()
     argv = ["install", "--user", "-y", "flathub", source]
     result = run_allowlisted("flatpak", argv, timeout=FLATPAK_TIMEOUT)
+    repaired = False
+    if not result.ok:
+        detail = (result.stderr or result.stdout or "flatpak install failed").strip()
+        if _is_signature_failure(detail) and repair_user_flathub():
+            repaired = True
+            result = run_allowlisted("flatpak", argv, timeout=FLATPAK_TIMEOUT)
     if not result.ok:
         detail = (result.stderr or result.stdout or "flatpak install failed").strip()
         raise AppsError(
@@ -244,6 +324,7 @@ def install_app(app_id: str) -> dict[str, Any]:
         "id": entry.get("id"),
         "sourceId": source,
         "scope": "user",
+        "repairedRemote": repaired,
     }
 
 
