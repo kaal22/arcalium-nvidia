@@ -25,7 +25,7 @@ Resume / restart: Kickoff → **Arcalium Setup**, or Settings → Setup wizard.
 | Streaming | Sunshine / Moonlight / OBS via `apps` |
 | Updates and Recovery | `updates status` / `check` / `apply` / `rollback` / `reboot` (terminal + sudo) |
 | Diagnostics | `diagnostics run` / `bundle` |
-| Local AI Assistant | `ai install-ollama --visible` / `ensure --visible` / `status` / `launch` / `stop` (terminal progress for install & pull; Ollama + `gemma4:e4b-it-qat`) |
+| Local AI Assistant | agentic `ai launch` (allowlisted `arcaliumctl` tools) / `install-ollama --visible` / `ensure --visible` / `status` / `stop` |
 | Settings | prefs + setup resume/restart |
 | About | image identity |
 

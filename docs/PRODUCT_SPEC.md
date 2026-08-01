@@ -1124,12 +1124,21 @@ The Local AI Assistant page (and an optional Diagnostics quick action) must:
 - Always-on tray / daemon chat that keeps the model warm in VRAM.
 - Automatic silent model upgrades to larger Gemma tags.
 - Sending chat content off-device.
-- Replacing Polkit, `bootc`, or privileged repair with AI-executed shell commands. The assistant may suggest commands; the user (or allowlisted `arcaliumctl`) executes them.
+- Letting the assistant run arbitrary shell, `sudo`, or raw `bootc`/`flatpak`/`brew` commands.
+
+### Agentic tools (allowlisted)
+
+The terminal session runs an Arcalium agent wrapper (`/usr/lib/arcalium/ai/agent.py`) around Ollama:
+
+- The model may emit `[[run arcaliumctl … --json]]` for read-only status tools; the wrapper executes only an allowlist and feeds JSON results back into the chat.
+- Mutating tools use `[[confirm arcaliumctl …]]` and require the user to type `yes` in the terminal before running (app install/uninstall, Proton install, updates check/apply/rollback/reboot, diagnostics bundle, AI stop/ensure).
+- Privileged image mutations still happen through the existing Updates terminal helpers (sudo prompt visible) — not as silent background root from the model.
 
 ### Acceptance
 
 - Assistant launches from Control Centre into a terminal.
 - Chat works offline after the model is present and uses the Arcalium system prompt (Linux/bash/bootc context).
+- The assistant can gather live system facts via allowlisted `arcaliumctl` and apply safe fixes only after confirmation.
 - Closing the terminal unloads the assistant/base models and returns the GPU to a gaming-usable free-VRAM state without a reboot.
 - Failure modes (missing Ollama, pull incomplete, insufficient VRAM/disk) are explained in plain language with a retry path.
 

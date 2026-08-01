@@ -1,11 +1,12 @@
 #!/usr/bin/bash
 # Arcalium Local AI assistant session (PRODUCT_SPEC §9.14).
-# Runs the Arcalium-prompted model. Closing this terminal unloads GPU VRAM for gaming.
+# Agentic wrapper around Ollama: allowlisted arcaliumctl tools, unload on close.
 set -u
 
 MODEL="${ARCALIUM_AI_MODEL:-arcalium-assistant}"
 BASE_MODEL="${ARCALIUM_AI_BASE_MODEL:-gemma4:e4b-it-qat}"
 OLLAMA_BIN="${ARCALIUM_OLLAMA_BIN:-}"
+AGENT_PY="${ARCALIUM_AI_AGENT:-/usr/lib/arcalium/ai/agent.py}"
 
 if [[ -z "${OLLAMA_BIN}" ]]; then
   for candidate in \
@@ -36,13 +37,22 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM HUP
 
-echo "Arcalium Local AI — ${MODEL}"
-echo "System prompt: Arcalium OS NVIDIA Edition (bash / bootc / Flatpak). Suggestions only."
-echo "Close this window when finished to unload the model and free the GPU for gaming."
-echo
+export ARCALIUM_OLLAMA_BIN="${OLLAMA_BIN}"
+export ARCALIUM_AI_MODEL="${MODEL}"
+export ARCALIUM_AI_BASE_MODEL="${BASE_MODEL}"
+export ARCALIUMCTL="${ARCALIUMCTL:-/usr/bin/arcaliumctl}"
 
-"${OLLAMA_BIN}" run "${MODEL}"
-exit_code=$?
+if [[ -f "${AGENT_PY}" ]]; then
+  python3 "${AGENT_PY}"
+  exit_code=$?
+else
+  echo "Agent script missing (${AGENT_PY}); falling back to plain ollama run."
+  echo "Close this window when finished to unload the model and free the GPU for gaming."
+  echo
+  "${OLLAMA_BIN}" run "${MODEL}"
+  exit_code=$?
+fi
+
 cleanup
 trap - EXIT INT TERM HUP
 exit "${exit_code}"

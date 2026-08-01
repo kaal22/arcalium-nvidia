@@ -135,6 +135,26 @@ export function AssistantPage() {
     }
   };
 
+  const runRefreshAgent = async () => {
+    setBusy("ensure");
+    setMsg(null);
+    setError(null);
+    try {
+      // Silent ensure recreates arcalium-assistant with the current system prompt.
+      const result = await arcaliumctl(["ai", "ensure", "--json"]);
+      if (!pick(result, "ok")) {
+        throw new Error(str(pick(result, "message"), "Could not refresh assistant."));
+      }
+      setData(await arcaliumctl(["ai", "status", "--json"]));
+      setMsg(str(pick(result, "message"), "Assistant agent prompt refreshed."));
+      setState("ready");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const runLaunch = async () => {
     setBusy("launch");
     setMsg(null);
@@ -177,10 +197,11 @@ export function AssistantPage() {
         <div>
           <h1>Local AI Assistant</h1>
           <p className="muted">
-            Offline Ollama helper for maintenance questions. Assistant{" "}
+            Offline agentic helper. Assistant{" "}
             <span className="mono">{str(pick(data, "model.id"), "arcalium-assistant")}</span>{" "}
             (base <span className="mono">{str(pick(data, "model.baseModel"), "gemma4:e4b-it-qat")}</span>
-            ) with an Arcalium OS / bash system prompt.
+            ) can run allowlisted <span className="mono">arcaliumctl</span> checks itself and asks
+            before installs or updates.
           </p>
         </div>
         <button type="button" className="btn" onClick={() => void refresh()} disabled={busy !== null}>
@@ -262,6 +283,16 @@ export function AssistantPage() {
                     {busy === "ensure" ? "Downloading in terminal…" : "2. Pull and configure model"}
                   </button>
                 )}
+                {ollamaOk && modelOk && (
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={busy !== null}
+                    onClick={() => void runRefreshAgent()}
+                  >
+                    {busy === "ensure" ? "Refreshing…" : "Refresh agent prompt"}
+                  </button>
+                )}
                 <button
                   type="button"
                   className="btn primary"
@@ -281,7 +312,8 @@ export function AssistantPage() {
               </div>
               <p className="muted small" style={{ marginTop: "0.75rem" }}>
                 Install and pull open a terminal so you can watch live progress (~10 GB for the first
-                model). This page refreshes when the work finishes. {str(pick(data, "guidance.note"))}
+                model). Launch opens an agent session that can run allowlisted checks and asks before
+                changes. {str(pick(data, "guidance.note"))}
               </p>
             </article>
           </div>

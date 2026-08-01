@@ -371,14 +371,21 @@ def _launch_ensure_terminal() -> dict[str, Any]:
 
     before = status()
     if before["model"]["installed"]:
+        # Refresh Modelfile/system prompt (agent instructions change across OS updates).
+        create = _create_assistant_model(ollama_path)
+        after = status()
         return {
             "schema": "arcalium.ai.ensure/v1",
-            "ok": True,
-            "action": "already-present",
-            "model": before["model"],
-            "ollama": before["ollama"],
-            "message": f"{ASSISTANT_MODEL} is already ready.",
-            "guidance": before["guidance"],
+            "ok": bool(create.get("ok") and after["model"]["installed"]),
+            "action": "refreshed" if create.get("ok") else "create-assistant",
+            "model": after["model"],
+            "ollama": after["ollama"],
+            "message": (
+                f"Refreshed {ASSISTANT_MODEL} with the current Arcalium agent prompt."
+                if create.get("ok")
+                else create.get("message") or "Could not refresh assistant model."
+            ),
+            "guidance": after["guidance"],
         }
 
     try:
@@ -667,7 +674,8 @@ def _guidance(ollama_ok: bool, model_ok: bool) -> dict[str, Any]:
         ),
         "note": (
             "The assistant is offline once the model is present. "
-            "It suggests maintenance steps; it does not run privileged commands for you. "
+            "In agent mode it can run allowlisted arcaliumctl checks itself, and asks "
+            "you to type yes before installs, updates, or other changes. "
             f"Chat uses {ASSISTANT_MODEL}, which includes an Arcalium OS / bash system prompt."
         ),
     }
