@@ -131,6 +131,7 @@ chmod 0755 /usr/bin/arcalium-setup
 chmod 0755 /usr/lib/arcalium/ai/assistant-session.sh
 chmod 0755 /usr/lib/arcalium/ai/ensure-session.sh
 chmod 0755 /usr/lib/arcalium/ai/install-session.sh
+chmod 0755 /usr/lib/arcalium/apps/install-session.sh
 systemctl enable arcalium-migrate-hostname.service
 
 # Phase 2 diagnostics JSON schemas (PRODUCT_SPEC §10.2).

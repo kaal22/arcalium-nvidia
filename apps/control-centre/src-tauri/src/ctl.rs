@@ -125,6 +125,16 @@ fn is_allowed(args: &[String]) -> bool {
         let id = args[2].as_str();
         return ALLOWED_FLATPAK_IDS.contains(&id) || ALLOWED_CATALOGUE_IDS.contains(&id);
     }
+    // apps install <id> --visible --json
+    if args.len() == 5
+        && args[0] == "apps"
+        && args[1] == "install"
+        && args[3] == "--visible"
+        && args[4] == "--json"
+    {
+        let id = args[2].as_str();
+        return ALLOWED_FLATPAK_IDS.contains(&id) || ALLOWED_CATALOGUE_IDS.contains(&id);
+    }
     // setup save <step> --json
     if args.len() == 4 && args[0] == "setup" && args[1] == "save" && args[3] == "--json" {
         return SETUP_STEPS.contains(&args[2].as_str());
@@ -145,7 +155,12 @@ fn timeout_for(args: &[String]) -> u64 {
         return TIMEOUT_PROTON_INSTALL_SECS;
     }
     if args.len() >= 2 && args[0] == "apps" && (args[1] == "install" || args[1] == "uninstall") {
-        return TIMEOUT_FLATPAK_SECS;
+        // Visible mode only spawns a terminal and returns immediately.
+        return if args.iter().any(|a| a == "--visible") {
+            TIMEOUT_DEFAULT_SECS
+        } else {
+            TIMEOUT_FLATPAK_SECS
+        };
     }
     if args.len() >= 2 && args[0] == "diagnostics" {
         return TIMEOUT_DIAGNOSTICS_SECS;

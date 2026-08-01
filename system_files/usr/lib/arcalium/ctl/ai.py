@@ -10,6 +10,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from . import terminal
 from .errors import ARC_AI_001, ARC_AI_002, ARC_AI_003, ArcError
 from .jsonutil import parse_os_release, read_text
 
@@ -40,12 +41,7 @@ _BREW_CANDIDATES: tuple[str, ...] = (
     "/usr/local/bin/brew",
 )
 
-_TERMINAL_CANDIDATES: tuple[tuple[str, list[str]], ...] = (
-    ("/usr/bin/konsole", ["-e"]),
-    ("/usr/bin/ptyxis", ["--"]),
-    ("/usr/bin/kgx", ["-e"]),
-    ("/usr/bin/gnome-terminal", ["--"]),
-)
+resolve_terminal = terminal.resolve_terminal
 
 
 class AiError(Exception):
@@ -330,32 +326,14 @@ def launch() -> dict[str, Any]:
             f"Assistant model {ASSISTANT_MODEL} is not ready — run Ensure model first",
         )
 
-    script = Path(SESSION_SCRIPT)
-    if not script.is_file():
-        raise AiError(ARC_AI_003, f"Session script missing: {SESSION_SCRIPT}")
-
-    term_path, term_prefix = resolve_terminal()
-    if not term_path:
-        raise AiError(ARC_AI_003, "No supported terminal found (konsole, ptyxis, kgx, gnome-terminal)")
-
-    env = os.environ.copy()
-    env["ARCALIUM_OLLAMA_BIN"] = st["ollama"]["path"]
-    env["ARCALIUM_AI_MODEL"] = ASSISTANT_MODEL
-    env["ARCALIUM_AI_BASE_MODEL"] = BASE_MODEL
-
-    argv = [term_path, *term_prefix, str(script)]
-    try:
-        subprocess.Popen(
-            argv,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            env=env,
-            start_new_session=True,
-            shell=False,
-        )
-    except OSError as exc:
-        raise AiError(ARC_AI_003, str(exc)) from exc
+    term_path = _open_terminal_script(
+        SESSION_SCRIPT,
+        env_extra={
+            "ARCALIUM_OLLAMA_BIN": st["ollama"]["path"],
+            "ARCALIUM_AI_MODEL": ASSISTANT_MODEL,
+            "ARCALIUM_AI_BASE_MODEL": BASE_MODEL,
+        },
+    )
 
     return {
         "schema": "arcalium.ai.launch/v1",
@@ -500,29 +478,10 @@ def _launch_install_terminal() -> dict[str, Any]:
 
 
 def _open_terminal_script(script_path: str, *, env_extra: dict[str, str] | None = None) -> str:
-    script = Path(script_path)
-    if not script.is_file():
-        raise AiError(ARC_AI_003, f"Session script missing: {script_path}")
-    term_path, term_prefix = resolve_terminal()
-    if not term_path:
-        raise AiError(ARC_AI_003, "No supported terminal found (konsole, ptyxis, kgx, gnome-terminal)")
-    env = os.environ.copy()
-    if env_extra:
-        env.update(env_extra)
-    argv = [term_path, *term_prefix, str(script)]
     try:
-        subprocess.Popen(
-            argv,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            env=env,
-            start_new_session=True,
-            shell=False,
-        )
-    except OSError as exc:
+        return terminal.open_script(script_path, env_extra=env_extra)
+    except terminal.TerminalError as exc:
         raise AiError(ARC_AI_003, str(exc)) from exc
-    return term_path
 
 
 def stop() -> dict[str, Any]:
@@ -591,14 +550,6 @@ def resolve_brew() -> str | None:
         if path.is_file() and os.access(path, os.X_OK) and path.name == "brew":
             return str(path)
     return None
-
-
-def resolve_terminal() -> tuple[str | None, list[str]]:
-    for path, prefix in _TERMINAL_CANDIDATES:
-        p = Path(path)
-        if p.is_file() and os.access(p, os.X_OK):
-            return str(p), list(prefix)
-    return None, []
 
 
 def error_payload(exc: AiError, *, action: str) -> dict[str, Any]:

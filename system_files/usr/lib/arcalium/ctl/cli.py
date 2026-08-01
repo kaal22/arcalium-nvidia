@@ -68,6 +68,11 @@ def _build_parser() -> argparse.ArgumentParser:
     apps_sub.add_parser("list", help="Catalogue entries with install state")
     apps_install = apps_sub.add_parser("install", help="Install catalogue Flatpak as --user")
     apps_install.add_argument("app_id", help="Catalogue id or Flatpak sourceId")
+    apps_install.add_argument(
+        "--visible",
+        action="store_true",
+        help="Open a terminal so the download progress is visible",
+    )
     apps_uninstall = apps_sub.add_parser("uninstall", help="Uninstall user Flatpak from catalogue")
     apps_uninstall.add_argument("app_id", help="Catalogue id or Flatpak sourceId")
 
@@ -199,7 +204,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if command == "apps" and action == "install":
         try:
-            data = apps.install_app(args.app_id)
+            data = apps.install_app(args.app_id, visible=bool(getattr(args, "visible", False)))
         except AppsError as exc:
             payload = apps.error_payload(exc, command="apps", action="install")
             emit(

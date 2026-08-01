@@ -6,8 +6,11 @@ import os
 from pathlib import Path
 from typing import Any
 
+from . import terminal
 from .errors import ARC_APPS_001, ARC_APPS_002, ArcError
-from .jsonutil import FLATPAK_TIMEOUT, read_json_file, run_allowlisted
+from .jsonutil import FLATPAK_TIMEOUT, read_json_file, resolve_binary, run_allowlisted
+
+INSTALL_SESSION_SCRIPT = "/usr/lib/arcalium/apps/install-session.sh"
 
 def _catalogue_paths() -> tuple[Path, ...]:
     """Installed location first, then a repo-checkout fallback.
@@ -284,7 +287,40 @@ def _resolve_entry(app_id: str) -> dict[str, Any]:
     raise AppsError(ARC_APPS_002, f"Not in catalogue: {app_id}")
 
 
-def install_app(app_id: str) -> dict[str, Any]:
+def _launch_install_terminal(entry: dict[str, Any], source: str) -> dict[str, Any]:
+    """Run the install in a terminal window so the download is visible."""
+    name = str(entry.get("name") or source)
+    try:
+        term = terminal.open_script(
+            INSTALL_SESSION_SCRIPT,
+            env_extra={
+                "ARCALIUM_APP_NAME": name,
+                "ARCALIUM_APP_ID": str(entry.get("id") or source),
+                "ARCALIUM_FLATPAK_REF": source,
+                "ARCALIUM_FLATPAK_BIN": resolve_binary("flatpak") or "/usr/bin/flatpak",
+            },
+        )
+    except terminal.TerminalError as exc:
+        raise AppsError(ARC_APPS_001, str(exc)) from exc
+
+    return {
+        "schema": "arcalium.apps.install/v1",
+        "ok": True,
+        "action": "terminal",
+        "visible": True,
+        "terminal": term,
+        "sessionScript": INSTALL_SESSION_SCRIPT,
+        "id": entry.get("id"),
+        "sourceId": source,
+        "scope": "user",
+        "message": (
+            f"Installing {name} in a terminal window — watch the download progress there. "
+            "This page updates when it finishes."
+        ),
+    }
+
+
+def install_app(app_id: str, *, visible: bool = False) -> dict[str, Any]:
     entry = _resolve_entry(app_id)
     if entry.get("type") != "flatpak":
         raise AppsError(
@@ -303,6 +339,8 @@ def install_app(app_id: str) -> dict[str, Any]:
             "scope": "existing",
         }
     _ensure_user_flathub()
+    if visible:
+        return _launch_install_terminal(entry, source)
     argv = ["install", "--user", "-y", "flathub", source]
     result = run_allowlisted("flatpak", argv, timeout=FLATPAK_TIMEOUT)
     repaired = False

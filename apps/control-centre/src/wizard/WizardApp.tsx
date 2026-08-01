@@ -629,7 +629,7 @@ export function WizardApp() {
                   {installingOllama ? "Installing in terminal…" : "1. Install Ollama"}
                 </button>
               )}
-              {pick(aiStatus, "ollama.available") && (
+              {Boolean(pick(aiStatus, "ollama.available")) && (
               <button
                 type="button"
                 className="btn primary"

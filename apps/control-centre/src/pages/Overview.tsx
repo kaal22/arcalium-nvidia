@@ -202,7 +202,7 @@ export function OverviewPage() {
               <dd>{nvidiaDevices[0] || str(pick(vulkan, "error") ?? pick(vulkan, "detail"))}</dd>
             </div>
           </dl>
-          {pick(vulkan, "error") && (
+          {Boolean(pick(vulkan, "error")) && (
             <ul className="errors">
               <li>{str(pick(vulkan, "error"))}</li>
             </ul>

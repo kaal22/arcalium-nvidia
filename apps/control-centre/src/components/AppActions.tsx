@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { arcaliumctl, openDesktop } from "../api";
 import { str } from "../lib/json";
 
@@ -17,6 +17,20 @@ export type AppRow = {
   category?: string;
 };
 
+const POLL_INTERVAL_MS = 4000;
+const POLL_MAX_MS = 30 * 60 * 1000;
+
+async function sleep(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** True once the catalogue reports this app as installed. */
+async function isInstalled(id: string): Promise<boolean> {
+  const list = await arcaliumctl(["apps", "list", "--json"]);
+  const rows = (list.apps as AppRow[] | undefined) ?? [];
+  return rows.some((row) => (row.id === id || row.sourceId === id) && Boolean(row.installed));
+}
+
 export function AppActions({
   app,
   onChanged,
@@ -24,29 +38,56 @@ export function AppActions({
   app: AppRow;
   onChanged: () => void;
 }) {
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"install" | "uninstall" | "launch" | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const cancelled = useRef(false);
   const id = str(app.id, "");
   const desktop = str(app.desktopId, "");
+  const name = str(app.name, id);
+
+  useEffect(() => {
+    cancelled.current = false;
+    return () => {
+      cancelled.current = true;
+    };
+  }, []);
 
   const install = async () => {
-    setBusy(true);
+    setBusy("install");
     setMsg(null);
     setErr(null);
     try {
-      const result = await arcaliumctl(["apps", "install", id, "--json"]);
-      setMsg(`${str(result.action)} ${str(result.sourceId || id)}`);
+      const result = await arcaliumctl(["apps", "install", id, "--visible", "--json"]);
+      setMsg(str(result.message, `${str(result.action)} ${str(result.sourceId || id)}`));
+
+      if (str(result.action) === "terminal") {
+        const started = Date.now();
+        let done = false;
+        while (!cancelled.current && Date.now() - started < POLL_MAX_MS) {
+          await sleep(POLL_INTERVAL_MS);
+          if (await isInstalled(id)) {
+            done = true;
+            break;
+          }
+        }
+        if (cancelled.current) return;
+        setMsg(
+          done
+            ? `${name} installed.`
+            : `Still installing ${name} in the terminal window. This page updates when it finishes.`,
+        );
+      }
       onChanged();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      if (!cancelled.current) setErr(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      if (!cancelled.current) setBusy(null);
     }
   };
 
   const uninstall = async () => {
-    setBusy(true);
+    setBusy("uninstall");
     setMsg(null);
     setErr(null);
     try {
@@ -56,7 +97,21 @@ export function AppActions({
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      setBusy(null);
+    }
+  };
+
+  const launch = async () => {
+    setBusy("launch");
+    setMsg(null);
+    setErr(null);
+    try {
+      await openDesktop(desktop);
+      setMsg(`Starting ${name}… it can take a few seconds to appear.`);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -64,18 +119,33 @@ export function AppActions({
     <div>
       <div className="btn-row">
         {app.launchable && desktop ? (
-          <button type="button" className="btn primary" onClick={() => void openDesktop(desktop)}>
-            Launch
+          <button
+            type="button"
+            className={`btn primary${busy === "launch" ? " working" : ""}`}
+            disabled={busy !== null}
+            onClick={() => void launch()}
+          >
+            {busy === "launch" ? "Launching…" : "Launch"}
           </button>
         ) : null}
         {app.type === "flatpak" && !app.installed ? (
-          <button type="button" className="btn" disabled={busy} onClick={() => void install()}>
-            {busy ? "Working…" : "Install (user)"}
+          <button
+            type="button"
+            className={`btn${busy === "install" ? " working" : ""}`}
+            disabled={busy !== null}
+            onClick={() => void install()}
+          >
+            {busy === "install" ? "Installing in terminal…" : "Install (user)"}
           </button>
         ) : null}
         {app.type === "flatpak" && app.installed && app.installScope === "user" ? (
-          <button type="button" className="btn" disabled={busy} onClick={() => void uninstall()}>
-            {busy ? "Working…" : "Uninstall"}
+          <button
+            type="button"
+            className={`btn${busy === "uninstall" ? " working" : ""}`}
+            disabled={busy !== null}
+            onClick={() => void uninstall()}
+          >
+            {busy === "uninstall" ? "Removing…" : "Uninstall"}
           </button>
         ) : null}
         {app.type === "flatpak" && app.installed && app.installScope === "system" ? (

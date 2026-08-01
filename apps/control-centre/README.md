@@ -15,7 +15,7 @@ Resume / restart: Kickoff → **Arcalium Setup**, or Settings → Setup wizard.
 | Page | Backend |
 |---|---|
 | Overview | `system` / `gpu` / `vulkan` + quick actions |
-| Gaming | `apps list` / install / uninstall + launch |
+| Gaming | `apps list` / install (terminal progress) / uninstall + launch |
 | Compatibility | `proton list` / `install-recommended`, ProtonPlus, Protontricks |
 | GPU and Display | `gpu status` / `validate`, `vulkan test` |
 | Applications | catalogue-driven `apps` ops |

@@ -1155,7 +1155,7 @@ arcaliumctl gpu status --json
 arcaliumctl gpu validate --json
 arcaliumctl vulkan test --json
 arcaliumctl apps list --json
-arcaliumctl apps install spotify --json
+arcaliumctl apps install spotify --visible --json
 arcaliumctl proton list --json
 arcaliumctl proton install-recommended --json
 arcaliumctl storage scan --json
@@ -1178,7 +1178,7 @@ arcaliumctl ai stop --json
 - Exit code `0` means success.
 - Non-zero exit codes must map to documented error types.
 - Timeouts must be defined.
-- Long-running actions must emit progress.
+- Long-running actions must emit progress. Downloads the user starts from the UI (Flatpak installs, Ollama install and model pull) run with `--visible`, which opens a terminal showing live progress; the UI polls status until the work completes. A click must never look inert: the pointer shows a progress cursor for the whole call and the button reports what it is doing.
 - User cancellation must be supported where safe.
 - No command may execute user-provided shell fragments.
 - File paths must be validated and canonicalised.

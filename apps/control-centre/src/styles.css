@@ -137,6 +137,42 @@ button {
   cursor: default;
 }
 
+body[data-busy="true"],
+body[data-busy="true"] .btn,
+body[data-busy="true"] .nav-item {
+  cursor: progress;
+}
+
+.btn.working {
+  cursor: progress;
+  opacity: 1;
+}
+
+.btn.working::before {
+  content: "";
+  display: inline-block;
+  width: 0.7em;
+  height: 0.7em;
+  margin-right: 0.45em;
+  vertical-align: -0.05em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: arc-spin 0.7s linear infinite;
+}
+
+@keyframes arc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn.working::before {
+    animation-duration: 2.4s;
+  }
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
