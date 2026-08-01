@@ -128,6 +128,9 @@ chmod 0755 /usr/libexec/arcalium-migrate-hostname
 chmod 0755 /usr/bin/arcaliumctl
 chmod 0755 /usr/bin/arcalium-heroic
 chmod 0755 /usr/bin/arcalium-setup
+chmod 0755 /usr/bin/bazzite-steam
+chmod 0755 /usr/bin/bazzite-steam-firstrun
+chmod 0755 /usr/bin/bazzite-steam-bpm
 chmod 0755 /usr/lib/arcalium/ai/assistant-session.sh
 chmod 0755 /usr/lib/arcalium/ai/ensure-session.sh
 chmod 0755 /usr/lib/arcalium/ai/install-session.sh
