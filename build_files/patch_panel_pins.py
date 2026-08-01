@@ -34,7 +34,6 @@ LAUNCHERS = [
     "preferred://filemanager",
     "applications:io.github.kolunmi.Bazaar.desktop",
     "preferred://browser",
-    "applications:steam.desktop",
     "applications:com.heroicgameslauncher.hgl.desktop",
     "applications:com.spotify.Client.desktop",
 ]

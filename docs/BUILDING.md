@@ -28,7 +28,7 @@ Arcalium is the update source of truth. An installed machine tracks `ghcr.io/kaa
 
 | Layer | How it updates |
 |---|---|
-| Kernel, NVIDIA driver, Plasma, Steam (Bazzite base) | Only when we re-pin the base digest and publish a new Arcalium image |
+| Kernel, NVIDIA driver, Plasma (Bazzite base) | Only when we re-pin the base digest and publish a new Arcalium image |
 | Arcalium branding, pins, wallpaper, Control Centre later | With every Arcalium image push |
 | Brave / Spotify / ProtonPlus / Heroic Flatpaks | Flatpak or Bazaar on the machine; the bundled *set* changes only with a new ISO |
 | Home directory, Steam library, user settings | Not touched by image updates |
@@ -143,7 +143,7 @@ Keep `disk_config/iso.toml` and `.github/workflows/build-disk.yml` in sync with 
 | Surface | Setting | Reason |
 |---|---|---|
 | GitHub repository | public | Free Actions minutes and artifact storage; spec principle 9 (open maintenance) |
-| GHCR image package | private | Spec §17.2 — the built image carries the inherited Steam client |
+| GHCR image package | private | Still private during alpha; Steam is no longer shipped in the image (§17.2 deferred). Other public gates (Brave ISO, notices, privacy) remain. |
 | Disk images (ISO/QCOW2) | private artifacts | Downloaded by the maintainer, or built locally |
 
 Making a GHCR package public is irreversible. Do not change the package to public until the Steam licensing gate is resolved.
@@ -218,7 +218,7 @@ Verify any new ID on Flathub before committing it — PRODUCT_SPEC principle 4 f
 
 ### Taskbar and default browser
 
-New users get the daily-use bundled apps pinned on the Icon Tasks panel and in Kickoff favorites. Panel order (left → right): Files, Bazaar, Brave, Steam, Heroic, Spotify. Heroic opens directly; it does not download Proton before launch.
+New users get the daily-use bundled apps pinned on the Icon Tasks panel and in Kickoff favorites. Panel order (left → right): Files, Bazaar, Brave, Heroic, Spotify. Steam is **not** pinned by default — it is not shipped in the image; Control Centre opens Valve’s official download page. Heroic opens directly; it does not download Proton before launch.
 
 Two deliberate absences from the panel:
 
@@ -345,9 +345,15 @@ arcaliumctl ai install-ollama --visible --json
 arcaliumctl ai ensure --visible --json
 arcaliumctl ai launch
 arcaliumctl ai stop --json
+arcaliumctl steam status --json
+arcaliumctl steam open-download --json
 ```
 
 JSON schemas ship in `/usr/share/arcalium/schemas/` from `config/schemas/` (Containerfile `COPY config /config`). Hardware runbook: [`docs/PHASE2_VALIDATION.md`](PHASE2_VALIDATION.md).
+
+### Steam (Valve download, not shipped)
+
+Arcalium does **not** redistribute Steam. `build.sh` removes the Bazzite `steam` RPM and asserts `steam.desktop` is gone. Control Centre / Setup / `arcaliumctl steam open-download` opens Valve’s official page (`https://store.steampowered.com/about/`) so the user accepts the Steam Subscriber Agreement with Valve. `arcaliumctl steam status` detects a later native or Flatpak install.
 
 ### Local AI Assistant (§9.14)
 
@@ -512,7 +518,7 @@ sudo bootc switch ghcr.io/kaal22/arcalium-os-nvidia:dev
 sudo systemctl reboot
 ```
 
-`bootc upgrade` works normally after that. Making the GHCR package public removes this step entirely, but that is held behind the Steam licensing gate in `docs/PRODUCT_SPEC.md` §17.2.
+`bootc upgrade` works normally after that. Making the GHCR package public removes this step entirely; Steam is no longer the blocker (image strips Steam), but other public gates in `docs/LICENSING.md` still apply.
 
 ## GHCR authentication for bootc
 
@@ -535,6 +541,6 @@ sudo chmod 600 /etc/ostree/auth.json
 
 ## Important gates
 
-- Do not publish a public ISO until the Steam licensing gate in `docs/PRODUCT_SPEC.md` §17.2 is resolved.
+- Do not publish a public ISO until remaining licensing gates in `docs/LICENSING.md` are resolved (Steam is deferred / not shipped; Brave and notices remain).
 - Do not start the Control Centre until the base image and ISO workflow are proven (spec §28).
 - Do not invent Flatpak IDs, `ujust` paths, or bootc flags — verify against upstream first.

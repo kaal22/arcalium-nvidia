@@ -66,10 +66,24 @@ export function ControllersPage() {
           </article>
           <article className="card">
             <h2>Actions</h2>
-            <div className="btn-row">
-              <button type="button" className="btn" onClick={() => void openDesktop("steam.desktop")}>
-                Open Steam (Controller / Steam Input)
-              </button>
+              <div className="btn-row">
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    void (async () => {
+                      const st = await arcaliumctl(["steam", "status", "--json"]);
+                      const desktop = str(pick(st, "desktopId"), "");
+                      if (pick(st, "launchable") && desktop) {
+                        await openDesktop(desktop);
+                      } else {
+                        await arcaliumctl(["steam", "open-download", "--json"]);
+                      }
+                    })();
+                  }}
+                >
+                  Open Steam (Controller / Steam Input)
+                </button>
               <button
                 type="button"
                 className="btn"

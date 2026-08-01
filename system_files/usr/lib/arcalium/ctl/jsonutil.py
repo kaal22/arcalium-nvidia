@@ -26,6 +26,8 @@ ALLOWED_BINARIES: dict[str, str] = {
     "findmnt": "/usr/bin/findmnt",
     "ip": "/usr/sbin/ip",
     "nmcli": "/usr/bin/nmcli",
+    "xdg-open": "/usr/bin/xdg-open",
+    "rpm": "/usr/bin/rpm",
 }
 
 # Alternate paths some Fedora layouts use
@@ -42,6 +44,8 @@ _FALLBACK_PATHS: dict[str, tuple[str, ...]] = {
     "findmnt": ("/usr/bin/findmnt", "/usr/sbin/findmnt"),
     "ip": ("/usr/sbin/ip", "/usr/bin/ip"),
     "nmcli": ("/usr/bin/nmcli",),
+    "xdg-open": ("/usr/bin/xdg-open",),
+    "rpm": ("/usr/bin/rpm", "/bin/rpm"),
 }
 
 DEFAULT_TIMEOUT = 15

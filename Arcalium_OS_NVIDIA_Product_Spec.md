@@ -328,7 +328,7 @@ After setup, users should use **Arcalium Control Centre** for:
 
 The completed NVIDIA installation must provide:
 
-- Steam through the Bazzite base, subject to the release licensing gate.
+- Steam via Valve’s official download (not shipped in the image); Control Centre opens the download page so the user accepts Steam’s agreement.
 - Bazaar app store.
 - Spotify.
 - ProtonPlus.
@@ -1597,17 +1597,18 @@ Before public distribution:
 
 Valve’s published Steam client terms prohibit redistribution or preinstallation without a separate licence.
 
-Because the Bazzite base includes Steam, public Arcalium distribution requires a specific legal and project-policy review.
+**Arcalium decision (Phase 9):** the published image **does not ship Steam**. `build.sh` removes the inherited Bazzite `steam` / `steam-devices` RPMs and asserts `steam.desktop` is gone. Users obtain Steam from Valve:
 
-Before a public ISO:
+- Control Centre / Setup / `arcaliumctl steam open-download` opens Valve’s official page (`https://store.steampowered.com/about/`) so the Steam Subscriber Agreement is presented by Valve, not by Arcalium.
+- `arcaliumctl steam status` reports whether a native or Flatpak Steam install is present after the user installs it themselves.
 
-- Determine whether Arcalium can lawfully redistribute the inherited Steam client.
-- Seek Valve permission where required.
-- Consult Bazzite/Universal Blue maintainers about their distribution model.
-- Keep private test images private until this is resolved.
-- If necessary, create a public-release variant that installs Steam only after the user accepts Valve’s terms.
+Before a public ISO / public GHCR package:
 
-This gate does not prevent private development and testing on personally controlled systems, but it must block a public commercial release until resolved.
+- Keep verifying Steam is absent from image layers (CI/build assertion).
+- Confirm Brave and other bundled Flatpak redistribution notes in `docs/LICENSING.md`.
+- Keep private test packages private until remaining public gates are satisfied.
+
+This gate does not prevent private development and testing on personally controlled systems.
 
 ## 17.3 Trademark rules
 
@@ -1953,15 +1954,15 @@ Acceptance:
 
 Deliverables:
 
-- Steam licensing decision.
+- Steam licensing decision (Steam deferred: not shipped; Valve official download from Control Centre).
 - Trademark review.
 - Third-party notices.
 - Privacy policy.
 - Support process.
-- Download page.
+- Download page (planned host: **getarcalium.com** — domain reserved 2026-08-01).
 - Signed stable release.
 
-This phase is blocked until licensing gates are satisfied.
+Steam redistribution is addressed by stripping Steam from the image. Remaining blockers for public distribution are notices, privacy/support docs, Brave/ISO Flatpak checks, and publishing process — not Valve redistribution of a preinstalled client.
 
 ## Phase 10 — AMD/Intel edition
 

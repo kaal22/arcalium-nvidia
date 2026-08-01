@@ -4,13 +4,13 @@
     {
       "id": "steam",
       "name": "Steam",
-      "type": "desktop",
+      "type": "external",
       "sourceId": "steam",
       "desktopId": "steam.desktop",
-      "required": true,
+      "required": false,
       "category": "gaming",
-      "licenceNotice": null,
-      "website": "https://store.steampowered.com/",
+      "licenceNotice": "Not shipped with Arcalium. Get Steam from Valve's official download page — their installer presents the Steam Subscriber Agreement.",
+      "website": "https://store.steampowered.com/about/",
       "supported": true,
       "roles": ["gaming", "streaming"]
     },

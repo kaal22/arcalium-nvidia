@@ -148,12 +148,37 @@ if [[ -d /ctx/config/catalogue ]]; then
 fi
 test -f /usr/share/arcalium/catalogue/apps.v1.json
 
+# Phase 9 Steam gate (PRODUCT_SPEC §17.2): do not redistribute Valve's Steam
+# client in the image. Users open Valve's official download page from Control
+# Centre (`arcaliumctl steam open-download`) and accept Steam's agreement there.
+echo "Steam-related RPMs before removal:"
+rpm -qa '*steam*' || true
+STEAM_REMOVE=()
+for pkg in steam steam-devices; do
+    if rpm -q "${pkg}" >/dev/null 2>&1; then
+        STEAM_REMOVE+=("${pkg}")
+    fi
+done
+if [[ ${#STEAM_REMOVE[@]} -gt 0 ]]; then
+    dnf5 -y remove "${STEAM_REMOVE[@]}" || dnf -y remove "${STEAM_REMOVE[@]}"
+fi
+if rpm -q steam >/dev/null 2>&1; then
+    echo "ERROR: steam RPM is still present after removal (Steam redistribution gate)" >&2
+    exit 1
+fi
+if [[ -e /usr/share/applications/steam.desktop ]]; then
+    echo "ERROR: /usr/share/applications/steam.desktop still present after Steam removal" >&2
+    exit 1
+fi
+echo "Steam client removed from image (not redistributed)."
+
 # An import-time error in any ctl module breaks every arcaliumctl command, and
 # therefore the whole Control Centre, so prove the CLI imports and that the
 # catalogue parses before the image ships. --help exercises every import.
 arcaliumctl --help >/dev/null
 arcaliumctl setup status --json >/dev/null
 arcaliumctl ai status --json >/dev/null
+arcaliumctl steam status --json >/dev/null
 python3 -c 'import json,sys; json.load(open("/usr/share/arcalium/catalogue/apps.v1.json"))'
 
 # Keep podman.socket available (inherited template default; idempotent).

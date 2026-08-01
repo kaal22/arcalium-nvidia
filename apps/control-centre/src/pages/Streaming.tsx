@@ -55,10 +55,24 @@ export function StreamingPage() {
               Give this address to Moonlight clients on your LAN. Opening firewall ports is a manual,
               opt-in step — Control Centre will not change firewall rules.
             </p>
-            <div className="btn-row">
-              <button type="button" className="btn" onClick={() => void openDesktop("steam.desktop")}>
-                Open Steam (Remote Play)
-              </button>
+              <div className="btn-row">
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    void (async () => {
+                      const st = await arcaliumctl(["steam", "status", "--json"]);
+                      const desktop = str(pick(st, "desktopId"), "");
+                      if (pick(st, "launchable") && desktop) {
+                        await openDesktop(desktop);
+                      } else {
+                        await arcaliumctl(["steam", "open-download", "--json"]);
+                      }
+                    })();
+                  }}
+                >
+                  Open Steam (Remote Play)
+                </button>
             </div>
           </article>
           <div className="grid two">

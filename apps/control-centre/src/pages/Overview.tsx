@@ -34,21 +34,24 @@ export function OverviewPage() {
   const [installingProton, setInstallingProton] = useState(false);
   const [protonActionMsg, setProtonActionMsg] = useState<string | null>(null);
   const [protonActionErr, setProtonActionErr] = useState<string | null>(null);
+  const [steam, setSteam] = useState<JsonValue | null>(null);
 
   const refresh = useCallback(async () => {
     setState("loading");
     setError(null);
     try {
-      const [s, g, v, vk] = await Promise.all([
+      const [s, g, v, vk, st] = await Promise.all([
         arcaliumctl(["system", "summary", "--json"]),
         arcaliumctl(["gpu", "status", "--json"]),
         arcaliumctl(["gpu", "validate", "--json"]),
         arcaliumctl(["vulkan", "test", "--json"]),
+        arcaliumctl(["steam", "status", "--json"]).catch(() => null),
       ]);
       setSummary(s);
       setGpu(g);
       setValidate(v);
       setVulkan(vk);
+      setSteam(st);
       setState("ready");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -220,9 +223,27 @@ export function OverviewPage() {
       <section className="actions">
         <h2>Quick actions</h2>
         <div className="action-row">
-          <button type="button" className="btn" onClick={() => void openDesktop("steam.desktop")}>
-            Launch Steam
-          </button>
+          {Boolean(pick(steam, "launchable")) ? (
+            <button
+              type="button"
+              className="btn"
+              onClick={() =>
+                void openDesktop(str(pick(steam, "desktopId"), "steam.desktop"))
+              }
+            >
+              Launch Steam
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn"
+              onClick={() =>
+                void arcaliumctl(["steam", "open-download", "--json"]).then(() => void refresh())
+              }
+            >
+              Get Steam from Valve
+            </button>
+          )}
           <button
             type="button"
             className="btn"

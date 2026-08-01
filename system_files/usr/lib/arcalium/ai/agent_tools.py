@@ -122,6 +122,20 @@ TOOLS: dict[str, ToolSpec] = {
         _no_args(["apps", "list", "--json"]),
         90,
     ),
+    "steam_status": ToolSpec(
+        "steam_status",
+        False,
+        "Whether Steam is installed (Arcalium does not ship it)",
+        _no_args(["steam", "status", "--json"]),
+        30,
+    ),
+    "steam_open_download": ToolSpec(
+        "steam_open_download",
+        False,
+        "Open Valve's official Steam download page (user accepts Steam's agreement there)",
+        _no_args(["steam", "open-download", "--json"]),
+        30,
+    ),
     "apps_install": ToolSpec(
         "apps_install",
         True,

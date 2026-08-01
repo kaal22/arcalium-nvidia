@@ -38,13 +38,14 @@ export function AppActions({
   app: AppRow;
   onChanged: () => void;
 }) {
-  const [busy, setBusy] = useState<"install" | "uninstall" | "launch" | null>(null);
+  const [busy, setBusy] = useState<"install" | "uninstall" | "launch" | "steam-download" | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const cancelled = useRef(false);
   const id = str(app.id, "");
   const desktop = str(app.desktopId, "");
   const name = str(app.name, id);
+  const isSteam = id === "steam" || app.type === "external";
 
   useEffect(() => {
     cancelled.current = false;
@@ -52,6 +53,21 @@ export function AppActions({
       cancelled.current = true;
     };
   }, []);
+
+  const openSteamDownload = async () => {
+    setBusy("steam-download");
+    setMsg(null);
+    setErr(null);
+    try {
+      const result = await arcaliumctl(["steam", "open-download", "--json"]);
+      setMsg(str(result.message, "Opened Valve's Steam download page."));
+      onChanged();
+    } catch (e) {
+      if (!cancelled.current) setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      if (!cancelled.current) setBusy(null);
+    }
+  };
 
   const install = async () => {
     setBusy("install");
@@ -151,7 +167,17 @@ export function AppActions({
         {app.type === "flatpak" && app.installed && app.installScope === "system" ? (
           <span className="muted small">System install — uninstall via Flatpak/Bazaar if needed</span>
         ) : null}
-        {app.type === "desktop" && !app.installed ? (
+        {isSteam && !app.installed ? (
+          <button
+            type="button"
+            className={`btn primary${busy === "steam-download" ? " working" : ""}`}
+            disabled={busy !== null}
+            onClick={() => void openSteamDownload()}
+          >
+            {busy === "steam-download" ? "Opening…" : "Get Steam from Valve"}
+          </button>
+        ) : null}
+        {app.type === "desktop" && !app.installed && !isSteam ? (
           <span className="muted small">Ships with the OS image</span>
         ) : null}
       </div>

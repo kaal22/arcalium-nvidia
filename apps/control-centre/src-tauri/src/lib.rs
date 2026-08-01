@@ -58,6 +58,7 @@ fn open_desktop(desktop_id: String) -> Result<(), String> {
     // (Kate on Plasma) instead of running Exec=.
     const ALLOWED: &[&str] = &[
         "steam.desktop",
+        "com.valvesoftware.Steam.desktop",
         "io.github.kolunmi.Bazaar.desktop",
         "systemsettings.desktop",
         "org.kde.dolphin.desktop",

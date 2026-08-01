@@ -81,7 +81,21 @@ export function StoragePage() {
                 >
                   Open disk utility
                 </button>
-                <button type="button" className="btn" onClick={() => void openDesktop("steam.desktop")}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    void (async () => {
+                      const st = await arcaliumctl(["steam", "status", "--json"]);
+                      const desktop = str(pick(st, "desktopId"), "");
+                      if (pick(st, "launchable") && desktop) {
+                        await openDesktop(desktop);
+                      } else {
+                        await arcaliumctl(["steam", "open-download", "--json"]);
+                      }
+                    })();
+                  }}
+                >
                   Open Steam
                 </button>
                 <button

@@ -15,6 +15,7 @@ from . import (
     network,
     proton,
     setup,
+    steam,
     storage,
     system,
     updates,
@@ -26,6 +27,7 @@ from .errors import ARC_CMD_001, ARC_CMD_003
 from .jsonutil import emit
 from .proton import ProtonError
 from .setup import SetupError
+from .steam import SteamError
 from .updates import UpdatesError
 
 
@@ -138,6 +140,14 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     ai_sub.add_parser("launch", help="Open terminal assistant session (unloads on close)")
     ai_sub.add_parser("stop", help="Force-unload the pinned model from GPU memory")
+
+    steam_p = sub.add_parser("steam", help="Steam status and official Valve download")
+    steam_sub = steam_p.add_subparsers(dest="action", required=True)
+    steam_sub.add_parser("status", help="Whether Steam is installed (not shipped in image)")
+    steam_sub.add_parser(
+        "open-download",
+        help="Open Valve's official Steam download page (user accepts Steam's agreement there)",
+    )
 
     return parser
 
@@ -395,6 +405,33 @@ def main(argv: list[str] | None = None) -> int:
         data = ai.stop()
         emit(data, as_json=as_json, human_lines=ai.human_stop(data))
         return 0
+
+    if command == "steam" and action == "status":
+        data = steam.status()
+        emit(data, as_json=as_json, human_lines=steam.human_status(data))
+        return 0
+
+    if command == "steam" and action == "open-download":
+        try:
+            data = steam.open_download()
+        except SteamError as exc:
+            payload = {
+                "schema": "arcalium.error/v1",
+                "ok": False,
+                "code": exc.err.code,
+                "message": exc.err.message,
+                "detail": exc.detail,
+                "command": "steam",
+                "action": "open-download",
+            }
+            emit(
+                payload,
+                as_json=as_json or True,
+                human_lines=[f"{exc.err.code}: {exc.detail or exc.err.message}"],
+            )
+            return exc.err.exit_code
+        emit(data, as_json=as_json, human_lines=steam.human_open(data))
+        return 0 if data.get("ok") else 1
 
     payload: dict[str, Any] = {
         "schema": "arcalium.error/v1",

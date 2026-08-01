@@ -225,11 +225,20 @@ def _data_dir_for(entry: dict[str, Any]) -> str | None:
 def list_apps() -> dict[str, Any]:
     cat = load_catalogue()
     installed_fp = _installed_flatpaks()
+    # Lazy import avoids a hard cycle; steam status is small.
+    from . import steam as steam_mod
+
+    steam_status = steam_mod.status()
     items: list[dict[str, Any]] = []
     for entry in cat.get("apps") or []:
         source = str(entry.get("sourceId") or "")
         desktop = str(entry.get("desktopId") or "")
-        if entry.get("type") == "flatpak":
+        if entry.get("id") == "steam":
+            installed = bool(steam_status.get("installed"))
+            install_scope = steam_status.get("source") if installed else None
+            if steam_status.get("desktopId"):
+                desktop = str(steam_status["desktopId"])
+        elif entry.get("type") == "flatpak":
             installed = source in installed_fp
             install_scope = "user" if installed else None
             # Detect system installs too for display
@@ -322,6 +331,12 @@ def _launch_install_terminal(entry: dict[str, Any], source: str) -> dict[str, An
 
 def install_app(app_id: str, *, visible: bool = False) -> dict[str, Any]:
     entry = _resolve_entry(app_id)
+    if entry.get("id") == "steam" or entry.get("type") == "external":
+        raise AppsError(
+            ARC_APPS_001,
+            "Steam is not shipped with Arcalium. Use: arcaliumctl steam open-download "
+            "(opens Valve's official page so you can accept Steam's agreement).",
+        )
     if entry.get("type") != "flatpak":
         raise AppsError(
             ARC_APPS_001,

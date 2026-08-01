@@ -74,6 +74,8 @@ const ALLOWED_EXACT: &[&[&str]] = &[
     &["ai", "ensure", "--visible", "--json"],
     &["ai", "launch", "--json"],
     &["ai", "stop", "--json"],
+    &["steam", "status", "--json"],
+    &["steam", "open-download", "--json"],
     &["setup", "status", "--json"],
     &["setup", "complete", "--json"],
     &["setup", "reset", "--json"],

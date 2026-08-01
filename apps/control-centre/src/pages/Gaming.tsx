@@ -58,9 +58,10 @@ export function GamingPage() {
       <article className="card">
         <h2>Notes</h2>
         <p className="muted small">
-          Flatpak installs use <span className="mono">--user</span> so they do not need root. System-bundled
-          apps (from the ISO) stay system-scoped. Arcalium does not edit launcher configs without a backup.
-          Lutris is not offered — use Heroic for non-Steam stores.
+          Flatpak installs use <span className="mono">--user</span> so they do not need root. Steam is
+          not shipped in the image — use <strong>Get Steam from Valve</strong> to open Valve&apos;s
+          official download page and accept their agreement. Lutris is not offered — use Heroic for
+          non-Steam stores.
         </p>
       </article>
     </div>

@@ -163,8 +163,9 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 
 | Requirement | Status | Notes |
 |---|---|---|
-| Steam licensing gate | blocked | Public ISO blocked until Valve redistribution review |
+| Steam licensing gate | in progress | Steam **removed** from image at build; Control Centre / `arcaliumctl steam open-download` opens Valve’s official page. Verify on next image build; GHCR stays private until other public gates clear. |
 | Trademark / notices / privacy | not started | |
+| Public download site | not started | Domain reserved: **getarcalium.com** (ISO / download page when public gates clear) |
 
 ## Phase 10 — AMD/Intel edition
 
@@ -283,7 +284,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 1. ~~**`SIGNING_SECRET`:**~~ Set 2026-07-30 via `gh secret set`. Never commit `cosign.key`.
 2. **Bootc Image Builder ISO (`just build-iso`):** Cannot produce an Anaconda ISO from this base ([BIB #1188](https://github.com/osbuild/bootc-image-builder/issues/1188)). Use `just build-iso-live` instead. The `installer/` payload layer is implemented.
 3. **CI disk builds vs private package:** `osbuild/bootc-image-builder-action` documents no authentication or pull-secret input, so `build-disk.yml` cannot pull the private `arcalium-os-nvidia` package. Upstream interface unconfirmed — not worked around. Disk images are built locally instead.
-4. **Steam redistribution:** Blocks public ISO and public package only; private alpha testing on owned hardware may continue.
+4. **Steam redistribution:** Image strips Steam at build; Control Centre opens Valve’s official download. Public ISO still waits on remaining LICENSING gates (Brave, notices, privacy), not Steam preinstall.
 
 Resolved: local build host — WSL2 Ubuntu 24.04 on the Windows workstation runs Podman with working loop devices, and has produced both an image and a QCOW2. See `docs/BUILDING.md`.
 

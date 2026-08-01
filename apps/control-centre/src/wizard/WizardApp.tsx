@@ -435,20 +435,42 @@ export function WizardApp() {
           <article className="card">
             <p>
               Steam status:{" "}
-              <strong>{steamApp?.installed ? "installed" : "not detected"}</strong>
+              <strong>{steamApp?.installed ? "installed" : "not installed"}</strong>
             </p>
             <p className="muted">
-              A Steam account is required. Windows-game compatibility varies — check ProtonDB. Arcalium
-              never captures or stores Steam credentials.
+              Arcalium does not ship Steam. Open Valve&apos;s official download page to get Steam and
+              accept the Steam Subscriber Agreement there. A Steam account is required. Arcalium never
+              captures or stores Steam credentials.
             </p>
             <div className="btn-row">
-              <button type="button" className="btn primary" onClick={() => void openDesktop("steam.desktop")}>
-                Launch Steam
+              {!steamApp?.installed ? (
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() =>
+                    void arcaliumctl(["steam", "open-download", "--json"]).then(() => void loadApps())
+                  }
+                >
+                  Get Steam from Valve
+                </button>
+              ) : null}
+              {steamApp?.installed && steamApp.desktopId ? (
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => void openDesktop(String(steamApp.desktopId))}
+                >
+                  Launch Steam
+                </button>
+              ) : null}
+              <button type="button" className="btn" onClick={() => void loadApps()}>
+                Refresh status
               </button>
             </div>
             <p className="muted small" style={{ marginTop: "0.75rem" }}>
               Per-game Proton: Steam → game Properties → Compatibility → Force a specific Steam Play
-              tool.
+              tool. Valve&apos;s page offers their installer; on Fedora Atomic you can also install the
+              Flathub Steam Flatpak after visiting that page.
             </p>
           </article>
         )}
@@ -517,7 +539,21 @@ export function WizardApp() {
                 opened for you.
               </p>
               <div className="btn-row">
-                <button type="button" className="btn" onClick={() => void openDesktop("steam.desktop")}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    void (async () => {
+                      const st = await arcaliumctl(["steam", "status", "--json"]);
+                      const desktop = str(pick(st, "desktopId"), "");
+                      if (pick(st, "launchable") && desktop) {
+                        await openDesktop(desktop);
+                      } else {
+                        await arcaliumctl(["steam", "open-download", "--json"]);
+                      }
+                    })();
+                  }}
+                >
                   Steam Remote Play guidance (open Steam)
                 </button>
               </div>
@@ -709,9 +745,23 @@ export function WizardApp() {
           <article className="card">
             <p>You&apos;re set. Open these when you need them:</p>
             <div className="btn-row">
-              <button type="button" className="btn primary" onClick={() => void openDesktop("steam.desktop")}>
-                Open Steam
-              </button>
+              {steamApp?.installed && steamApp.desktopId ? (
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => void openDesktop(String(steamApp.desktopId))}
+                >
+                  Open Steam
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => void arcaliumctl(["steam", "open-download", "--json"])}
+                >
+                  Get Steam from Valve
+                </button>
+              )}
               <button
                 type="button"
                 className="btn"
