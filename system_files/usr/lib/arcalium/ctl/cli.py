@@ -26,6 +26,7 @@ from .errors import ARC_CMD_001, ARC_CMD_003
 from .jsonutil import emit
 from .proton import ProtonError
 from .setup import SetupError
+from .updates import UpdatesError
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -88,9 +89,13 @@ def _build_parser() -> argparse.ArgumentParser:
     controllers_sub = controllers_p.add_subparsers(dest="action", required=True)
     controllers_sub.add_parser("list", help="Detect connected controllers")
 
-    updates_p = sub.add_parser("updates", help="Update status (read-only)")
+    updates_p = sub.add_parser("updates", help="bootc update status and terminal helpers")
     updates_sub = updates_p.add_subparsers(dest="action", required=True)
     updates_sub.add_parser("status", help="bootc deployment summary and guidance")
+    updates_sub.add_parser("check", help="Open a terminal to run sudo bootc upgrade --check")
+    updates_sub.add_parser("apply", help="Open a terminal to apply update and reboot")
+    updates_sub.add_parser("rollback", help="Open a terminal to roll back and reboot")
+    updates_sub.add_parser("reboot", help="Open a terminal to reboot")
 
     diagnostics_p = sub.add_parser("diagnostics", help="Health checks and support bundle")
     diagnostics_sub = diagnostics_p.add_subparsers(dest="action", required=True)
@@ -249,6 +254,20 @@ def main(argv: list[str] | None = None) -> int:
         data = updates.status()
         emit(data, as_json=as_json, human_lines=updates.human_lines(data))
         return 0
+
+    if command == "updates" and action in ("check", "apply", "rollback", "reboot"):
+        try:
+            data = updates.run_action(action)
+        except UpdatesError as exc:
+            payload = updates.error_payload(exc, action=action)
+            emit(
+                payload,
+                as_json=as_json or True,
+                human_lines=[f"{exc.error.code}: {exc.detail or exc.error.message}"],
+            )
+            return exc.error.exit_code
+        emit(data, as_json=as_json, human_lines=updates.human_action(data))
+        return 0 if data.get("ok") else 1
 
     if command == "diagnostics" and action == "run":
         data = diagnostics.run()

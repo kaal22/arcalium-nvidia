@@ -1029,16 +1029,16 @@ Show:
 
 Actions:
 
-- Check updates.
-- Apply update.
-- Reboot.
-- View change log.
-- Explain rollback.
-- Pin current known-good deployment where supported.
-- Launch rollback helper.
-- Generate pre-update diagnostics.
+- **Check for updates** — opens a terminal running `sudo bootc upgrade --check` (password prompt visible).
+- **Apply update and reboot** — opens a terminal; user confirms with `yes`, then `sudo bootc upgrade && sudo systemctl reboot`.
+- **Rollback and reboot** — opens a terminal; user confirms with `yes`, then `sudo bootc rollback && sudo systemctl reboot`.
+- **Reboot** — opens a terminal; user confirms with `yes`, then `sudo systemctl reboot`.
+- View the exact commands used under the buttons.
+- Explain that rollback changes the OS deployment only.
+- Pin current known-good deployment where supported (later).
+- Generate pre-update diagnostics (Diagnostics page).
 
-Do not hide the fact that rollback changes the operating-system deployment but does not restore user files.
+Control Centre must not run privileged `bootc` mutations silently; the terminal is the privilege and progress surface.
 
 ## 9.13 Diagnostics page
 
@@ -1161,6 +1161,10 @@ arcaliumctl proton install-recommended --json
 arcaliumctl storage scan --json
 arcaliumctl vpn import /path/to/config --json
 arcaliumctl updates status --json
+arcaliumctl updates check --json
+arcaliumctl updates apply --json
+arcaliumctl updates rollback --json
+arcaliumctl updates reboot --json
 arcaliumctl diagnostics create --output /path/to/file
 arcaliumctl ai status --json
 arcaliumctl ai install-ollama --visible --json

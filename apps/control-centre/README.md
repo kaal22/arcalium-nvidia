@@ -23,7 +23,7 @@ Resume / restart: Kickoff → **Arcalium Setup**, or Settings → Setup wizard.
 | Network and VPN | `network status` + Proton VPN Flatpak |
 | Controllers | `controllers list` |
 | Streaming | Sunshine / Moonlight / OBS via `apps` |
-| Updates and Recovery | `updates status` (guidance only for apply/rollback) |
+| Updates and Recovery | `updates status` / `check` / `apply` / `rollback` / `reboot` (terminal + sudo) |
 | Diagnostics | `diagnostics run` / `bundle` |
 | Local AI Assistant | `ai install-ollama --visible` / `ensure --visible` / `status` / `launch` / `stop` (terminal progress for install & pull; Ollama + `gemma4:e4b-it-qat`) |
 | Settings | prefs + setup resume/restart |
