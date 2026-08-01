@@ -9,3 +9,8 @@ export async function arcaliumctl(args: string[]): Promise<JsonValue> {
 export async function openDesktop(desktopId: string): Promise<void> {
   return invoke("open_desktop", { desktopId });
 }
+
+export async function launchMode(): Promise<"setup" | "control-centre"> {
+  const mode = await invoke<string>("launch_mode");
+  return mode === "setup" ? "setup" : "control-centre";
+}

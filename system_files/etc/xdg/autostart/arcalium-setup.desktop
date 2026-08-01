@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Arcalium Setup
+Comment=First-run setup for Arcalium OS
+Exec=arcalium-setup --autostart
+Icon=io.arcalium.ControlCentre
+Terminal=false
+X-GNOME-Autostart-enabled=true
+X-KDE-autostart-phase=2
+OnlyShowIn=KDE;GNOME;LXQt;XFCE;

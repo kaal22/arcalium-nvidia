@@ -376,7 +376,16 @@ Source: [`apps/control-centre/`](../apps/control-centre/). Tauri 2 + React; app 
 - **In-app mark:** the sidebar mark was a CSS `clip-path` triangle placeholder. `App.tsx` now imports `assets/arccleanSVG.svg` from the repo root so the UI cannot drift from the OS icons. The import escapes the Vite root, which Rollup handles for builds; `server.fs.allow` covers `npm run dev`. The mark carries `.st0 { fill: #fff }`, which suits the dark sidebar.
 - **NVIDIA/WebKitGTK:** on Wayland the webview process dies before a window appears (blank window on X11). Confirmed on the RTX 3060: the app runs under `__NV_DISABLE_EXPLICIT_SYNC=1` and dies without it. The desktop entry exports that variable through `Exec=env …`, and `main.rs` additionally sets the session-appropriate variable before WebKit initialises so terminal launches and X11 sessions are covered. Set `ARCALIUM_CC_NO_GPU_WORKAROUND=1` to opt out.
 
-Setup wizard shares this codebase later. Visual polish of the Control Centre UI is deferred until every §9.2 page works (see `docs/IMPLEMENTATION_STATUS.md` Decisions).
+Setup wizard shares this codebase (`arcalium-control-centre --setup` / `arcalium-setup`). Visual polish of the Control Centre UI is deferred until every §9.2 page works (see `docs/IMPLEMENTATION_STATUS.md` Decisions).
+
+### Setup wizard
+
+- Progress: `~/.config/arcalium/setup-progress.json`; completion: `setup-complete.json` (PRODUCT_SPEC §8.2).
+- CLI: `arcaliumctl setup status|save|mark|complete|reset --json`.
+- Autostart: `/etc/xdg/autostart/arcalium-setup.desktop` and skel copy call `arcalium-setup --autostart` (no-op on live ISO and when already complete).
+- Menu: `io.arcalium.Setup.desktop` always opens the wizard (Resume).
+- Control Centre → Settings: Resume / Restart setup (restart confirms then `setup reset`).
+- Privileged policy matches Control Centre: user Flatpak installs OK; `bootc` apply and VPN secret import are guidance only; no disk formatting.
 
 ### Install time and the deploy step
 

@@ -6,11 +6,24 @@ import argparse
 import sys
 from typing import Any
 
-from . import apps, controllers, diagnostics, gpu, network, proton, storage, system, updates, vulkan
+from . import (
+    apps,
+    controllers,
+    diagnostics,
+    gpu,
+    network,
+    proton,
+    setup,
+    storage,
+    system,
+    updates,
+    vulkan,
+)
 from .apps import AppsError
 from .errors import ARC_CMD_001, ARC_CMD_003
 from .jsonutil import emit
 from .proton import ProtonError
+from .setup import SetupError
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -76,6 +89,17 @@ def _build_parser() -> argparse.ArgumentParser:
     diagnostics_sub = diagnostics_p.add_subparsers(dest="action", required=True)
     diagnostics_sub.add_parser("run", help="Aggregate health checklist")
     diagnostics_sub.add_parser("bundle", help="Write redacted support bundle under ~/.local/state/arcalium")
+
+    setup_p = sub.add_parser("setup", help="First-run setup wizard progress")
+    setup_sub = setup_p.add_subparsers(dest="action", required=True)
+    setup_sub.add_parser("status", help="Wizard completion and progress")
+    setup_save = setup_sub.add_parser("save", help="Save current wizard step")
+    setup_save.add_argument("step_id", help="Step id (welcome, hardware, …)")
+    setup_mark = setup_sub.add_parser("mark", help="Mark a wizard step complete or skipped")
+    setup_mark.add_argument("step_id", help="Step id")
+    setup_mark.add_argument("state", choices=("complete", "skipped", "pending", "in_progress"))
+    setup_sub.add_parser("complete", help="Write setup-complete.json and clear progress")
+    setup_sub.add_parser("reset", help="Clear progress and completion markers")
 
     return parser
 
@@ -202,6 +226,67 @@ def main(argv: list[str] | None = None) -> int:
         data = diagnostics.bundle()
         emit(data, as_json=as_json, human_lines=diagnostics.human_bundle(data))
         return 0 if data.get("ok") else ARC_CMD_003.exit_code
+
+    if command == "setup" and action == "status":
+        data = setup.status()
+        emit(data, as_json=as_json, human_lines=setup.human_status(data))
+        return 0
+
+    if command == "setup" and action == "save":
+        try:
+            data = setup.save(current_step=args.step_id)
+        except SetupError as exc:
+            payload = setup.error_payload(exc, action="save")
+            emit(
+                payload,
+                as_json=as_json or True,
+                human_lines=[f"{exc.error.code}: {exc.detail or exc.error.message}"],
+            )
+            return exc.error.exit_code
+        emit(data, as_json=as_json, human_lines=setup.human_mutate(data))
+        return 0
+
+    if command == "setup" and action == "mark":
+        try:
+            data = setup.save(current_step=args.step_id, steps={args.step_id: args.state})
+        except SetupError as exc:
+            payload = setup.error_payload(exc, action="mark")
+            emit(
+                payload,
+                as_json=as_json or True,
+                human_lines=[f"{exc.error.code}: {exc.detail or exc.error.message}"],
+            )
+            return exc.error.exit_code
+        emit(data, as_json=as_json, human_lines=setup.human_mutate(data))
+        return 0
+
+    if command == "setup" and action == "complete":
+        try:
+            data = setup.complete()
+        except SetupError as exc:
+            payload = setup.error_payload(exc, action="complete")
+            emit(
+                payload,
+                as_json=as_json or True,
+                human_lines=[f"{exc.error.code}: {exc.detail or exc.error.message}"],
+            )
+            return exc.error.exit_code
+        emit(data, as_json=as_json, human_lines=setup.human_mutate(data))
+        return 0
+
+    if command == "setup" and action == "reset":
+        try:
+            data = setup.reset()
+        except SetupError as exc:
+            payload = setup.error_payload(exc, action="reset")
+            emit(
+                payload,
+                as_json=as_json or True,
+                human_lines=[f"{exc.error.code}: {exc.detail or exc.error.message}"],
+            )
+            return exc.error.exit_code
+        emit(data, as_json=as_json, human_lines=setup.human_mutate(data))
+        return 0
 
     payload: dict[str, Any] = {
         "schema": "arcalium.error/v1",

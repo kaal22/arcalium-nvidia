@@ -10,13 +10,13 @@
 
 ## Where we left off (2026-07-31)
 
-Phase 0–2 complete on the RTX 3060. Control Centre has all §9.2 pages wired (status + user Flatpak ops; bootc apply/rollback as guidance). Heroic opens directly; Proton-GE install is explicit via Compatibility / `arcaliumctl`. Setup wizard and UI polish are still deferred.
+Phase 0–2 complete on the RTX 3060. Control Centre §9.2 pages are live. **Setup wizard** (`arcalium-setup` / Control Centre `--setup`) is implemented: 13 pages, per-user progress, autostart for incomplete users, Resume/Restart from Settings and the app menu. UI polish still deferred.
 
-**Next on 3060:** `sudo bootc upgrade && sudo systemctl reboot`, then:
+**Next on 3060:** after CI for the setup wizard lands, `sudo bootc upgrade && sudo systemctl reboot`, then:
 
-1. Open Control Centre Overview and confirm it matches `arcaliumctl`.
-2. Launch Heroic from the pin and confirm it opens immediately without a Proton download.
-3. Install Proton-GE explicitly from Control Centre → Compatibility and verify `arcaliumctl proton list --json`.
+1. Confirm Control Centre Overview loads.
+2. Run **Arcalium Setup** (autostart or Kickoff) through to Finish; confirm `~/.config/arcalium/setup-complete.json`.
+3. Settings → Restart setup… then Resume, to verify markers.
 
 **Roles**
 
@@ -122,8 +122,8 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 
 | Requirement | Status | Notes |
 |---|---|---|
-| First-run service + resume state | not started | Gated until Phase 0–1 proven |
-| Wizard pages (hardware → completion) | not started | |
+| First-run service + resume state | in progress | Per-user markers under `~/.config/arcalium/`; `arcaliumctl setup status/save/mark/complete/reset`; autostart via `arcalium-setup --autostart` (skips live + completed); Resume launcher `io.arcalium.Setup.desktop` |
+| Wizard pages (hardware → completion) | in progress | Shared Control Centre binary `--setup` mode; 13 pages per §8.3. Updates/VPN secrets/format stay guidance-only (same 2B policy as Control Centre). |
 
 ## Phase 4 — Application provisioning
 
@@ -251,6 +251,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 | 2026-07-31 | Phase 2 game path on RTX 3060 | **pass** — Steam and Heroic exercised (owner-confirmed). Phase 2 hardware validation complete; Control Centre gate open for private alpha. |
 | 2026-07-31 | Control Centre Overview MVP | Tauri 2 + React app `io.arcalium.ControlCentre`: nav shell for all §9.2 pages, Overview live from allowlisted `arcaliumctl` JSON, stubs elsewhere. Built in Containerfile `control-centre` stage; installed to `/usr/bin/arcalium-control-centre` with WebKit runtime + Kickoff favourite (panel pin dropped 2026-07-31 — its icon duplicates the Kickoff launcher mark). |
 | 2026-07-31 | Control Centre Compatibility page | First live page beyond Overview. Allowlists `proton list` / `install-recommended` (30 min timeout for download), Open ProtonPlus via Flatpak export path resolution, static ProtonDB / anti-cheat links. Overview Quick action Install Proton-GE uses the same install command. |
+| 2026-08-01 | Setup wizard (Phase 3) | Shared Control Centre `--setup` mode with 13 pages (§8.3). State via `arcaliumctl setup` → `~/.config/arcalium/setup-progress.json` / `setup-complete.json`. Autostart `arcalium-setup --autostart` (live + completed skipped); menu `io.arcalium.Setup.desktop`; Settings Resume/Restart. Updates/VPN secrets/format remain guidance-only. |
 | 2026-08-01 | Every `arcaliumctl` command crashed after the pages commit | `apps.py` computed a repo-checkout catalogue fallback with `Path(__file__).resolve().parents[5]` at import time. That index is valid in the checkout (`<repo>/system_files/usr/lib/arcalium/ctl/`) but the installed path `/usr/lib/arcalium/ctl/` has only five parents, so it raised `IndexError: 5` while importing — taking down every subcommand and the whole Control Centre, which reported only "Could not load diagnostics". Now probed by `len(parents)` instead of indexed blindly. `build.sh` runs `arcaliumctl --help` and parses the catalogue so an import-time break fails CI rather than shipping. |
 | 2026-07-31 | Control Centre showed the wrong icon in two places | Both were placeholders never revisited. **Window/taskbar icon:** `--no-bundle` means `bundle.icon` is consumed only by bundlers, so the running window fell back to the toolkit default. X11 needed `window.set_icon()` (`image-png` feature, embedding the generated `icons/256x256.png`); Wayland has no GTK3 window-icon protocol and matches `app_id` to a desktop file instead, so the entry gained `StartupWMClass=arcalium-control-centre` to match GTK's program name against `io.arcalium.ControlCentre.desktop`. **Sidebar mark:** a CSS `clip-path` triangle, now the real `assets/arccleanSVG.svg` imported from the repo root so the UI and OS icons share one source. |
 | 2026-07-31 | Batched live ISO with Control Centre | **built** — 7.7 GB `Arcalium-Live.iso` from `49b5e7d`. Desktop copy as `Arcalium-Live-CC.iso` (old Desktop ISO locked); Ventoy `F:\Arcalium-Live.iso`. GHCR `:dev` published [run 30626397101](https://github.com/kaal22/arcalium-nvidia/actions/runs/30626397101). |

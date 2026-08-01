@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Arcalium Setup
+GenericName=First-run setup
+Comment=Resume or restart the Arcalium first-run setup wizard
+Exec=env __NV_DISABLE_EXPLICIT_SYNC=1 arcalium-setup
+Icon=io.arcalium.ControlCentre
+Terminal=false
+Categories=Settings;System;X-Arcalium;
+Keywords=arcalium;setup;wizard;first-run;
+StartupNotify=true
+StartupWMClass=arcalium-control-centre
+NoDisplay=false

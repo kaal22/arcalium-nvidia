@@ -1,0 +1,33 @@
+#!/usr/bin/bash
+# Launch the Arcalium first-run setup wizard (Control Centre --setup).
+# Skips the live installer environment. Always launches when invoked from the
+# application menu (Resume / Restart); autostart uses --autostart so completed
+# users are left alone.
+set -euo pipefail
+
+AUTOSTART=0
+for arg in "$@"; do
+  if [[ "${arg}" == "--autostart" ]]; then
+    AUTOSTART=1
+  fi
+done
+
+if grep -Eq '(^|[[:space:]])(rd\.live|boot=live|liveimg|rd\.live\.image)(=|[[:space:]]|$)' /proc/cmdline 2>/dev/null; then
+  exit 0
+fi
+if [[ "${USER:-}" == "liveuser" || "${USER:-}" == "anaconda" ]]; then
+  exit 0
+fi
+if [[ -d /run/anaconda || -f /etc/anaconda-release ]]; then
+  exit 0
+fi
+
+if [[ "${AUTOSTART}" -eq 1 ]]; then
+  if [[ -f "${HOME}/.config/arcalium/setup-complete.json" ]] \
+    && grep -q '"completed"[[:space:]]*:[[:space:]]*true' "${HOME}/.config/arcalium/setup-complete.json" 2>/dev/null; then
+    exit 0
+  fi
+fi
+
+export __NV_DISABLE_EXPLICIT_SYNC="${__NV_DISABLE_EXPLICIT_SYNC:-1}"
+exec arcalium-control-centre --setup

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import brandMark from "../../../assets/arccleanSVG.svg";
+import { launchMode } from "./api";
 import { NAV, PageId } from "./nav";
 import { OverviewPage } from "./pages/Overview";
 import { GamingPage } from "./pages/Gaming";
@@ -14,6 +15,7 @@ import { UpdatesPage } from "./pages/Updates";
 import { DiagnosticsPage } from "./pages/Diagnostics";
 import { SettingsPage } from "./pages/Settings";
 import { AboutPage } from "./pages/About";
+import { WizardApp } from "./wizard/WizardApp";
 
 const LAST_PAGE_KEY = "arcalium.cc.lastPage";
 
@@ -22,13 +24,35 @@ function isPageId(v: string | null): v is PageId {
 }
 
 export default function App() {
+  const [mode, setMode] = useState<"loading" | "setup" | "control-centre">("loading");
   const [page, setPage] = useState<PageId>("overview");
 
   useEffect(() => {
+    void launchMode()
+      .then(setMode)
+      .catch(() => setMode("control-centre"));
+  }, []);
+
+  useEffect(() => {
+    if (mode !== "control-centre") return;
     if (localStorage.getItem("arcalium.cc.rememberPage") === "0") return;
     const saved = localStorage.getItem(LAST_PAGE_KEY);
     if (isPageId(saved)) setPage(saved);
-  }, []);
+  }, [mode]);
+
+  if (mode === "loading") {
+    return (
+      <div className="shell">
+        <main className="content">
+          <p className="muted">Starting…</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (mode === "setup") {
+    return <WizardApp />;
+  }
 
   return (
     <div className="shell">

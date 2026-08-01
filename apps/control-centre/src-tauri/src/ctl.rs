@@ -61,7 +61,28 @@ const ALLOWED_EXACT: &[&[&str]] = &[
     &["updates", "status", "--json"],
     &["diagnostics", "run", "--json"],
     &["diagnostics", "bundle", "--json"],
+    &["setup", "status", "--json"],
+    &["setup", "complete", "--json"],
+    &["setup", "reset", "--json"],
 ];
+
+const SETUP_STEPS: &[&str] = &[
+    "welcome",
+    "hardware",
+    "nvidia",
+    "display",
+    "updates",
+    "applications",
+    "protonGe",
+    "steam",
+    "storage",
+    "vpn",
+    "streaming",
+    "validation",
+    "completion",
+];
+
+const SETUP_STATES: &[&str] = &["complete", "skipped", "pending", "in_progress"];
 
 #[derive(Debug, Error)]
 pub enum CtlError {
@@ -93,6 +114,14 @@ fn is_allowed(args: &[String]) -> bool {
     {
         let id = args[2].as_str();
         return ALLOWED_FLATPAK_IDS.contains(&id) || ALLOWED_CATALOGUE_IDS.contains(&id);
+    }
+    // setup save <step> --json
+    if args.len() == 4 && args[0] == "setup" && args[1] == "save" && args[3] == "--json" {
+        return SETUP_STEPS.contains(&args[2].as_str());
+    }
+    // setup mark <step> <state> --json
+    if args.len() == 5 && args[0] == "setup" && args[1] == "mark" && args[4] == "--json" {
+        return SETUP_STEPS.contains(&args[2].as_str()) && SETUP_STATES.contains(&args[3].as_str());
     }
     false
 }

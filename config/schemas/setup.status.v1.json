@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arcalium.local/schemas/setup.status.v1.json",
+  "title": "arcalium.setup.status/v1",
+  "type": "object",
+  "required": ["schema", "completed", "currentStep", "steps"],
+  "properties": {
+    "schema": { "const": "arcalium.setup.status/v1" },
+    "completed": { "type": "boolean" },
+    "currentStep": { "type": "string" },
+    "steps": { "type": "object" },
+    "liveSession": { "type": "boolean" },
+    "shouldAutostart": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}

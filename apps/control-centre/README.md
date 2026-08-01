@@ -2,8 +2,15 @@
 
 Tauri 2 + React + TypeScript app (`io.arcalium.ControlCentre`).
 
-All §9.2 navigation pages are live. They call allowlisted `arcaliumctl … --json`
-commands and/or `gio launch` for desktop entries:
+## Modes
+
+- **Control Centre** (default) — all §9.2 pages
+- **Setup wizard** — `arcalium-control-centre --setup` or `arcalium-setup`
+
+Autostart: `arcalium-setup --autostart` (skips live installer and completed users).
+Resume / restart: Kickoff → **Arcalium Setup**, or Settings → Setup wizard.
+
+## Pages
 
 | Page | Backend |
 |---|---|
@@ -18,7 +25,7 @@ commands and/or `gio launch` for desktop entries:
 | Streaming | Sunshine / Moonlight / OBS via `apps` |
 | Updates and Recovery | `updates status` (guidance only for apply/rollback) |
 | Diagnostics | `diagnostics run` / `bundle` |
-| Settings | local preferences + System Settings link |
+| Settings | prefs + setup resume/restart |
 | About | image identity |
 
 Privileged policy: user Flatpak install/uninstall only. No Polkit helper yet;
@@ -26,7 +33,10 @@ Privileged policy: user Flatpak install/uninstall only. No Polkit helper yet;
 
 Catalogue source: `config/catalogue/apps.v1.json` → `/usr/share/arcalium/catalogue/`.
 
-**Deferred:** UI polish after every page works; Setup wizard next.
+Setup progress: `~/.config/arcalium/setup-progress.json`  
+Setup complete: `~/.config/arcalium/setup-complete.json`
+
+**Deferred:** UI polish after Setup wizard and Control Centre pages are solid.
 
 ## Local build (WSL)
 

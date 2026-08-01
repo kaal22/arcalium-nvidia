@@ -3,11 +3,30 @@ mod ctl;
 use ctl::{CtlError, run_arcaliumctl};
 use serde_json::Value;
 use std::path::PathBuf;
+use std::sync::Mutex;
 use tauri::Manager;
+
+struct LaunchMode(Mutex<String>);
+
+fn detect_launch_mode() -> String {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.iter().any(|a| a == "--setup" || a == "setup") {
+        return "setup".into();
+    }
+    if std::env::var_os("ARCALIUM_SETUP").is_some() {
+        return "setup".into();
+    }
+    "control-centre".into()
+}
 
 #[tauri::command]
 fn arcaliumctl(args: Vec<String>) -> Result<Value, String> {
     run_arcaliumctl(&args).map_err(|e: CtlError| e.to_string())
+}
+
+#[tauri::command]
+fn launch_mode(state: tauri::State<'_, LaunchMode>) -> String {
+    state.0.lock().map(|g| g.clone()).unwrap_or_else(|_| "control-centre".into())
 }
 
 fn resolve_desktop_path(desktop_id: &str) -> Option<PathBuf> {
@@ -63,6 +82,8 @@ fn open_desktop(desktop_id: String) -> Result<(), String> {
         "com.protonvpn.www.desktop",
         "nvidia-settings.desktop",
         "org.nvidia.Settings.desktop",
+        "io.arcalium.ControlCentre.desktop",
+        "io.arcalium.Setup.desktop",
     ];
     if !ALLOWED.contains(&desktop_id.as_str()) {
         return Err(format!("desktop entry not allowlisted: {desktop_id}"));
@@ -71,15 +92,12 @@ fn open_desktop(desktop_id: String) -> Result<(), String> {
         format!("desktop entry not found for {desktop_id} (is the Flatpak installed?)")
     })?;
 
-    // Prefer gio launch (GLib) — treats .desktop as an app, not a document.
     if try_spawn("gio", &["launch", path.to_str().unwrap_or_default()]) {
         return Ok(());
     }
-    // gtk-launch takes the desktop file id (with or without .desktop).
     if try_spawn("gtk-launch", &[desktop_id.as_str()]) {
         return Ok(());
     }
-    // Plasma fallback.
     if try_spawn("kioclient", &["exec", path.to_str().unwrap_or_default()])
         || try_spawn("kioclient5", &["exec", path.to_str().unwrap_or_default()])
         || try_spawn("kioclient6", &["exec", path.to_str().unwrap_or_default()])
@@ -102,21 +120,19 @@ fn try_spawn(bin: &str, args: &[&str]) -> bool {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let mode = detect_launch_mode();
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![arcaliumctl, open_desktop])
-        .setup(|app| {
+        .manage(LaunchMode(Mutex::new(mode.clone())))
+        .invoke_handler(tauri::generate_handler![arcaliumctl, open_desktop, launch_mode])
+        .setup(move |app| {
             if let Some(window) = app.get_webview_window("main") {
-                let _ = window.set_title("Arcalium Control Centre");
-                // We build with --no-bundle, so bundle.icon is never applied and
-                // the window falls back to the toolkit's default mark. Icons are
-                // generated from assets/arccleanSVG.svg by build.sh before cargo
-                // runs, so this include is resolvable at compile time.
-                //
-                // This sets _NET_WM_ICON, which covers X11. On Wayland the
-                // compositor takes the icon from the .desktop file it matches by
-                // app_id, which is why the desktop entry also sets
-                // StartupWMClass=arcalium-control-centre.
+                let title = if mode == "setup" {
+                    "Arcalium Setup"
+                } else {
+                    "Arcalium Control Centre"
+                };
+                let _ = window.set_title(title);
                 if let Ok(icon) = tauri::image::Image::from_bytes(include_bytes!(
                     "../icons/256x256.png"
                 )) {
