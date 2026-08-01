@@ -148,6 +148,30 @@ fn timeout_for(args: &[String]) -> u64 {
     TIMEOUT_DEFAULT_SECS
 }
 
+/// Failing commands still print their `arcalium.error/v1` payload on stdout, so
+/// reporting stderr alone left the UI with a bare "exited 1" and no reason.
+fn failure_detail(stdout: &[u8], stderr: &[u8]) -> String {
+    if let Ok(value) = serde_json::from_slice::<Value>(stdout) {
+        let code = value.get("code").and_then(Value::as_str);
+        let detail = value
+            .get("detail")
+            .and_then(Value::as_str)
+            .filter(|s| !s.trim().is_empty())
+            .or_else(|| value.get("message").and_then(Value::as_str));
+        match (code, detail) {
+            (Some(code), Some(detail)) => return format!("{code}: {detail}"),
+            (None, Some(detail)) => return detail.to_string(),
+            (Some(code), None) => return code.to_string(),
+            (None, None) => {}
+        }
+    }
+    let stderr = String::from_utf8_lossy(stderr).trim().to_string();
+    if !stderr.is_empty() {
+        return stderr;
+    }
+    String::from_utf8_lossy(stdout).trim().to_string()
+}
+
 pub fn run_arcaliumctl(args: &[String]) -> Result<Value, CtlError> {
     if !is_allowed(args) {
         return Err(CtlError::NotAllowlisted(args.to_vec()));
@@ -181,7 +205,7 @@ pub fn run_arcaliumctl(args: &[String]) -> Result<Value, CtlError> {
                 if !status.success() {
                     return Err(CtlError::Exit {
                         code: status.code().unwrap_or(-1),
-                        stderr: String::from_utf8_lossy(&stderr).trim().to_string(),
+                        stderr: failure_detail(&stdout, &stderr),
                     });
                 }
                 return serde_json::from_slice(&stdout).map_err(|e| CtlError::Json(e.to_string()));

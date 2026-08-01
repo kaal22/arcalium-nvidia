@@ -85,6 +85,51 @@ def _installed_flatpaks() -> set[str]:
     return {line.strip() for line in result.stdout.splitlines() if line.strip()}
 
 
+FLATHUB_URL = "https://dl.flathub.org/repo/flathub.flatpakrepo"
+
+
+def _remotes(scope: str) -> dict[str, str]:
+    """Remote name -> URL for --user or --system."""
+    result = run_allowlisted(
+        "flatpak",
+        ["remotes", scope, "--columns=name,url"],
+        timeout=30,
+    )
+    if not result.ok:
+        return {}
+    remotes: dict[str, str] = {}
+    for line in result.stdout.splitlines():
+        parts = line.split()
+        if not parts:
+            continue
+        remotes[parts[0].strip()] = parts[1].strip() if len(parts) > 1 else ""
+    return remotes
+
+
+def _ensure_user_flathub() -> None:
+    """Give the user installation a flathub remote.
+
+    Bazzite configures flathub system-wide, so a plain `--user` install fails
+    with "Remote \"flathub\" not found" on a fresh account.
+    """
+    if "flathub" in _remotes("--user"):
+        return
+    url = _remotes("--system").get("flathub") or FLATHUB_URL
+    result = run_allowlisted(
+        "flatpak",
+        ["remote-add", "--user", "--if-not-exists", "flathub", url],
+        timeout=120,
+    )
+    if not result.ok and "flathub" not in _remotes("--user"):
+        raise AppsError(
+            ARC_APPS_001,
+            (
+                "Could not add the Flathub remote for this user: "
+                + (result.stderr or result.stdout or "flatpak remote-add failed").strip()
+            )[:800],
+        )
+
+
 def _data_dir_for(entry: dict[str, Any]) -> str | None:
     home = os.environ.get("HOME")
     if not home:
@@ -183,15 +228,14 @@ def install_app(app_id: str) -> dict[str, Any]:
             "sourceId": source,
             "scope": "existing",
         }
-    result = run_allowlisted(
-        "flatpak",
-        ["install", "--user", "-y", "flathub", source],
-        timeout=FLATPAK_TIMEOUT,
-    )
+    _ensure_user_flathub()
+    argv = ["install", "--user", "-y", "flathub", source]
+    result = run_allowlisted("flatpak", argv, timeout=FLATPAK_TIMEOUT)
     if not result.ok:
+        detail = (result.stderr or result.stdout or "flatpak install failed").strip()
         raise AppsError(
             ARC_APPS_001,
-            (result.stderr or result.stdout or "flatpak install failed")[:800],
+            f"{detail} (tried: flatpak {' '.join(argv)})"[:800],
         )
     return {
         "schema": "arcalium.apps.install/v1",
