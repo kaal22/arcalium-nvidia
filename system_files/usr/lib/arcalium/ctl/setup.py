@@ -40,12 +40,16 @@ class SetupError(Exception):
 
 
 def _config_dir() -> Path:
+    """Resolve the per-user state directory without creating it.
+
+    Read paths must not touch the filesystem: during the image build `$HOME`
+    is `/root`, a dangling symlink to `/var/roothome`, so creating it here
+    made every `setup` command fail in the container smoke test.
+    """
     home = os.environ.get("HOME")
     if not home:
         raise SetupError(ARC_CMD_003, "HOME is not set")
-    path = Path(home) / ".config" / "arcalium"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    return Path(home) / ".config" / "arcalium"
 
 
 def progress_path() -> Path:
