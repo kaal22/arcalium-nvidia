@@ -32,25 +32,101 @@ def _session_type() -> str:
     )
 
 
+def _ostree_booted() -> bool:
+    return Path("/run/ostree-booted").exists()
+
+
 def _bootc_status() -> dict[str, Any]:
+    """Describe the booted deployment, tolerating unprivileged callers.
+
+    `bootc status` needs root, so the Control Centre (which never runs as root)
+    used to report the deployment as unavailable and diagnostics called that a
+    failure on a perfectly healthy system. Fall back to `rpm-ostree status`,
+    which the system daemon serves to any user.
+    """
     result = run_allowlisted("bootc", ["status", "--json", "--booted"])
     if not result.ok:
         # Older bootc may not support --booted; try without.
         result = run_allowlisted("bootc", ["status", "--format=json"])
-    if not result.ok:
-        result = run_allowlisted("bootc", ["status"])
+    if result.ok:
+        try:
+            import json
+
+            return {"available": True, "source": "bootc", "status": json.loads(result.stdout)}
+        except Exception:
+            return {"available": True, "source": "bootc", "rawPreview": result.stdout[:2000]}
+
+    fallback = _rpm_ostree_status()
+    if fallback is not None:
         return {
-            "available": result.ok or bool(result.stdout),
-            "rawPreview": (result.stdout or result.stderr)[:2000],
-            "error": result.error.code if result.error else None,
+            "available": True,
+            "source": "rpm-ostree",
+            "requiresRoot": True,
+            "status": fallback,
         }
+
+    plain = run_allowlisted("bootc", ["status"])
+    return {
+        "available": plain.ok or bool(plain.stdout) or _ostree_booted(),
+        "source": "bootc" if plain.ok else None,
+        "requiresRoot": not plain.ok and _ostree_booted(),
+        "rawPreview": (plain.stdout or plain.stderr)[:2000],
+        "error": plain.error.code if plain.error else None,
+    }
+
+
+def _rpm_ostree_status() -> dict[str, Any] | None:
+    """Booted/staged/rollback deployments in the shape `updates` expects."""
+    result = run_allowlisted("rpm-ostree", ["status", "--json"], timeout=30)
+    if not result.ok:
+        return None
     try:
         import json
 
         data = json.loads(result.stdout)
-        return {"available": True, "status": data}
     except Exception:
-        return {"available": True, "rawPreview": result.stdout[:2000]}
+        return None
+    raw = data.get("deployments")
+    if not isinstance(raw, list) or not raw:
+        return None
+
+    deployments: list[dict[str, Any]] = []
+    rollback_assigned = False
+    for dep in raw:
+        if not isinstance(dep, dict):
+            continue
+        booted = bool(dep.get("booted"))
+        staged = bool(dep.get("staged"))
+        # The first deployment that is neither booted nor staged is what
+        # `bootc rollback` would boot into.
+        rollback = False
+        if not booted and not staged and not rollback_assigned:
+            rollback = True
+            rollback_assigned = True
+        deployments.append(
+            {
+                "image": {
+                    "image": dep.get("container-image-reference") or dep.get("origin"),
+                    "imageDigest": dep.get("container-image-reference-digest")
+                    or dep.get("base-checksum")
+                    or dep.get("checksum"),
+                },
+                "booted": booted,
+                "staged": staged,
+                "rollback": rollback,
+                "pinned": bool(dep.get("pinned")),
+                "timestamp": _iso_timestamp(dep.get("timestamp")),
+            }
+        )
+    return {"deployments": deployments} if deployments else None
+
+
+def _iso_timestamp(value: Any) -> str | None:
+    if not isinstance(value, (int, float)):
+        return value if isinstance(value, str) else None
+    from datetime import datetime, timezone
+
+    return datetime.fromtimestamp(value, tz=timezone.utc).isoformat()
 
 
 def _hostname() -> str:

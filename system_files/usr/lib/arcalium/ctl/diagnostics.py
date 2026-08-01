@@ -30,9 +30,17 @@ def run() -> dict[str, Any]:
     pads = controllers.list_controllers()
     upd = updates.status()
 
+    bootc_info = summary.get("bootc") or {}
     checks = [
         _check("image-identity", "Image identity", bool(summary.get("imageName")), summary.get("prettyName")),
-        _check("bootc", "bootc status", bool((summary.get("bootc") or {}).get("available")), None),
+        _check(
+            "bootc",
+            "bootc status",
+            bool(bootc_info.get("available")),
+            "read via rpm-ostree; `bootc status` itself needs sudo"
+            if bootc_info.get("requiresRoot")
+            else None,
+        ),
         _check("kernel", "Kernel", bool(summary.get("kernel")), summary.get("kernel")),
         _check(
             "nvidia-modules",

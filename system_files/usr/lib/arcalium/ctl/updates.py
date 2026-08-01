@@ -39,6 +39,8 @@ def _parse_bootc(bootc: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(status, dict):
         return {
             "available": bool(bootc.get("available")),
+            "source": bootc.get("source"),
+            "requiresRoot": bool(bootc.get("requiresRoot")),
             "rawPreview": bootc.get("rawPreview"),
             "error": bootc.get("error"),
             "booted": None,
@@ -63,6 +65,8 @@ def _parse_bootc(bootc: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "available": True,
+        "source": bootc.get("source"),
+        "requiresRoot": bool(bootc.get("requiresRoot")),
         "booted": _deploy_summary(booted),
         "staged": _deploy_summary(staged),
         "rollback": _deploy_summary(rollback),
