@@ -2,7 +2,11 @@
 # Launch the Arcalium first-run setup wizard (Control Centre --setup).
 # Skips the live installer environment. Always launches when invoked from the
 # application menu (Resume / Restart); autostart uses --autostart so completed
-# users are left alone.
+# users and users who disabled "Show on startup" are left alone.
+#
+# Autostart also waits for Plasma Welcome / Bazzite Portal (yafti) to finish so
+# language/keyboard/timezone (installer) and Plasma's first-run UI are not
+# stacked on top of Arcalium Setup.
 set -euo pipefail
 
 AUTOSTART=0
@@ -22,11 +26,38 @@ if [[ -d /run/anaconda || -f /etc/anaconda-release ]]; then
   exit 0
 fi
 
+CONFIG_DIR="${HOME}/.config/arcalium"
+COMPLETE="${CONFIG_DIR}/setup-complete.json"
+PREFS="${CONFIG_DIR}/setup-prefs.json"
+
 if [[ "${AUTOSTART}" -eq 1 ]]; then
-  if [[ -f "${HOME}/.config/arcalium/setup-complete.json" ]] \
-    && grep -q '"completed"[[:space:]]*:[[:space:]]*true' "${HOME}/.config/arcalium/setup-complete.json" 2>/dev/null; then
+  if [[ -f "${COMPLETE}" ]] \
+    && grep -q '"completed"[[:space:]]*:[[:space:]]*true' "${COMPLETE}" 2>/dev/null; then
     exit 0
   fi
+  if [[ -f "${PREFS}" ]] \
+    && grep -Eq '"showOnStartup"[[:space:]]*:[[:space:]]*false' "${PREFS}" 2>/dev/null; then
+    exit 0
+  fi
+
+  # Wait briefly for a graphical session to exist.
+  for _ in $(seq 1 60); do
+    if [[ -n "${WAYLAND_DISPLAY:-}" || -n "${DISPLAY:-}" ]]; then
+      break
+    fi
+    sleep 1
+  done
+
+  # Give concurrent first-run apps a moment to start, then wait until they exit.
+  sleep 8
+  deadline=$((SECONDS + 600))
+  while (( SECONDS < deadline )); do
+    if pgrep -f 'plasma-welcome|org\.kde\.plasma-welcome|yafti|bazzite-portal' >/dev/null 2>&1; then
+      sleep 2
+      continue
+    fi
+    break
+  done
 fi
 
 export __NV_DISABLE_EXPLICIT_SYNC="${__NV_DISABLE_EXPLICIT_SYNC:-1}"

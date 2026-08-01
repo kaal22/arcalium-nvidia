@@ -1,8 +1,30 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { arcaliumctl, JsonValue } from "../api";
 import { pick, str } from "../lib/json";
 
 type LoadState = "loading" | "ready" | "error";
+
+async function sleep(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Poll ai status until a condition is met or the budget expires. */
+async function pollAiStatus(
+  ready: (status: JsonValue) => boolean,
+  opts: { intervalMs?: number; maxMs?: number; onTick?: (status: JsonValue) => void } = {},
+): Promise<{ ok: boolean; status: JsonValue | null }> {
+  const intervalMs = opts.intervalMs ?? 4000;
+  const maxMs = opts.maxMs ?? 60 * 60 * 1000;
+  const started = Date.now();
+  let last: JsonValue | null = null;
+  while (Date.now() - started < maxMs) {
+    last = await arcaliumctl(["ai", "status", "--json"]);
+    opts.onTick?.(last);
+    if (ready(last)) return { ok: true, status: last };
+    await sleep(intervalMs);
+  }
+  return { ok: false, status: last };
+}
 
 export function AssistantPage() {
   const [state, setState] = useState<LoadState>("loading");
@@ -10,6 +32,14 @@ export function AssistantPage() {
   const [data, setData] = useState<JsonValue | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState<"install" | "ensure" | "launch" | "stop" | null>(null);
+  const cancelled = useRef(false);
+
+  useEffect(() => {
+    cancelled.current = false;
+    return () => {
+      cancelled.current = true;
+    };
+  }, []);
 
   const refresh = useCallback(async () => {
     setState("loading");
@@ -32,15 +62,37 @@ export function AssistantPage() {
     setMsg(null);
     setError(null);
     try {
-      const result = await arcaliumctl(["ai", "install-ollama", "--json"]);
-      setData(await arcaliumctl(["ai", "status", "--json"]));
+      const result = await arcaliumctl(["ai", "install-ollama", "--visible", "--json"]);
       if (!pick(result, "ok")) throw new Error(str(pick(result, "message"), "Could not install Ollama."));
-      setMsg(str(pick(result, "message"), "Ollama installed. Pull the model next."));
-      setState("ready");
+      setMsg(str(pick(result, "message"), "Ollama install started — watch the terminal."));
+
+      if (str(pick(result, "action")) === "terminal") {
+        const polled = await pollAiStatus((status) => Boolean(pick(status, "ollama.available")), {
+          onTick: (status) => {
+            if (!cancelled.current) setData(status);
+          },
+        });
+        if (cancelled.current) return;
+        if (polled.status) {
+          setData(polled.status);
+          setState("ready");
+        }
+        if (polled.ok) {
+          setMsg("Ollama installed. Next, pull and configure the model.");
+        } else {
+          setMsg(
+            "Still waiting on the install terminal. When brew finishes, click Refresh — or pull the model if Ollama already shows as found.",
+          );
+        }
+      } else {
+        setData(await arcaliumctl(["ai", "status", "--json"]));
+        setMsg(str(pick(result, "message"), "Ollama installed. Pull the model next."));
+        setState("ready");
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (!cancelled.current) setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(null);
+      if (!cancelled.current) setBusy(null);
     }
   };
 
@@ -49,15 +101,37 @@ export function AssistantPage() {
     setMsg(null);
     setError(null);
     try {
-      const result = await arcaliumctl(["ai", "ensure", "--json"]);
-      setData(await arcaliumctl(["ai", "status", "--json"]));
+      const result = await arcaliumctl(["ai", "ensure", "--visible", "--json"]);
       if (!pick(result, "ok")) throw new Error(str(pick(result, "message"), "Could not configure model."));
-      setMsg(str(pick(result, "message"), pick(result, "ok") ? "Model ready." : "Could not ensure model."));
-      setState("ready");
+      setMsg(str(pick(result, "message"), "Model download started — watch the terminal."));
+
+      if (str(pick(result, "action")) === "terminal") {
+        const polled = await pollAiStatus((status) => Boolean(pick(status, "model.installed")), {
+          onTick: (status) => {
+            if (!cancelled.current) setData(status);
+          },
+        });
+        if (cancelled.current) return;
+        if (polled.status) {
+          setData(polled.status);
+          setState("ready");
+        }
+        if (polled.ok) {
+          setMsg("Model ready. You can Launch assistant.");
+        } else {
+          setMsg(
+            "Still waiting on the download terminal. When the pull finishes, click Refresh.",
+          );
+        }
+      } else {
+        setData(await arcaliumctl(["ai", "status", "--json"]));
+        setMsg(str(pick(result, "message"), "Model ready."));
+        setState("ready");
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (!cancelled.current) setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(null);
+      if (!cancelled.current) setBusy(null);
     }
   };
 
@@ -175,7 +249,7 @@ export function AssistantPage() {
                     disabled={busy !== null}
                     onClick={() => void runInstall()}
                   >
-                    {busy === "install" ? "Installing Ollama…" : "1. Install Ollama"}
+                    {busy === "install" ? "Installing in terminal…" : "1. Install Ollama"}
                   </button>
                 )}
                 {ollamaOk && !modelOk && (
@@ -185,7 +259,7 @@ export function AssistantPage() {
                     disabled={busy !== null}
                     onClick={() => void runEnsure()}
                   >
-                    {busy === "ensure" ? "Pulling model…" : "2. Pull and configure model"}
+                    {busy === "ensure" ? "Downloading in terminal…" : "2. Pull and configure model"}
                   </button>
                 )}
                 <button
@@ -206,7 +280,8 @@ export function AssistantPage() {
                 </button>
               </div>
               <p className="muted small" style={{ marginTop: "0.75rem" }}>
-                {str(pick(data, "guidance.note"))}
+                Install and pull open a terminal so you can watch live progress (~10 GB for the first
+                model). This page refreshes when the work finishes. {str(pick(data, "guidance.note"))}
               </p>
             </article>
           </div>

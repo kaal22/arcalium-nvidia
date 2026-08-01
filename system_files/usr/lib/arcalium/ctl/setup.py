@@ -60,8 +60,49 @@ def complete_path() -> Path:
     return _config_dir() / "setup-complete.json"
 
 
+def prefs_path() -> Path:
+    return _config_dir() / "setup-prefs.json"
+
+
 def _default_steps() -> dict[str, str]:
     return {step: "pending" for step in STEP_IDS}
+
+
+def _default_prefs(*, completed: bool) -> dict[str, Any]:
+    # Incomplete installs show on startup until finished or the user opts out.
+    return {
+        "schemaVersion": 1,
+        "schema": "arcalium.setup.prefs/v1",
+        "showOnStartup": not completed,
+    }
+
+
+def load_prefs(*, completed: bool | None = None) -> dict[str, Any]:
+    if completed is None:
+        complete = read_json_file(complete_path())
+        completed = bool(complete and complete.get("completed"))
+    prefs = read_json_file(prefs_path()) or {}
+    base = _default_prefs(completed=bool(completed))
+    if "showOnStartup" in prefs:
+        base["showOnStartup"] = bool(prefs.get("showOnStartup"))
+    return base
+
+
+def save_prefs(*, show_on_startup: bool) -> dict[str, Any]:
+    payload = {
+        "schemaVersion": 1,
+        "schema": "arcalium.setup.prefs/v1",
+        "showOnStartup": bool(show_on_startup),
+        "updatedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    _atomic_write(prefs_path(), payload)
+    return {
+        "schema": "arcalium.setup.set-autostart/v1",
+        "ok": True,
+        "showOnStartup": payload["showOnStartup"],
+        "path": str(prefs_path()),
+        "status": status(),
+    }
 
 
 def _image_version() -> str | None:
@@ -103,9 +144,12 @@ def status() -> dict[str, Any]:
                 steps[key] = value
         current_step = "completion" if completed else current_step
 
+    prefs = load_prefs(completed=completed)
+    live = is_live_session()
+    show_on_startup = bool(prefs.get("showOnStartup"))
     return {
         "schema": "arcalium.setup.status/v1",
-        "liveSession": is_live_session(),
+        "liveSession": live,
         "completed": completed,
         "completedAt": (complete or {}).get("completedAt"),
         "imageVersion": (complete or {}).get("imageVersion") or _image_version(),
@@ -113,8 +157,18 @@ def status() -> dict[str, Any]:
         "steps": steps,
         "progressPath": str(progress_path()),
         "completePath": str(complete_path()),
-        "shouldAutostart": (not completed) and (not is_live_session()),
+        "prefsPath": str(prefs_path()),
+        "showOnStartup": show_on_startup,
+        "shouldAutostart": (not live) and show_on_startup and (not completed),
         "stepIds": list(STEP_IDS),
+        "desktopFirstRun": {
+            "note": (
+                "Language, keyboard, and timezone are set in the installer. "
+                "Arcalium Setup waits for Plasma Welcome / Bazzite Portal to finish "
+                "before autostarting, then handles gaming setup."
+            ),
+            "waitsFor": ["plasma-welcome", "yafti", "bazzite-portal"],
+        },
     }
 
 
@@ -184,12 +238,23 @@ def complete(*, steps: dict[str, Any] | None = None) -> dict[str, Any]:
         progress_path().unlink(missing_ok=True)
     except OSError:
         pass
+    # Finishing setup turns off login autostart; Settings can re-enable it.
+    _atomic_write(
+        prefs_path(),
+        {
+            "schemaVersion": 1,
+            "schema": "arcalium.setup.prefs/v1",
+            "showOnStartup": False,
+            "updatedAt": payload["completedAt"],
+        },
+    )
     return {
         "schema": "arcalium.setup.complete/v1",
         "ok": True,
         "path": str(complete_path()),
         "completedAt": payload["completedAt"],
         "steps": merged,
+        "showOnStartup": False,
     }
 
 
@@ -202,10 +267,21 @@ def reset() -> dict[str, Any]:
                 removed.append(str(path))
         except OSError as exc:
             raise SetupError(ARC_CMD_003, f"Could not remove {path}: {exc}") from exc
+    # Restarting setup re-enables login autostart.
+    _atomic_write(
+        prefs_path(),
+        {
+            "schemaVersion": 1,
+            "schema": "arcalium.setup.prefs/v1",
+            "showOnStartup": True,
+            "updatedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        },
+    )
     return {
         "schema": "arcalium.setup.reset/v1",
         "ok": True,
         "removed": removed,
+        "showOnStartup": True,
         "status": status(),
     }
 
@@ -232,11 +308,12 @@ def error_payload(exc: SetupError, *, action: str) -> dict[str, Any]:
 
 def human_status(data: dict[str, Any]) -> list[str]:
     return [
-        f"Completed:   {data.get('completed')}",
-        f"Live:        {data.get('liveSession')}",
-        f"Autostart:   {data.get('shouldAutostart')}",
-        f"Current:     {data.get('currentStep')}",
-        f"Image:       {data.get('imageVersion')}",
+        f"Completed:       {data.get('completed')}",
+        f"Live:            {data.get('liveSession')}",
+        f"Show on startup: {data.get('showOnStartup')}",
+        f"Will autostart:  {data.get('shouldAutostart')}",
+        f"Current:         {data.get('currentStep')}",
+        f"Image:           {data.get('imageVersion')}",
     ]
 
 

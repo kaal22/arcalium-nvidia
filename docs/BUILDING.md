@@ -341,8 +341,8 @@ arcaliumctl vulkan test --json
 arcaliumctl proton list --json
 arcaliumctl proton install-recommended --json
 arcaliumctl ai status --json
-arcaliumctl ai install-ollama --json
-arcaliumctl ai ensure --json
+arcaliumctl ai install-ollama --visible --json
+arcaliumctl ai ensure --visible --json
 arcaliumctl ai launch
 arcaliumctl ai stop --json
 ```
@@ -354,8 +354,9 @@ JSON schemas ship in `/usr/share/arcalium/schemas/` from `config/schemas/` (Cont
 Offline maintenance helper via **Ollama**, base **`gemma4:e4b-it-qat`**, session model **`arcalium-assistant`** (Modelfile + `/usr/lib/arcalium/ai/system-prompt.txt` for Arcalium OS / bash context).
 
 - Control Centre → **Local AI Assistant**: Install Ollama, Pull and configure model, Launch assistant, Unload model.
-- `arcaliumctl ai install-ollama` runs a non-interactive user-level `brew install ollama`, then starts the local server. No sudo or copy/paste flow.
-- `arcaliumctl ai ensure` pulls the base tag and creates/refreshes `arcalium-assistant` with the system prompt.
+- UI **Install** / **Pull** use `--visible`: open Konsole (or Ptyxis/kgx) running `/usr/lib/arcalium/ai/install-session.sh` / `ensure-session.sh` so brew / `ollama pull` progress is visible; the page polls status until ready.
+- `arcaliumctl ai install-ollama` (no `--visible`) runs a non-interactive user-level `brew install ollama`, then starts the local server — for scripts. No sudo or copy/paste flow.
+- `arcaliumctl ai ensure` (no `--visible`) pulls the base tag and creates/refreshes `arcalium-assistant` silently.
 - `arcaliumctl ai launch` opens Konsole/Ptyxis/kgx running `/usr/lib/arcalium/ai/assistant-session.sh`. Closing the terminal runs `ollama stop` so VRAM is freed for gaming.
 - Ollama is **not** layered into the image (atomic desktop); the UI installs it into the user's Homebrew environment on demand. The model pull is separate (~10 GB).
 - The local server keeps weights warm during an active chat; the terminal session traps EXIT/HUP and explicitly unloads both assistant and base models.
@@ -396,12 +397,12 @@ Setup wizard shares this codebase (`arcalium-control-centre --setup` / `arcalium
 
 ### Setup wizard
 
-- Progress: `~/.config/arcalium/setup-progress.json`; completion: `setup-complete.json` (PRODUCT_SPEC §8.2).
-- CLI: `arcaliumctl setup status|save|mark|complete|reset --json`.
+- Progress: `~/.config/arcalium/setup-progress.json`; completion: `setup-complete.json`; prefs: `setup-prefs.json` (`showOnStartup`) (PRODUCT_SPEC §8.2).
+- CLI: `arcaliumctl setup status|save|mark|complete|reset|set-autostart on|off --json`.
 - 14 steps (§8.3): optional **Local AI** (`localAi`) sits after Validation and before Finish — Install Ollama / Pull model / Skip / Continue.
-- Autostart: `/etc/xdg/autostart/arcalium-setup.desktop` and skel copy call `arcalium-setup --autostart` (no-op on live ISO and when already complete).
-- Menu: `io.arcalium.Setup.desktop` always opens the wizard (Resume).
-- Control Centre → Settings: Resume / Restart setup (restart confirms then `setup reset`).
+- Autostart: `/etc/xdg/autostart/arcalium-setup.desktop` and skel copy call `arcalium-setup --autostart`. Skips live ISO, completed users, and `showOnStartup: false`. Waits for Plasma Welcome / Bazzite Portal to exit before opening.
+- Menu: `io.arcalium.Setup.desktop` always opens the wizard (Resume) without waiting.
+- Control Centre → Settings: **Show Setup on startup** toggle, Resume / Restart setup (restart confirms then `setup reset`, which re-enables autostart).
 - Privileged policy matches Control Centre: user Flatpak installs OK; `bootc` apply and VPN secret import are guidance only; no disk formatting.
 
 ### Install time and the deploy step

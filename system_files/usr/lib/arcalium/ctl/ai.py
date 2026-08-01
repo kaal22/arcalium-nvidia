@@ -19,6 +19,8 @@ BASE_MODEL = "gemma4:e4b-it-qat"
 ASSISTANT_MODEL = "arcalium-assistant"
 SYSTEM_PROMPT_PATH = "/usr/lib/arcalium/ai/system-prompt.txt"
 SESSION_SCRIPT = "/usr/lib/arcalium/ai/assistant-session.sh"
+ENSURE_SESSION_SCRIPT = "/usr/lib/arcalium/ai/ensure-session.sh"
+INSTALL_SESSION_SCRIPT = "/usr/lib/arcalium/ai/install-session.sh"
 OLLAMA_PULL_TIMEOUT = 3600
 OLLAMA_CREATE_TIMEOUT = 600
 OLLAMA_INSTALL_TIMEOUT = 1800
@@ -122,8 +124,11 @@ def status() -> dict[str, Any]:
     }
 
 
-def install_ollama() -> dict[str, Any]:
+def install_ollama(*, visible: bool = False) -> dict[str, Any]:
     """Install Ollama for the logged-in user with Bazzite's Homebrew."""
+    if visible:
+        return _launch_install_terminal()
+
     existing = resolve_ollama()
     if existing:
         server = _ensure_server(existing)
@@ -206,8 +211,11 @@ def install_ollama() -> dict[str, Any]:
     }
 
 
-def ensure() -> dict[str, Any]:
+def ensure(*, visible: bool = False) -> dict[str, Any]:
     """Pull the base model and create the Arcalium-prompted assistant model."""
+    if visible:
+        return _launch_ensure_terminal()
+
     ollama_path = resolve_ollama()
     if not ollama_path:
         return {
@@ -359,6 +367,162 @@ def launch() -> dict[str, Any]:
         "message": "Assistant terminal opened. Close it when finished to unload the model.",
         "gamingNotice": st["gamingNotice"],
     }
+
+
+def _launch_ensure_terminal() -> dict[str, Any]:
+    """Open a terminal that shows live ollama pull progress, then configures the assistant."""
+    ollama_path = resolve_ollama()
+    if not ollama_path:
+        return {
+            "schema": "arcalium.ai.ensure/v1",
+            "ok": False,
+            "action": "install-ollama",
+            "message": "Install Ollama first, then pull the model.",
+            "guidance": _guidance(False, False),
+        }
+
+    server = _ensure_server(ollama_path)
+    if not server["ok"]:
+        return {
+            "schema": "arcalium.ai.ensure/v1",
+            "ok": False,
+            "action": "start-server",
+            "message": server["message"],
+            "guidance": _guidance(True, False),
+        }
+
+    before = status()
+    if before["model"]["installed"]:
+        return {
+            "schema": "arcalium.ai.ensure/v1",
+            "ok": True,
+            "action": "already-present",
+            "model": before["model"],
+            "ollama": before["ollama"],
+            "message": f"{ASSISTANT_MODEL} is already ready.",
+            "guidance": before["guidance"],
+        }
+
+    try:
+        term = _open_terminal_script(
+            ENSURE_SESSION_SCRIPT,
+            env_extra={
+                "ARCALIUM_OLLAMA_BIN": ollama_path,
+                "ARCALIUM_AI_MODEL": ASSISTANT_MODEL,
+                "ARCALIUM_AI_BASE_MODEL": BASE_MODEL,
+                "ARCALIUM_AI_SYSTEM_PROMPT": SYSTEM_PROMPT_PATH,
+            },
+        )
+    except AiError as exc:
+        return {
+            "schema": "arcalium.ai.ensure/v1",
+            "ok": False,
+            "action": "open-terminal",
+            "message": exc.detail or exc.error.message,
+            "guidance": _guidance(True, False),
+        }
+
+    return {
+        "schema": "arcalium.ai.ensure/v1",
+        "ok": True,
+        "action": "terminal",
+        "visible": True,
+        "terminal": term,
+        "sessionScript": ENSURE_SESSION_SCRIPT,
+        "model": before["model"],
+        "ollama": before["ollama"],
+        "message": (
+            "Opened a terminal for the model download. Watch the progress there "
+            "(~10 GB). When it finishes, return here — this page refreshes automatically."
+        ),
+        "guidance": before["guidance"],
+    }
+
+
+def _launch_install_terminal() -> dict[str, Any]:
+    """Open a terminal that shows live brew install output for Ollama."""
+    existing = resolve_ollama()
+    if existing:
+        server = _ensure_server(existing)
+        return {
+            "schema": "arcalium.ai.install-ollama/v1",
+            "ok": server["ok"],
+            "action": "already-present",
+            "ollama": {
+                "available": True,
+                "path": existing,
+                "serverRunning": server["ok"],
+            },
+            "message": (
+                "Ollama is already installed."
+                if server["ok"]
+                else server["message"]
+            ),
+        }
+
+    brew = resolve_brew()
+    if not brew:
+        return {
+            "schema": "arcalium.ai.install-ollama/v1",
+            "ok": False,
+            "action": "install",
+            "message": (
+                "Homebrew is not available on this system, so Arcalium could not "
+                "install Ollama automatically."
+            ),
+        }
+
+    try:
+        term = _open_terminal_script(
+            INSTALL_SESSION_SCRIPT,
+            env_extra={"ARCALIUM_BREW_BIN": brew},
+        )
+    except AiError as exc:
+        return {
+            "schema": "arcalium.ai.install-ollama/v1",
+            "ok": False,
+            "action": "open-terminal",
+            "message": exc.detail or exc.error.message,
+        }
+
+    return {
+        "schema": "arcalium.ai.install-ollama/v1",
+        "ok": True,
+        "action": "terminal",
+        "visible": True,
+        "terminal": term,
+        "sessionScript": INSTALL_SESSION_SCRIPT,
+        "message": (
+            "Opened a terminal for the Ollama install. Watch the brew progress there. "
+            "When it finishes, return here — this page refreshes automatically."
+        ),
+    }
+
+
+def _open_terminal_script(script_path: str, *, env_extra: dict[str, str] | None = None) -> str:
+    script = Path(script_path)
+    if not script.is_file():
+        raise AiError(ARC_AI_003, f"Session script missing: {script_path}")
+    term_path, term_prefix = resolve_terminal()
+    if not term_path:
+        raise AiError(ARC_AI_003, "No supported terminal found (konsole, ptyxis, kgx, gnome-terminal)")
+    env = os.environ.copy()
+    if env_extra:
+        env.update(env_extra)
+    argv = [term_path, *term_prefix, str(script)]
+    try:
+        subprocess.Popen(
+            argv,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            env=env,
+            start_new_session=True,
+            shell=False,
+        )
+    except OSError as exc:
+        raise AiError(ARC_AI_003, str(exc)) from exc
+    return term_path
 
 
 def stop() -> dict[str, Any]:

@@ -102,12 +102,30 @@ def _build_parser() -> argparse.ArgumentParser:
     setup_mark.add_argument("state", choices=("complete", "skipped", "pending", "in_progress"))
     setup_sub.add_parser("complete", help="Write setup-complete.json and clear progress")
     setup_sub.add_parser("reset", help="Clear progress and completion markers")
+    setup_auto = setup_sub.add_parser(
+        "set-autostart",
+        help="Enable or disable showing Arcalium Setup on login",
+    )
+    setup_auto.add_argument("enabled", choices=("on", "off", "true", "false", "1", "0"))
 
     ai_p = sub.add_parser("ai", help="Offline Local AI assistant (Ollama)")
     ai_sub = ai_p.add_subparsers(dest="action", required=True)
     ai_sub.add_parser("status", help="Ollama and pinned model status")
-    ai_sub.add_parser("install-ollama", help="Install Ollama for the current user with Homebrew")
-    ai_sub.add_parser("ensure", help="Pull and configure the pinned assistant model")
+    ai_install = ai_sub.add_parser(
+        "install-ollama",
+        help="Install Ollama for the current user with Homebrew",
+    )
+    ai_install.add_argument(
+        "--visible",
+        action="store_true",
+        help="Open a terminal so brew install progress is visible",
+    )
+    ai_ensure = ai_sub.add_parser("ensure", help="Pull and configure the pinned assistant model")
+    ai_ensure.add_argument(
+        "--visible",
+        action="store_true",
+        help="Open a terminal so ollama pull progress is visible",
+    )
     ai_sub.add_parser("launch", help="Open terminal assistant session (unloads on close)")
     ai_sub.add_parser("stop", help="Force-unload the pinned model from GPU memory")
 
@@ -298,20 +316,42 @@ def main(argv: list[str] | None = None) -> int:
         emit(data, as_json=as_json, human_lines=setup.human_mutate(data))
         return 0
 
+    if command == "setup" and action == "set-autostart":
+        enabled = str(args.enabled).lower() in ("on", "true", "1")
+        try:
+            data = setup.save_prefs(show_on_startup=enabled)
+        except SetupError as exc:
+            payload = setup.error_payload(exc, action="set-autostart")
+            emit(
+                payload,
+                as_json=as_json or True,
+                human_lines=[f"{exc.error.code}: {exc.detail or exc.error.message}"],
+            )
+            return exc.error.exit_code
+        emit(
+            data,
+            as_json=as_json,
+            human_lines=[
+                f"Show on startup: {data.get('showOnStartup')}",
+                f"Will autostart:  {(data.get('status') or {}).get('shouldAutostart')}",
+            ],
+        )
+        return 0
+
     if command == "ai" and action == "status":
         data = ai.status()
         emit(data, as_json=as_json, human_lines=ai.human_status(data))
         return 0
 
     if command == "ai" and action == "install-ollama":
-        data = ai.install_ollama()
+        data = ai.install_ollama(visible=bool(getattr(args, "visible", False)))
         emit(data, as_json=as_json, human_lines=ai.human_install(data))
-        return 0
+        return 0 if data.get("ok") else 1
 
     if command == "ai" and action == "ensure":
-        data = ai.ensure()
+        data = ai.ensure(visible=bool(getattr(args, "visible", False)))
         emit(data, as_json=as_json, human_lines=ai.human_ensure(data))
-        return 0
+        return 0 if data.get("ok") else 1
 
     if command == "ai" and action == "launch":
         try:

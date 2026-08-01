@@ -536,14 +536,16 @@ The wizard should launch through a systemd user service or supported desktop aut
 
 Rules:
 
-- Launch once per user.
+- Launch on login while **Show on startup** is enabled and setup is incomplete (default on for new users).
+- Language, keyboard, and timezone remain the installer’s job; Wi‑Fi/network remain Plasma’s.
+- Autostart must wait for Plasma Welcome / Bazzite Portal (yafti) to finish before opening Arcalium Setup.
 - Do not launch during the installer environment.
 - Do not launch before a usable desktop session exists.
-- Do not launch repeatedly after a crash.
-- Preserve partial progress.
-- Provide a **Resume setup** launcher.
-- Provide a **Restart setup** action with confirmation.
-- Never require root privileges for the whole application.
+- Preserve partial progress across logins while Show on startup remains on.
+- Provide a **Resume setup** launcher and a Settings toggle for **Show Setup on startup**.
+- Provide a **Restart setup** action that clears progress (with confirmation) and re-enables Show on startup.
+- Completing setup turns Show on startup off so the wizard does not reappear unless manually relaunched or Restarted.
+- Never require root for the entire application.
 
 ## 8.3 Wizard pages
 
@@ -756,8 +758,8 @@ Show:
 
 - Ollama and model status.
 - Clear size / VRAM / gaming coexistence warnings (~10 GB pull; unload before gaming).
-- **Install Ollama** — performs a non-interactive, user-level Homebrew install; no terminal copy/paste or sudo.
-- **Pull and configure model** — starts the local Ollama server, pulls the pinned base model, and creates `arcalium-assistant` with the system prompt.
+- **Install Ollama** — opens a terminal with live Homebrew progress (user-level; no copy/paste or sudo). The wizard/Control Centre page refreshes when Ollama appears.
+- **Pull and configure model** — opens a terminal showing live `ollama pull` progress (~10 GB), then creates `arcalium-assistant` with the system prompt. The UI polls until the model is ready.
 - Optional **Try assistant** (terminal session) after the model is ready.
 - **Skip** — finish setup without Local AI; can configure later in Control Centre.
 - **Continue** — mark the step complete without requiring a successful install.
@@ -1111,7 +1113,7 @@ Arcalium may include an **optional offline local AI assistant** for system-maint
 The Local AI Assistant page (and an optional Diagnostics quick action) must:
 
 1. Show Ollama / model status (installed, pulling, ready, busy, error).
-2. Offer **Launch assistant** as the primary action.
+2. Offer **Install Ollama** / **Pull and configure model** with **visible terminal progress** (not a silent background wait), then **Launch assistant** as the primary action once ready.
 3. Open a **terminal session** (system terminal, e.g. Konsole) that runs an Arcalium-managed chat wrapper — not a permanent background GUI that keeps weights loaded.
 4. On session start, load `arcalium-assistant` (system-prompted) for interactive use.
 5. On terminal close / session exit (including Ctrl+C / shell exit), **unload the model** so GPU VRAM is freed for gaming (for example `ollama stop arcalium-assistant` / base tag and/or keep-alive zero for that run). Closing the terminal is the intended “I’m done — free the GPU” gesture.
@@ -1161,13 +1163,13 @@ arcaliumctl vpn import /path/to/config --json
 arcaliumctl updates status --json
 arcaliumctl diagnostics create --output /path/to/file
 arcaliumctl ai status --json
-arcaliumctl ai install-ollama --json
-arcaliumctl ai ensure --json
+arcaliumctl ai install-ollama --visible --json
+arcaliumctl ai ensure --visible --json
 arcaliumctl ai launch
 arcaliumctl ai stop --json
 ```
 
-`arcaliumctl ai launch` must open the terminal session described in §9.14 and guarantee model unload on exit. `arcaliumctl ai stop` must force-unload if a previous session left the model resident.
+`arcaliumctl ai install-ollama --visible` and `arcaliumctl ai ensure --visible` open a terminal so brew / `ollama pull` progress is visible; without `--visible` they run silently (scripts / automation). `arcaliumctl ai launch` must open the terminal session described in §9.14 and guarantee model unload on exit. `arcaliumctl ai stop` must force-unload if a previous session left the model resident.
 
 ## 10.2 Command rules
 

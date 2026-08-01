@@ -122,7 +122,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 
 | Requirement | Status | Notes |
 |---|---|---|
-| First-run service + resume state | in progress | Per-user markers under `~/.config/arcalium/`; `arcaliumctl setup status/save/mark/complete/reset`; autostart via `arcalium-setup --autostart` (skips live + completed); Resume launcher `io.arcalium.Setup.desktop` |
+| First-run service + resume state | in progress | Per-user markers under `~/.config/arcalium/`; `arcaliumctl setup status/save/mark/complete/reset/set-autostart`; prefs `setup-prefs.json` (`showOnStartup`); autostart waits for Plasma Welcome / Bazzite Portal then opens if incomplete + showOnStartup; Settings toggle + Resume/Restart |
 | Wizard pages (hardware → completion) | in progress | Shared Control Centre binary `--setup` mode; 14 pages per §8.3 including optional `localAi` (Install Ollama / Pull model / Skip) before Finish. Updates/VPN secrets/format stay guidance-only (same 2B policy as Control Centre). |
 
 ## Phase 4 — Application provisioning
@@ -150,7 +150,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 | Requirement | Status | Notes |
 |---|---|---|
 | All version 1 pages | in progress | All §9.2 pages live including Local AI Assistant (2026-08-01). User Flatpak install/uninstall; no Polkit / no bootc mutate from UI. **UI polish deferred**. Setup wizard shipped separately. |
-| Local AI Assistant (§9.14) | in progress | Automated user-level Homebrew Ollama install, then separate model pull/configure. `arcalium-assistant` Modelfile + system prompt; base `gemma4:e4b-it-qat`. Untested on 3060 yet. |
+| Local AI Assistant (§9.14) | in progress | Automated Homebrew Ollama install + model pull open a **terminal with live progress**; UI polls until ready. `arcalium-assistant` Modelfile + system prompt; base `gemma4:e4b-it-qat`. Untested on 3060 yet. |
 
 ## Phase 8 — Private alpha
 

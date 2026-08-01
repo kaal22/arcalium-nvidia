@@ -25,7 +25,7 @@ Resume / restart: Kickoff → **Arcalium Setup**, or Settings → Setup wizard.
 | Streaming | Sunshine / Moonlight / OBS via `apps` |
 | Updates and Recovery | `updates status` (guidance only for apply/rollback) |
 | Diagnostics | `diagnostics run` / `bundle` |
-| Local AI Assistant | `ai install-ollama` / `status` / `ensure` / `launch` / `stop` (Ollama + `gemma4:e4b-it-qat`) |
+| Local AI Assistant | `ai install-ollama --visible` / `ensure --visible` / `status` / `launch` / `stop` (terminal progress for install & pull; Ollama + `gemma4:e4b-it-qat`) |
 | Settings | prefs + setup resume/restart |
 | About | image identity |
 
@@ -35,7 +35,10 @@ Privileged policy: user Flatpak install/uninstall only. No Polkit helper yet;
 Catalogue source: `config/catalogue/apps.v1.json` → `/usr/share/arcalium/catalogue/`.
 
 Setup progress: `~/.config/arcalium/setup-progress.json`  
-Setup complete: `~/.config/arcalium/setup-complete.json`
+Setup complete: `~/.config/arcalium/setup-complete.json`  
+Setup prefs: `~/.config/arcalium/setup-prefs.json` (`showOnStartup`)  
+
+Settings: **Show Setup on startup** toggle + Resume / Restart. Autostart waits for Plasma Welcome / Bazzite Portal.
 
 **Deferred:** UI polish after Setup wizard and Control Centre pages are solid.
 

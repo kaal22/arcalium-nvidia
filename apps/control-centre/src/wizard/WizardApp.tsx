@@ -6,6 +6,27 @@ import { WIZARD_STEPS, WizardStepId } from "./steps";
 
 type StepState = "pending" | "complete" | "skipped" | "in_progress";
 
+async function sleep(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function pollAiStatus(
+  ready: (status: JsonValue) => boolean,
+  opts: { intervalMs?: number; maxMs?: number; onTick?: (status: JsonValue) => void } = {},
+): Promise<{ ok: boolean; status: JsonValue | null }> {
+  const intervalMs = opts.intervalMs ?? 4000;
+  const maxMs = opts.maxMs ?? 60 * 60 * 1000;
+  const started = Date.now();
+  let last: JsonValue | null = null;
+  while (Date.now() - started < maxMs) {
+    last = await arcaliumctl(["ai", "status", "--json"]);
+    opts.onTick?.(last);
+    if (ready(last)) return { ok: true, status: last };
+    await sleep(intervalMs);
+  }
+  return { ok: false, status: last };
+}
+
 export function WizardApp() {
   const [stepIndex, setStepIndex] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -564,8 +585,9 @@ export function WizardApp() {
               </div>
             </dl>
             <p className="muted small" style={{ marginTop: "0.75rem" }}>
-              First pull is roughly 10 GB. Close the assistant terminal before gaming so GPU memory is
-              freed. Chat stays on this PC — no cloud API.
+              First pull is roughly 10 GB. Install and pull open a terminal so you can watch live
+              progress; this step refreshes when they finish. Close the assistant terminal before
+              gaming so GPU memory is freed. Chat stays on this PC — no cloud API.
             </p>
             <div className="btn-row" style={{ marginTop: "0.75rem" }}>
               {!pick(aiStatus, "ollama.available") && (
@@ -577,12 +599,26 @@ export function WizardApp() {
                     setInstallingOllama(true);
                     setError(null);
                     try {
-                      const result = await arcaliumctl(["ai", "install-ollama", "--json"]);
+                      const result = await arcaliumctl(["ai", "install-ollama", "--visible", "--json"]);
                       if (!pick(result, "ok")) {
                         throw new Error(str(pick(result, "message"), "Could not install Ollama."));
                       }
-                      setMsg(str(pick(result, "message"), "Ollama installed. Pull the model next."));
-                      await loadAi();
+                      setMsg(str(pick(result, "message"), "Ollama install started — watch the terminal."));
+                      if (str(pick(result, "action")) === "terminal") {
+                        const polled = await pollAiStatus(
+                          (status) => Boolean(pick(status, "ollama.available")),
+                          { onTick: setAiStatus },
+                        );
+                        if (polled.status) setAiStatus(polled.status);
+                        setMsg(
+                          polled.ok
+                            ? "Ollama installed. Pull the model next."
+                            : "Still waiting on the install terminal. When brew finishes, continue or Refresh.",
+                        );
+                      } else {
+                        await loadAi();
+                        setMsg(str(pick(result, "message"), "Ollama installed. Pull the model next."));
+                      }
                     } catch (e) {
                       setError(e instanceof Error ? e.message : String(e));
                     } finally {
@@ -590,7 +626,7 @@ export function WizardApp() {
                     }
                   }}
                 >
-                  {installingOllama ? "Installing Ollama…" : "1. Install Ollama"}
+                  {installingOllama ? "Installing in terminal…" : "1. Install Ollama"}
                 </button>
               )}
               {pick(aiStatus, "ollama.available") && (
@@ -606,15 +642,26 @@ export function WizardApp() {
                   setEnsuringAi(true);
                   setError(null);
                   try {
-                    const result = await arcaliumctl(["ai", "ensure", "--json"]);
+                    const result = await arcaliumctl(["ai", "ensure", "--visible", "--json"]);
                     if (!pick(result, "ok")) {
                       throw new Error(
                         str(pick(result, "message"), "Could not pull and configure the model."),
                       );
                     }
-                    setMsg(str(pick(result, "message")));
-                    await loadAi();
-                    if (pick(result, "ok")) {
+                    setMsg(str(pick(result, "message"), "Model download started — watch the terminal."));
+                    if (str(pick(result, "action")) === "terminal") {
+                      const polled = await pollAiStatus(
+                        (status) => Boolean(pick(status, "model.installed")),
+                        { onTick: setAiStatus },
+                      );
+                      if (polled.status) setAiStatus(polled.status);
+                      setMsg(
+                        polled.ok
+                          ? "Model ready. You can Continue, or Skip if you changed your mind."
+                          : "Still waiting on the download terminal. When the pull finishes, Continue or Refresh.",
+                      );
+                    } else {
+                      await loadAi();
                       setMsg(
                         `${str(pick(result, "message"))} You can Continue, or Skip if you changed your mind.`,
                       );
@@ -627,7 +674,7 @@ export function WizardApp() {
                 }}
               >
                 {ensuringAi
-                  ? "Pulling model…"
+                  ? "Downloading in terminal…"
                   : pick(aiStatus, "model.installed")
                     ? "Model already installed"
                     : "2. Pull and configure model"}

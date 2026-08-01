@@ -65,7 +65,9 @@ const ALLOWED_EXACT: &[&[&str]] = &[
     &["diagnostics", "bundle", "--json"],
     &["ai", "status", "--json"],
     &["ai", "install-ollama", "--json"],
+    &["ai", "install-ollama", "--visible", "--json"],
     &["ai", "ensure", "--json"],
+    &["ai", "ensure", "--visible", "--json"],
     &["ai", "launch", "--json"],
     &["ai", "stop", "--json"],
     &["setup", "status", "--json"],
@@ -131,6 +133,10 @@ fn is_allowed(args: &[String]) -> bool {
     if args.len() == 5 && args[0] == "setup" && args[1] == "mark" && args[4] == "--json" {
         return SETUP_STEPS.contains(&args[2].as_str()) && SETUP_STATES.contains(&args[3].as_str());
     }
+    // setup set-autostart on|off|true|false|1|0 --json
+    if args.len() == 4 && args[0] == "setup" && args[1] == "set-autostart" && args[3] == "--json" {
+        return matches!(args[2].as_str(), "on" | "off" | "true" | "false" | "1" | "0");
+    }
     false
 }
 
@@ -145,11 +151,21 @@ fn timeout_for(args: &[String]) -> u64 {
         return TIMEOUT_DIAGNOSTICS_SECS;
     }
     if args.len() >= 2 && args[0] == "ai" {
+        let visible = args.iter().any(|a| a == "--visible");
         if args[1] == "install-ollama" {
-            return TIMEOUT_AI_INSTALL_SECS;
+            // Visible mode only spawns a terminal and returns immediately.
+            return if visible {
+                TIMEOUT_DEFAULT_SECS
+            } else {
+                TIMEOUT_AI_INSTALL_SECS
+            };
         }
         if args[1] == "ensure" {
-            return TIMEOUT_AI_ENSURE_SECS;
+            return if visible {
+                TIMEOUT_DEFAULT_SECS
+            } else {
+                TIMEOUT_AI_ENSURE_SECS
+            };
         }
     }
     TIMEOUT_DEFAULT_SECS
