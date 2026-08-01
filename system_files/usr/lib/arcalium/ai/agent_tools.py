@@ -78,7 +78,8 @@ def _app_id(args: dict[str, Any]) -> str:
 
 def _apps_install(args: dict[str, Any]) -> list[str]:
     # Visible Flatpak install so the user sees download progress in a terminal.
-    return ["apps", "install", _app_id(args), "--visible", "--json"]
+    # Silent in-session install keeps the conversation terminal; progress prints via flatpak stdout.
+    return ["apps", "install", _app_id(args), "--json"]
 
 
 def _apps_uninstall(args: dict[str, Any]) -> list[str]:

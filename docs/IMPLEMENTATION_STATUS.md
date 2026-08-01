@@ -150,7 +150,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 | Requirement | Status | Notes |
 |---|---|---|
 | All version 1 pages | in progress | All §9.2 pages live including Local AI Assistant (2026-08-01). User Flatpak install/uninstall; no Polkit / no bootc mutate from UI. **UI polish deferred**. Setup wizard shipped separately. |
-| Local AI Assistant (§9.14) | in progress | Agentic terminal session: allowlisted `arcaliumctl` auto-runs + confirm for mutations. Homebrew Ollama + model pull with live terminal progress. Base `gemma4:e4b-it-qat`. |
+| Local AI Assistant (§9.14) | in progress | Safe terminal agent (`assistant-agent.py` + `ARCALIUM_TOOL`): allowlisted `arcaliumctl` auto-runs for reads, `yes` confirm for mutations. Homebrew Ollama + model pull with live terminal progress. Base `gemma4:e4b-it-qat`. |
 
 ## Phase 8 — Private alpha
 
