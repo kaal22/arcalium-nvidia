@@ -25,6 +25,7 @@ STEP_IDS = (
     "vpn",
     "streaming",
     "validation",
+    "localAi",
     "completion",
 )
 

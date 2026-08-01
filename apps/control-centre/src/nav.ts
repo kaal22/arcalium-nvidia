@@ -10,6 +10,7 @@ export type PageId =
   | "streaming"
   | "updates"
   | "diagnostics"
+  | "assistant"
   | "settings"
   | "about";
 
@@ -25,6 +26,7 @@ export const NAV: { id: PageId; label: string }[] = [
   { id: "streaming", label: "Streaming" },
   { id: "updates", label: "Updates and Recovery" },
   { id: "diagnostics", label: "Diagnostics" },
+  { id: "assistant", label: "Local AI Assistant" },
   { id: "settings", label: "Settings" },
   { id: "about", label: "About" },
 ];

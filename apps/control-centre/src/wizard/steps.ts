@@ -11,6 +11,7 @@ export type WizardStepId =
   | "vpn"
   | "streaming"
   | "validation"
+  | "localAi"
   | "completion";
 
 export const WIZARD_STEPS: { id: WizardStepId; label: string; skippable: boolean }[] = [
@@ -26,5 +27,6 @@ export const WIZARD_STEPS: { id: WizardStepId; label: string; skippable: boolean
   { id: "vpn", label: "VPN", skippable: true },
   { id: "streaming", label: "Streaming", skippable: true },
   { id: "validation", label: "Validation", skippable: false },
+  { id: "localAi", label: "Local AI", skippable: true },
   { id: "completion", label: "Finish", skippable: false },
 ];

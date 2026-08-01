@@ -13,6 +13,7 @@ import { ControllersPage } from "./pages/Controllers";
 import { StreamingPage } from "./pages/Streaming";
 import { UpdatesPage } from "./pages/Updates";
 import { DiagnosticsPage } from "./pages/Diagnostics";
+import { AssistantPage } from "./pages/Assistant";
 import { SettingsPage } from "./pages/Settings";
 import { AboutPage } from "./pages/About";
 import { WizardApp } from "./wizard/WizardApp";
@@ -89,6 +90,7 @@ export default function App() {
         {page === "streaming" && <StreamingPage />}
         {page === "updates" && <UpdatesPage />}
         {page === "diagnostics" && <DiagnosticsPage />}
+        {page === "assistant" && <AssistantPage />}
         {page === "settings" && (
           <SettingsPage currentPage={page} onRestorePage={setPage} />
         )}

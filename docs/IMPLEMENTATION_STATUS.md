@@ -10,7 +10,7 @@
 
 ## Where we left off (2026-07-31)
 
-Phase 0–2 complete on the RTX 3060. Control Centre §9.2 pages are live. **Setup wizard** (`arcalium-setup` / Control Centre `--setup`) is implemented: 13 pages, per-user progress, autostart for incomplete users, Resume/Restart from Settings and the app menu. UI polish still deferred.
+Phase 0–2 complete on the RTX 3060. Control Centre §9.2 pages are live. **Setup wizard** (`arcalium-setup` / Control Centre `--setup`) is implemented: 14 pages (including optional Local AI install/skip before Finish), per-user progress, autostart for incomplete users, Resume/Restart from Settings and the app menu. UI polish still deferred.
 
 **Next on 3060:** after CI for the setup wizard lands, `sudo bootc upgrade && sudo systemctl reboot`, then:
 
@@ -123,7 +123,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 | Requirement | Status | Notes |
 |---|---|---|
 | First-run service + resume state | in progress | Per-user markers under `~/.config/arcalium/`; `arcaliumctl setup status/save/mark/complete/reset`; autostart via `arcalium-setup --autostart` (skips live + completed); Resume launcher `io.arcalium.Setup.desktop` |
-| Wizard pages (hardware → completion) | in progress | Shared Control Centre binary `--setup` mode; 13 pages per §8.3. Updates/VPN secrets/format stay guidance-only (same 2B policy as Control Centre). |
+| Wizard pages (hardware → completion) | in progress | Shared Control Centre binary `--setup` mode; 14 pages per §8.3 including optional `localAi` (Install model / Skip) before Finish. Updates/VPN secrets/format stay guidance-only (same 2B policy as Control Centre). |
 
 ## Phase 4 — Application provisioning
 
@@ -149,7 +149,8 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 
 | Requirement | Status | Notes |
 |---|---|---|
-| All version 1 pages | in progress | All §9.2 pages live (2026-07-31): GPU, Gaming, Applications, Storage, Network, Controllers, Streaming, Updates (status + guidance), Diagnostics (+ user support bundle), Settings, About. User Flatpak install/uninstall; no Polkit / no bootc mutate from UI. **UI polish deferred**. Setup wizard still out of scope. |
+| All version 1 pages | in progress | All §9.2 pages live including Local AI Assistant (2026-08-01). User Flatpak install/uninstall; no Polkit / no bootc mutate from UI. **UI polish deferred**. Setup wizard shipped separately. |
+| Local AI Assistant (§9.14) | in progress | `arcalium-assistant` Modelfile + `/usr/lib/arcalium/ai/system-prompt.txt` (Arcalium OS / bash); base `gemma4:e4b-it-qat`. CC page + wizard `localAi` + `arcaliumctl ai *`. Ollama not layered. Untested on 3060 yet. |
 
 ## Phase 8 — Private alpha
 

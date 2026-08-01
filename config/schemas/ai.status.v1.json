@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arcalium.local/schemas/ai.status.v1.json",
+  "title": "arcalium.ai.status/v1",
+  "type": "object",
+  "required": ["schema", "model", "ollama", "guidance"],
+  "properties": {
+    "schema": { "const": "arcalium.ai.status/v1" },
+    "ok": { "type": "boolean" },
+    "ready": { "type": "boolean" },
+    "model": { "type": "object" },
+    "ollama": { "type": "object" },
+    "guidance": { "type": "object" }
+  },
+  "additionalProperties": true
+}

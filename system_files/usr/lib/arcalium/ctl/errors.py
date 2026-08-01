@@ -36,3 +36,8 @@ ARC_NET_001 = ArcError("ARC-NET-001", "Network request failed")
 ARC_PROTON_001 = ArcError("ARC-PROTON-001", "Proton install failed")
 ARC_APPS_001 = ArcError("ARC-APPS-001", "Application operation failed")
 ARC_APPS_002 = ArcError("ARC-APPS-002", "Application id not in catalogue")
+
+# Local AI (Ollama)
+ARC_AI_001 = ArcError("ARC-AI-001", "Ollama is not installed")
+ARC_AI_002 = ArcError("ARC-AI-002", "Pinned AI model is not installed")
+ARC_AI_003 = ArcError("ARC-AI-003", "Local AI session failed to launch")

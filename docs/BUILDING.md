@@ -340,9 +340,23 @@ arcaliumctl gpu validate --json
 arcaliumctl vulkan test --json
 arcaliumctl proton list --json
 arcaliumctl proton install-recommended --json
+arcaliumctl ai status --json
+arcaliumctl ai ensure --json
+arcaliumctl ai launch
+arcaliumctl ai stop --json
 ```
 
-JSON schemas ship in `/usr/share/arcalium/schemas/` from `config/schemas/` (Containerfile `COPY config /config`). Remaining stubs (`apps`, `storage`, `vpn`, `updates`, `diagnostics`) exit `3` with `ARC-CMD-002`. Hardware runbook: [`docs/PHASE2_VALIDATION.md`](PHASE2_VALIDATION.md).
+JSON schemas ship in `/usr/share/arcalium/schemas/` from `config/schemas/` (Containerfile `COPY config /config`). Hardware runbook: [`docs/PHASE2_VALIDATION.md`](PHASE2_VALIDATION.md).
+
+### Local AI Assistant (§9.14)
+
+Offline maintenance helper via **Ollama**, base **`gemma4:e4b-it-qat`**, session model **`arcalium-assistant`** (Modelfile + `/usr/lib/arcalium/ai/system-prompt.txt` for Arcalium OS / bash context).
+
+- Control Centre → **Local AI Assistant**: status, Ensure model, Launch assistant, Unload model.
+- `arcaliumctl ai ensure` pulls the base tag and creates/refreshes `arcalium-assistant` with the system prompt.
+- `arcaliumctl ai launch` opens Konsole/Ptyxis/kgx running `/usr/lib/arcalium/ai/assistant-session.sh`. Closing the terminal runs `ollama stop` so VRAM is freed for gaming.
+- Ollama is **not** layered into the image (atomic desktop). Preferred install guidance: `brew install ollama`, then Ensure model (~10 GB pull).
+- Session sets `OLLAMA_KEEP_ALIVE=0` and traps EXIT to unload.
 
 ### Heroic Proton setup
 
@@ -367,7 +381,7 @@ Source: [`apps/control-centre/`](../apps/control-centre/). Tauri 2 + React; app 
 
 - The Containerfile `control-centre` stage builds the Linux binary on Fedora 42 and places it in the `ctx` mount as `/control-centre/arcalium-control-centre`.
 - `build_files/build.sh` installs it to `/usr/bin/arcalium-control-centre`, ensures `webkit2gtk4.1` is present, and installs the hicolor icon.
-- The UI invokes only allowlisted `arcaliumctl` argv sequences (see `apps/control-centre/src-tauri/src/ctl.rs`). All §9.2 pages are live. App catalogue: `config/catalogue/apps.v1.json` → `/usr/share/arcalium/catalogue/`. `apps install|uninstall` are user Flatpak only (ID allowlisted in Rust + catalogue). Updates page shows `bootc` status and copyable apply/rollback commands but does not run them. Diagnostics can write a redacted bundle under `~/.local/state/arcalium/`. Quick actions launch allowlisted `.desktop` files via `gio launch` (fallback `gtk-launch` / `kioclient exec`) — never `xdg-open` on the path.
+- The UI invokes only allowlisted `arcaliumctl` argv sequences (see `apps/control-centre/src-tauri/src/ctl.rs`). All §9.2 pages are live, including **Local AI Assistant**. App catalogue: `config/catalogue/apps.v1.json` → `/usr/share/arcalium/catalogue/`. `apps install|uninstall` are user Flatpak only (ID allowlisted in Rust + catalogue). Updates page shows `bootc` status and copyable apply/rollback commands but does not run them. Diagnostics can write a redacted bundle under `~/.local/state/arcalium/`. Local AI launches a terminal session (does not keep the model warm after close). Quick actions launch allowlisted `.desktop` files via `gio launch` (fallback `gtk-launch` / `kioclient exec`) — never `xdg-open` on the path.
 - Local iteration: `just build-control-centre` (WSL + Podman) extracts artifacts to `output/control-centre/`.
 - Desktop entry: `io.arcalium.ControlCentre.desktop`; in Kickoff favorites for new Plasma users, deliberately not pinned to the panel (its icon is the Arcalium mark and would duplicate the launcher button).
 - **Window icon:** we build with `--no-bundle`, so `bundle.icon` in `tauri.conf.json` is only consumed by bundlers and never reaches the running window — the window showed the toolkit's default mark instead. Two fixes are needed because the two display servers source the icon differently:
@@ -382,6 +396,7 @@ Setup wizard shares this codebase (`arcalium-control-centre --setup` / `arcalium
 
 - Progress: `~/.config/arcalium/setup-progress.json`; completion: `setup-complete.json` (PRODUCT_SPEC §8.2).
 - CLI: `arcaliumctl setup status|save|mark|complete|reset --json`.
+- 14 steps (§8.3): optional **Local AI** (`localAi`) sits after Validation and before Finish — Install model / Skip / Continue.
 - Autostart: `/etc/xdg/autostart/arcalium-setup.desktop` and skel copy call `arcalium-setup --autostart` (no-op on live ISO and when already complete).
 - Menu: `io.arcalium.Setup.desktop` always opens the wizard (Resume).
 - Control Centre → Settings: Resume / Restart setup (restart confirms then `setup reset`).

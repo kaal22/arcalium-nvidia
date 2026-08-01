@@ -25,6 +25,7 @@ Resume / restart: Kickoff → **Arcalium Setup**, or Settings → Setup wizard.
 | Streaming | Sunshine / Moonlight / OBS via `apps` |
 | Updates and Recovery | `updates status` (guidance only for apply/rollback) |
 | Diagnostics | `diagnostics run` / `bundle` |
+| Local AI Assistant | `ai status` / `ensure` / `launch` / `stop` (Ollama + `gemma4:e4b-it-qat`) |
 | Settings | prefs + setup resume/restart |
 | About | image identity |
 

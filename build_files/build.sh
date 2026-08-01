@@ -128,6 +128,7 @@ chmod 0755 /usr/libexec/arcalium-migrate-hostname
 chmod 0755 /usr/bin/arcaliumctl
 chmod 0755 /usr/bin/arcalium-heroic
 chmod 0755 /usr/bin/arcalium-setup
+chmod 0755 /usr/lib/arcalium/ai/assistant-session.sh
 systemctl enable arcalium-migrate-hostname.service
 
 # Phase 2 diagnostics JSON schemas (PRODUCT_SPEC §10.2).
@@ -147,6 +148,7 @@ test -f /usr/share/arcalium/catalogue/apps.v1.json
 # catalogue parses before the image ships. --help exercises every import.
 arcaliumctl --help >/dev/null
 arcaliumctl setup status --json >/dev/null
+arcaliumctl ai status --json >/dev/null
 python3 -c 'import json,sys; json.load(open("/usr/share/arcalium/catalogue/apps.v1.json"))'
 
 # Keep podman.socket available (inherited template default; idempotent).

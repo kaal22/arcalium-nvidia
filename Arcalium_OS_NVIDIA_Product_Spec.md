@@ -299,7 +299,8 @@ The wizard must guide the user through:
 9. ProtonVPN setup.
 10. Optional game-streaming setup.
 11. Final system validation.
-12. Completion and handoff to Arcalium Control Centre.
+12. Optional Local AI assistant (install or skip).
+13. Completion and handoff to Arcalium Control Centre.
 
 ## 6.3 Daily use
 
@@ -316,6 +317,7 @@ After setup, users should use **Arcalium Control Centre** for:
 - Controllers and peripherals.
 - Updates and rollback.
 - Diagnostics.
+- Offline local AI assistant (optional, session-based).
 - Documentation.
 
 ---
@@ -524,7 +526,8 @@ Example structure:
     "protonGe": "complete",
     "storage": "skipped",
     "vpn": "skipped",
-    "streaming": "skipped"
+    "streaming": "skipped",
+    "localAi": "skipped"
   }
 }
 ```
@@ -745,7 +748,22 @@ Display:
 - Ready with warnings.
 - Action required.
 
-### Page 13 — Completion
+### Page 13 — Local AI assistant
+
+Optional offline maintenance helper (Ollama + pinned `gemma4:e4b-it-qat`).
+
+Show:
+
+- Ollama and model status.
+- Clear size / VRAM / gaming coexistence warnings (~10 GB pull; unload before gaming).
+- **Install model** (pulls the pinned model when Ollama is present; otherwise show install guidance).
+- Optional **Try assistant** (terminal session) after the model is ready.
+- **Skip** — finish setup without Local AI; can configure later in Control Centre.
+- **Continue** — mark the step complete without requiring a successful install.
+
+Do not force the model pull for every user. Do not block completion if the user skips.
+
+### Page 14 — Completion
 
 Show:
 
@@ -781,8 +799,9 @@ The application should contain:
 9. Streaming.
 10. Updates and Recovery.
 11. Diagnostics.
-12. Settings.
-13. About.
+12. Local AI Assistant.
+13. Settings.
+14. About.
 
 ## 9.3 Overview dashboard
 
@@ -1068,6 +1087,49 @@ Excluded by default:
 
 The user must preview the bundle before exporting it.
 
+## 9.14 Local AI Assistant page
+
+Arcalium may include an **optional offline local AI assistant** for system-maintenance questions and troubleshooting guidance. It is a helper for interpreting diagnostics, updates, storage, drivers, and common Linux gaming issues — not a cloud chatbot and not a substitute for the Diagnostics support bundle.
+
+### Purpose
+
+- Answer maintenance and “what should I try next?” questions using local context where practical (for example: recent `arcaliumctl` health summaries, Arcalium docs excerpts, and redacted system facts the user opts to attach).
+- Keep all inference on-device once the model is installed.
+- Stay compatible with a gaming-first desktop: the model must not remain resident in GPU memory after the user finishes.
+
+### Runtime and model
+
+- Runtime: **Ollama** (local API / CLI).
+- Base weights: **`gemma4:e4b-it-qat`** (Gemma 4 E4B instruction-tuned, QAT). Pin this tag in scripts; do not silently float to a larger or different tag.
+- Session model: **`arcalium-assistant`**, created from the base via Modelfile with a fixed **Arcalium system prompt** (`/usr/lib/arcalium/ai/system-prompt.txt`) so replies assume Arcalium OS NVIDIA Edition (Bazzite/bootc), KDE Plasma, and **bash** — never Windows PowerShell/cmd or apt/pacman unless the user asks about another OS.
+- First use may require a one-time model pull (~10 GB class). Do not force the pull during first-boot for every user; offer it from Control Centre with clear size, VRAM, and disk warnings.
+- Offline after install: no Arcalium cloud endpoint, no third-party chat API, and no prompt/response telemetry.
+
+### Control Centre launch behaviour
+
+The Local AI Assistant page (and an optional Diagnostics quick action) must:
+
+1. Show Ollama / model status (installed, pulling, ready, busy, error).
+2. Offer **Launch assistant** as the primary action.
+3. Open a **terminal session** (system terminal, e.g. Konsole) that runs an Arcalium-managed chat wrapper — not a permanent background GUI that keeps weights loaded.
+4. On session start, load `arcalium-assistant` (system-prompted) for interactive use.
+5. On terminal close / session exit (including Ctrl+C / shell exit), **unload the model** so GPU VRAM is freed for gaming (for example `ollama stop arcalium-assistant` / base tag and/or keep-alive zero for that run). Closing the terminal is the intended “I’m done — free the GPU” gesture.
+6. Surface a clear notice before launch: gaming and the assistant should not share the GPU while the model is loaded; close the assistant terminal before launching demanding games.
+
+### Non-goals for version 1 of this feature
+
+- Always-on tray / daemon chat that keeps the model warm in VRAM.
+- Automatic silent model upgrades to larger Gemma tags.
+- Sending chat content off-device.
+- Replacing Polkit, `bootc`, or privileged repair with AI-executed shell commands. The assistant may suggest commands; the user (or allowlisted `arcaliumctl`) executes them.
+
+### Acceptance
+
+- Assistant launches from Control Centre into a terminal.
+- Chat works offline after the model is present and uses the Arcalium system prompt (Linux/bash/bootc context).
+- Closing the terminal unloads the assistant/base models and returns the GPU to a gaming-usable free-VRAM state without a reboot.
+- Failure modes (missing Ollama, pull incomplete, insufficient VRAM/disk) are explained in plain language with a retry path.
+
 ---
 
 # 10. Backend Command Architecture
@@ -1097,7 +1159,13 @@ arcaliumctl storage scan --json
 arcaliumctl vpn import /path/to/config --json
 arcaliumctl updates status --json
 arcaliumctl diagnostics create --output /path/to/file
+arcaliumctl ai status --json
+arcaliumctl ai ensure --json
+arcaliumctl ai launch
+arcaliumctl ai stop --json
 ```
+
+`arcaliumctl ai launch` must open the terminal session described in §9.14 and guarantee model unload on exit. `arcaliumctl ai stop` must force-unload if a previous session left the model resident.
 
 ## 10.2 Command rules
 
@@ -1482,6 +1550,8 @@ Arcalium telemetry is disabled because no telemetry service will exist in versio
 
 The Control Centre may perform local diagnostics.
 
+The optional Local AI Assistant (§9.14) must keep prompts and responses on-device. It must not upload chat content, attach full home-directory trees, or include secrets (VPN credentials, Steam tokens, Wi-Fi passwords) in model context by default.
+
 Any future crash-report submission must be:
 
 - Opt-in.
@@ -1834,10 +1904,11 @@ Deliverables:
 - Streaming setup.
 - Controller detection.
 - About and licences.
+- Optional Local AI Assistant page (§9.14) may ship in this phase or immediately after private-alpha Control Centre polish; it must not block gaming or Diagnostics acceptance.
 
 Acceptance:
 
-- No routine feature requires terminal use.
+- No routine feature requires terminal use, except the Local AI Assistant, which intentionally uses a terminal session so closing it unloads the GPU-resident model.
 - Privileged operations are narrow and audited.
 - Support bundle is redacted.
 

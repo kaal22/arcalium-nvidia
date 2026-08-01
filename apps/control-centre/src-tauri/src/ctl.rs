@@ -11,6 +11,7 @@ const TIMEOUT_DEFAULT_SECS: u64 = 60;
 const TIMEOUT_PROTON_INSTALL_SECS: u64 = 1800;
 const TIMEOUT_FLATPAK_SECS: u64 = 1800;
 const TIMEOUT_DIAGNOSTICS_SECS: u64 = 120;
+const TIMEOUT_AI_ENSURE_SECS: u64 = 3600;
 
 /// Flatpak source IDs permitted for apps install/uninstall (must match catalogue).
 const ALLOWED_FLATPAK_IDS: &[&str] = &[
@@ -61,6 +62,10 @@ const ALLOWED_EXACT: &[&[&str]] = &[
     &["updates", "status", "--json"],
     &["diagnostics", "run", "--json"],
     &["diagnostics", "bundle", "--json"],
+    &["ai", "status", "--json"],
+    &["ai", "ensure", "--json"],
+    &["ai", "launch", "--json"],
+    &["ai", "stop", "--json"],
     &["setup", "status", "--json"],
     &["setup", "complete", "--json"],
     &["setup", "reset", "--json"],
@@ -79,6 +84,7 @@ const SETUP_STEPS: &[&str] = &[
     "vpn",
     "streaming",
     "validation",
+    "localAi",
     "completion",
 ];
 
@@ -135,6 +141,9 @@ fn timeout_for(args: &[String]) -> u64 {
     }
     if args.len() >= 2 && args[0] == "diagnostics" {
         return TIMEOUT_DIAGNOSTICS_SECS;
+    }
+    if args.len() >= 2 && args[0] == "ai" && args[1] == "ensure" {
+        return TIMEOUT_AI_ENSURE_SECS;
     }
     TIMEOUT_DEFAULT_SECS
 }

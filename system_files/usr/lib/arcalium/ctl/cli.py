@@ -7,6 +7,7 @@ import sys
 from typing import Any
 
 from . import (
+    ai,
     apps,
     controllers,
     diagnostics,
@@ -19,6 +20,7 @@ from . import (
     updates,
     vulkan,
 )
+from .ai import AiError
 from .apps import AppsError
 from .errors import ARC_CMD_001, ARC_CMD_003
 from .jsonutil import emit
@@ -100,6 +102,13 @@ def _build_parser() -> argparse.ArgumentParser:
     setup_mark.add_argument("state", choices=("complete", "skipped", "pending", "in_progress"))
     setup_sub.add_parser("complete", help="Write setup-complete.json and clear progress")
     setup_sub.add_parser("reset", help="Clear progress and completion markers")
+
+    ai_p = sub.add_parser("ai", help="Offline Local AI assistant (Ollama)")
+    ai_sub = ai_p.add_subparsers(dest="action", required=True)
+    ai_sub.add_parser("status", help="Ollama and pinned model status")
+    ai_sub.add_parser("ensure", help="Pull pinned model if Ollama is present")
+    ai_sub.add_parser("launch", help="Open terminal assistant session (unloads on close)")
+    ai_sub.add_parser("stop", help="Force-unload the pinned model from GPU memory")
 
     return parser
 
@@ -286,6 +295,35 @@ def main(argv: list[str] | None = None) -> int:
             )
             return exc.error.exit_code
         emit(data, as_json=as_json, human_lines=setup.human_mutate(data))
+        return 0
+
+    if command == "ai" and action == "status":
+        data = ai.status()
+        emit(data, as_json=as_json, human_lines=ai.human_status(data))
+        return 0
+
+    if command == "ai" and action == "ensure":
+        data = ai.ensure()
+        emit(data, as_json=as_json, human_lines=ai.human_ensure(data))
+        return 0
+
+    if command == "ai" and action == "launch":
+        try:
+            data = ai.launch()
+        except AiError as exc:
+            payload = ai.error_payload(exc, action="launch")
+            emit(
+                payload,
+                as_json=as_json or True,
+                human_lines=[f"{exc.error.code}: {exc.detail or exc.error.message}"],
+            )
+            return exc.error.exit_code
+        emit(data, as_json=as_json, human_lines=ai.human_launch(data))
+        return 0
+
+    if command == "ai" and action == "stop":
+        data = ai.stop()
+        emit(data, as_json=as_json, human_lines=ai.human_stop(data))
         return 0
 
     payload: dict[str, Any] = {

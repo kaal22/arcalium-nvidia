@@ -20,7 +20,9 @@ export function WizardApp() {
   const [storage, setStorage] = useState<JsonValue | null>(null);
   const [network, setNetwork] = useState<JsonValue | null>(null);
   const [diag, setDiag] = useState<JsonValue | null>(null);
+  const [aiStatus, setAiStatus] = useState<JsonValue | null>(null);
   const [installingProton, setInstallingProton] = useState(false);
+  const [ensuringAi, setEnsuringAi] = useState(false);
 
   const step = WIZARD_STEPS[stepIndex];
 
@@ -87,6 +89,10 @@ export function WizardApp() {
     setDiag(await arcaliumctl(["diagnostics", "run", "--json"]));
   }, []);
 
+  const loadAi = useCallback(async () => {
+    setAiStatus(await arcaliumctl(["ai", "status", "--json"]));
+  }, []);
+
   useEffect(() => {
     setError(null);
     setMsg(null);
@@ -104,13 +110,25 @@ export function WizardApp() {
         if (id === "storage") await loadStorage();
         if (id === "vpn") await loadNetwork();
         if (id === "validation") await loadValidation();
+        if (id === "localAi") await loadAi();
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
         setBusy(false);
       }
     })();
-  }, [step.id, persist, loadHardware, loadUpdates, loadApps, loadProton, loadStorage, loadNetwork, loadValidation]);
+  }, [
+    step.id,
+    persist,
+    loadHardware,
+    loadUpdates,
+    loadApps,
+    loadProton,
+    loadStorage,
+    loadNetwork,
+    loadValidation,
+    loadAi,
+  ]);
 
   const goNext = async (mark: StepState = "complete") => {
     setBusy(true);
@@ -514,6 +532,112 @@ export function WizardApp() {
                 </li>
               ))}
             </ul>
+          </article>
+        )}
+
+        {step.id === "localAi" && (
+          <article className="card">
+            <p>
+              Optional offline helper for system maintenance questions. Uses Ollama assistant{" "}
+              <span className="mono">{str(pick(aiStatus, "model.id"), "arcalium-assistant")}</span>{" "}
+              (base <span className="mono">{str(pick(aiStatus, "model.baseModel"), "gemma4:e4b-it-qat")}</span>
+              ) with an Arcalium OS / bash system prompt. Skip if you prefer to set this up later in
+              Control Centre.
+            </p>
+            <dl className="kv" style={{ marginTop: "0.75rem" }}>
+              <div>
+                <dt>Ollama</dt>
+                <dd>
+                  <span className={`badge ${pick(aiStatus, "ollama.available") ? "ok" : "warn"}`}>
+                    {pick(aiStatus, "ollama.available") ? "found" : "not installed"}
+                  </span>
+                </dd>
+              </div>
+              <div>
+                <dt>Model</dt>
+                <dd>
+                  <span className={`badge ${pick(aiStatus, "model.installed") ? "ok" : "warn"}`}>
+                    {pick(aiStatus, "model.installed") ? "installed" : "not pulled"}
+                  </span>
+                </dd>
+              </div>
+            </dl>
+            <p className="muted small" style={{ marginTop: "0.75rem" }}>
+              First pull is roughly 10 GB. Close the assistant terminal before gaming so GPU memory is
+              freed. Chat stays on this PC — no cloud API.
+            </p>
+            {!pick(aiStatus, "ollama.available") && (
+              <ul className="plain-list mono small" style={{ marginTop: "0.75rem" }}>
+                {(((pick(aiStatus, "guidance.installOllama") as string[]) || []) as string[]).map(
+                  (line) => (
+                    <li key={line}>{line}</li>
+                  ),
+                )}
+              </ul>
+            )}
+            <div className="btn-row" style={{ marginTop: "0.75rem" }}>
+              <button
+                type="button"
+                className="btn primary"
+                disabled={ensuringAi || Boolean(pick(aiStatus, "model.installed"))}
+                onClick={async () => {
+                  setEnsuringAi(true);
+                  setError(null);
+                  try {
+                    const result = await arcaliumctl(["ai", "ensure", "--json"]);
+                    setMsg(str(pick(result, "message")));
+                    await loadAi();
+                    if (pick(result, "ok")) {
+                      setMsg(
+                        `${str(pick(result, "message"))} You can Continue, or Skip if you changed your mind.`,
+                      );
+                    }
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : String(e));
+                  } finally {
+                    setEnsuringAi(false);
+                  }
+                }}
+              >
+                {ensuringAi
+                  ? "Installing…"
+                  : pick(aiStatus, "model.installed")
+                    ? "Model already installed"
+                    : "Install model"}
+              </button>
+              <button
+                type="button"
+                className="btn"
+                disabled={!pick(aiStatus, "ready") || ensuringAi}
+                onClick={async () => {
+                  try {
+                    const result = await arcaliumctl(["ai", "launch", "--json"]);
+                    setMsg(str(pick(result, "message")));
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : String(e));
+                  }
+                }}
+              >
+                Try assistant
+              </button>
+              {!pick(aiStatus, "ollama.available") && (
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={async () => {
+                    const lines = (pick(aiStatus, "guidance.installOllama") as string[]) || [];
+                    await copyText(lines.join("\n"));
+                    setMsg("Ollama install commands copied.");
+                  }}
+                >
+                  Copy Ollama install commands
+                </button>
+              )}
+            </div>
+            <p className="muted small" style={{ marginTop: "0.75rem" }}>
+              Use <strong>Skip</strong> to finish setup without Local AI, or <strong>Continue</strong> after
+              installing (or if you will finish later in Control Centre).
+            </p>
           </article>
         )}
 
