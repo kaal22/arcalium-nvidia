@@ -207,8 +207,6 @@ def _unload_models() -> None:
         if not name:
             continue
         try:
-            import subprocess
-
             subprocess.run(
                 [OLLAMA_BIN, "stop", name],
                 check=False,

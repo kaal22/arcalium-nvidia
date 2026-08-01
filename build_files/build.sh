@@ -131,7 +131,7 @@ chmod 0755 /usr/bin/arcalium-setup
 chmod 0755 /usr/lib/arcalium/ai/assistant-session.sh
 chmod 0755 /usr/lib/arcalium/ai/ensure-session.sh
 chmod 0755 /usr/lib/arcalium/ai/install-session.sh
-chmod 0755 /usr/lib/arcalium/ai/agent.py
+chmod 0755 /usr/lib/arcalium/ai/assistant-agent.py
 chmod 0755 /usr/lib/arcalium/apps/install-session.sh
 chmod 0755 /usr/lib/arcalium/updates/session.sh
 systemctl enable arcalium-migrate-hostname.service

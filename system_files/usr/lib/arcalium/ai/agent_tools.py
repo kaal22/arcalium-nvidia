@@ -77,7 +77,8 @@ def _app_id(args: dict[str, Any]) -> str:
 
 
 def _apps_install(args: dict[str, Any]) -> list[str]:
-    return ["apps", "install", _app_id(args), "--json"]
+    # Visible Flatpak install so the user sees download progress in a terminal.
+    return ["apps", "install", _app_id(args), "--visible", "--json"]
 
 
 def _apps_uninstall(args: dict[str, Any]) -> list[str]:
@@ -195,6 +196,13 @@ TOOLS: dict[str, ToolSpec] = {
         True,
         "Open a terminal to roll back and reboot (user confirms yes + sudo there)",
         _no_args(["updates", "rollback", "--json"]),
+        60,
+    ),
+    "updates_reboot": ToolSpec(
+        "updates_reboot",
+        True,
+        "Open a terminal to reboot (user confirms yes + sudo there)",
+        _no_args(["updates", "reboot", "--json"]),
         60,
     ),
     "diagnostics_run": ToolSpec(

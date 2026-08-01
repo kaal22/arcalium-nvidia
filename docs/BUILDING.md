@@ -357,7 +357,7 @@ Offline maintenance helper via **Ollama**, base **`gemma4:e4b-it-qat`**, session
 - UI **Install** / **Pull** use `--visible`: open Konsole (or Ptyxis/kgx) running `/usr/lib/arcalium/ai/install-session.sh` / `ensure-session.sh` so brew / `ollama pull` progress is visible; the page polls status until ready.
 - `arcaliumctl ai install-ollama` (no `--visible`) runs a non-interactive user-level `brew install ollama`, then starts the local server — for scripts. No sudo or copy/paste flow.
 - `arcaliumctl ai ensure` (no `--visible`) pulls the base tag and creates/refreshes `arcalium-assistant` silently.
-- `arcaliumctl ai launch` opens Konsole/Ptyxis/kgx running `/usr/lib/arcalium/ai/assistant-session.sh`, which starts the agent wrapper `/usr/lib/arcalium/ai/agent.py`. The agent can auto-run allowlisted read-only `arcaliumctl` tools and requires typing `yes` before mutating ones. Closing the terminal runs `ollama stop` so VRAM is freed for gaming.
+- `arcaliumctl ai launch` opens Konsole/Ptyxis/kgx running `/usr/lib/arcalium/ai/assistant-session.sh`, which starts the agent `/usr/lib/arcalium/ai/assistant-agent.py` with allowlisted tools from `agent_tools.py`. Read-only tools auto-run; mutating ones require typing `yes`. Closing the terminal runs `ollama stop` so VRAM is freed for gaming.
 - Ollama is **not** layered into the image (atomic desktop); the UI installs it into the user's Homebrew environment on demand. The model pull is separate (~10 GB).
 - The local server keeps weights warm during an active chat; the terminal session traps EXIT/HUP and explicitly unloads both assistant and base models.
 

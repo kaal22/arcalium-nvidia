@@ -1128,10 +1128,10 @@ The Local AI Assistant page (and an optional Diagnostics quick action) must:
 
 ### Agentic tools (allowlisted)
 
-The terminal session runs an Arcalium agent wrapper (`/usr/lib/arcalium/ai/agent.py`) around Ollama:
+The terminal session runs an Arcalium agent wrapper (`/usr/lib/arcalium/ai/assistant-agent.py`) around Ollama:
 
-- The model may emit `[[run arcaliumctl … --json]]` for read-only status tools; the wrapper executes only an allowlist and feeds JSON results back into the chat.
-- Mutating tools use `[[confirm arcaliumctl …]]` and require the user to type `yes` in the terminal before running (app install/uninstall, Proton install, updates check/apply/rollback/reboot, diagnostics bundle, AI stop/ensure).
+- The model may emit `ARCALIUM_TOOL <name> <json>` for allowlisted tools; the wrapper executes only that allowlist (`agent_tools.py`) and feeds JSON results back into the chat.
+- Read-only tools run immediately. Mutating tools require the user to type `yes` in the terminal before running (app install/uninstall, Proton install, updates check/apply/rollback/reboot, diagnostics bundle, AI stop).
 - Privileged image mutations still happen through the existing Updates terminal helpers (sudo prompt visible) — not as silent background root from the model.
 
 ### Acceptance
