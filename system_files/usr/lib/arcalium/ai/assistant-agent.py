@@ -98,8 +98,37 @@ def _load_system_prompt() -> str:
     return base + "\n\n" + agent_tools.tool_catalog_for_prompt()
 
 
+def _to_plain_terminal(text: str) -> str:
+    """Strip common Markdown so Konsole stays readable."""
+    out = text.replace("\r\n", "\n").replace("\r", "\n")
+    # Fenced code blocks -> keep inner text only.
+    out = re.sub(r"```[a-zA-Z0-9_-]*\n?", "", out)
+    out = out.replace("```", "")
+    # Headings
+    out = re.sub(r"(?m)^#{1,6}\s*", "", out)
+    # Links / images
+    out = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", out)
+    out = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", out)
+    # Bold / italic / strike (repeat to clear nested markers)
+    for _ in range(3):
+        out = re.sub(r"\*\*(.+?)\*\*", r"\1", out, flags=re.DOTALL)
+        out = re.sub(r"__(.+?)__", r"\1", out, flags=re.DOTALL)
+        out = re.sub(r"~~(.+?)~~", r"\1", out, flags=re.DOTALL)
+        out = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"\1", out, flags=re.DOTALL)
+        out = re.sub(r"(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", r"\1", out, flags=re.DOTALL)
+    # Inline code
+    out = re.sub(r"`([^`]+)`", r"\1", out)
+    # Horizontal rules
+    out = re.sub(r"(?m)^(?:-{3,}|\*{3,}|_{3,})\s*$", "", out)
+    # Collapse leftover emphasis markers that models leave unpaired
+    out = out.replace("**", "").replace("__", "")
+    # Tidy blank lines
+    out = re.sub(r"\n{3,}", "\n\n", out)
+    return out.strip()
+
+
 def _ollama_chat(messages: list[dict[str, str]]) -> str:
-    """Stream the reply so the terminal shows a spinner, then live tokens."""
+    """Wait with a spinner, then print a cleaned plain-text reply."""
     body = json.dumps(
         {
             "model": MODEL,
@@ -116,10 +145,7 @@ def _ollama_chat(messages: list[dict[str, str]]) -> str:
     )
 
     parts: list[str] = []
-    started = False
-    spinner = _Spinner("Thinking")
-    spinner.__enter__()
-    try:
+    with _Spinner("Thinking"):
         try:
             resp = urllib.request.urlopen(req, timeout=CHAT_TIMEOUT)
         except urllib.error.HTTPError as exc:
@@ -146,26 +172,21 @@ def _ollama_chat(messages: list[dict[str, str]]) -> str:
                 message = data.get("message") or {}
                 chunk = message.get("content")
                 if isinstance(chunk, str) and chunk:
-                    if not started:
-                        spinner.clear()
-                        started = True
-                        sys.stdout.write("\nAssistant> ")
-                        sys.stdout.flush()
                     parts.append(chunk)
-                    sys.stdout.write(chunk)
-                    sys.stdout.flush()
                 if data.get("done"):
                     break
-    finally:
-        spinner.clear()
-
-    if started:
-        sys.stdout.write("\n")
-        sys.stdout.flush()
 
     content = "".join(parts)
     if not content:
         raise RuntimeError("Ollama returned an empty chat response")
+
+    display, _tool_name, _tool_args = _extract_tool(content)
+    plain = _to_plain_terminal(display)
+    if plain:
+        _print()
+        _print("Assistant>")
+        _print(plain)
+        _print()
     return content
 
 
