@@ -50,11 +50,34 @@ export function CompatibilityPage() {
     setInstallMsg(null);
     setInstallErr(null);
     try {
-      const result = await arcaliumctl(["proton", "install-recommended", "--json"]);
+      const result = await arcaliumctl(["proton", "install-recommended", "--visible", "--json"]);
       const action = str(pick(result, "action"), "done");
       const name = str(pick(result, "name"), "GE-Proton");
       if (action === "already_present") {
         setInstallMsg(`${name} is already installed.`);
+      } else if (action === "terminal") {
+        setInstallMsg(
+          str(
+            pick(result, "message"),
+            "Installing GE-Proton in a terminal — watch progress there.",
+          ),
+        );
+        const started = Date.now();
+        let done = false;
+        while (Date.now() - started < 30 * 60 * 1000) {
+          await new Promise((r) => setTimeout(r, 4000));
+          const data = await arcaliumctl(["proton", "list", "--json"]);
+          setList(data);
+          if (pick(data, "recommendedPresent") === true) {
+            done = true;
+            break;
+          }
+        }
+        setInstallMsg(
+          done
+            ? "GE-Proton installed for Heroic."
+            : "Still installing in the terminal window. Refresh when it finishes.",
+        );
       } else if (action === "updated") {
         setInstallMsg(`Updated to ${name}.`);
       } else {
@@ -137,11 +160,11 @@ export function CompatibilityPage() {
           <div className="action-row" style={{ marginTop: "0.9rem" }}>
             <button
               type="button"
-              className="btn primary"
+              className={`btn primary${installing ? " working" : ""}`}
               disabled={installing || state === "loading"}
               onClick={() => void installRecommended()}
             >
-              {installing ? "Installing… (may take several minutes)" : "Install recommended GE-Proton"}
+              {installing ? "Installing in terminal…" : "Install recommended GE-Proton"}
             </button>
             <button
               type="button"

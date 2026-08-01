@@ -331,12 +331,6 @@ def _launch_install_terminal(entry: dict[str, Any], source: str) -> dict[str, An
 
 def install_app(app_id: str, *, visible: bool = False) -> dict[str, Any]:
     entry = _resolve_entry(app_id)
-    if entry.get("id") == "steam" or entry.get("type") == "external":
-        raise AppsError(
-            ARC_APPS_001,
-            "Steam is not shipped with Arcalium. Use: arcaliumctl steam open-download "
-            "(opens Valve's official page so you can accept Steam's agreement).",
-        )
     if entry.get("type") != "flatpak":
         raise AppsError(
             ARC_APPS_001,

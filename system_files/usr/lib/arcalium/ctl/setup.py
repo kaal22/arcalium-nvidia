@@ -164,10 +164,10 @@ def status() -> dict[str, Any]:
         "desktopFirstRun": {
             "note": (
                 "Language, keyboard, and timezone are set in the installer. "
-                "Arcalium Setup waits for Plasma Welcome / Bazzite Portal to finish "
-                "before autostarting, then handles gaming setup."
+                "Autostart waits for Plasma Welcome / Bazzite Portal to appear "
+                "and finish (Wi‑Fi and desktop first-run) before opening Arcalium Setup."
             ),
-            "waitsFor": ["plasma-welcome", "yafti", "bazzite-portal"],
+            "waitsFor": ["plasma-welcome", "yafti", "yafti-gtk", "bazzite-portal"],
         },
     }
 

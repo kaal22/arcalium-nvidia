@@ -1,0 +1,4 @@
+#!/usr/bin/bash
+# Arcalium override: Bazzite's first-run Steam dialog is disabled.
+# Steam is not shipped; Control Centre Install Steam pulls Flathub Flatpak.
+exit 0

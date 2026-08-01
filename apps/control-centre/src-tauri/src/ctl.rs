@@ -16,6 +16,7 @@ const TIMEOUT_AI_ENSURE_SECS: u64 = 3600;
 
 /// Flatpak source IDs permitted for apps install/uninstall (must match catalogue).
 const ALLOWED_FLATPAK_IDS: &[&str] = &[
+    "com.valvesoftware.Steam",
     "com.heroicgameslauncher.hgl",
     "com.usebottles.bottles",
     "org.prismlauncher.PrismLauncher",
@@ -33,6 +34,7 @@ const ALLOWED_FLATPAK_IDS: &[&str] = &[
 
 /// Catalogue ids also accepted as apps install/uninstall targets.
 const ALLOWED_CATALOGUE_IDS: &[&str] = &[
+    "steam",
     "heroic",
     "bottles",
     "prism",
@@ -55,6 +57,10 @@ const ALLOWED_EXACT: &[&[&str]] = &[
     &["vulkan", "test", "--json"],
     &["proton", "list", "--json"],
     &["proton", "install-recommended", "--json"],
+    &["proton", "install-recommended", "--visible", "--json"],
+    &["proton", "install-recommended", "--force", "--json"],
+    &["proton", "install-recommended", "--force", "--visible", "--json"],
+    &["proton", "install-recommended", "--visible", "--force", "--json"],
     &["apps", "catalogue", "--json"],
     &["apps", "list", "--json"],
     &["storage", "scan", "--json"],
@@ -76,6 +82,8 @@ const ALLOWED_EXACT: &[&[&str]] = &[
     &["ai", "stop", "--json"],
     &["steam", "status", "--json"],
     &["steam", "open-download", "--json"],
+    &["steam", "install", "--json"],
+    &["steam", "install", "--visible", "--json"],
     &["setup", "status", "--json"],
     &["setup", "complete", "--json"],
     &["setup", "reset", "--json"],
@@ -158,7 +166,19 @@ fn is_allowed(args: &[String]) -> bool {
 
 fn timeout_for(args: &[String]) -> u64 {
     if args.len() >= 2 && args[0] == "proton" && args[1] == "install-recommended" {
-        return TIMEOUT_PROTON_INSTALL_SECS;
+        // Visible mode only spawns a terminal and returns immediately.
+        return if args.iter().any(|a| a == "--visible") {
+            TIMEOUT_DEFAULT_SECS
+        } else {
+            TIMEOUT_PROTON_INSTALL_SECS
+        };
+    }
+    if args.len() >= 2 && args[0] == "steam" && (args[1] == "install" || args[1] == "open-download") {
+        return if args.iter().any(|a| a == "--visible") || args[1] == "open-download" {
+            TIMEOUT_DEFAULT_SECS
+        } else {
+            TIMEOUT_FLATPAK_SECS
+        };
     }
     if args.len() >= 2 && args[0] == "apps" && (args[1] == "install" || args[1] == "uninstall") {
         // Visible mode only spawns a terminal and returns immediately.

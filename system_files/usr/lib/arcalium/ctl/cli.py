@@ -64,6 +64,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Re-download even if a GE-Proton build is already present",
     )
+    install_p.add_argument(
+        "--visible",
+        action="store_true",
+        help="Open a terminal so download progress is visible",
+    )
 
     apps_p = sub.add_parser("apps", help="Application catalogue and Flatpak ops")
     apps_sub = apps_p.add_subparsers(dest="action", required=True)
@@ -141,12 +146,21 @@ def _build_parser() -> argparse.ArgumentParser:
     ai_sub.add_parser("launch", help="Open terminal assistant session (unloads on close)")
     ai_sub.add_parser("stop", help="Force-unload the pinned model from GPU memory")
 
-    steam_p = sub.add_parser("steam", help="Steam status and official Valve download")
+    steam_p = sub.add_parser("steam", help="Steam status and on-demand Flatpak install")
     steam_sub = steam_p.add_subparsers(dest="action", required=True)
     steam_sub.add_parser("status", help="Whether Steam is installed (not shipped in image)")
+    steam_install = steam_sub.add_parser(
+        "install",
+        help="Install Steam Flatpak from Flathub (user scope; not redistributed in image)",
+    )
+    steam_install.add_argument(
+        "--visible",
+        action="store_true",
+        help="Open a terminal so Flatpak download progress is visible",
+    )
     steam_sub.add_parser(
         "open-download",
-        help="Open Valve's official Steam download page (user accepts Steam's agreement there)",
+        help="Alias for install --visible (Atomic cannot use Valve's .deb)",
     )
 
     return parser
@@ -195,7 +209,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if command == "proton" and action == "install-recommended":
         try:
-            data = proton.install_recommended(force=bool(getattr(args, "force", False)))
+            data = proton.install_recommended(
+                force=bool(getattr(args, "force", False)),
+                visible=bool(getattr(args, "visible", False)),
+            )
         except ProtonError as exc:
             payload = proton.error_payload(exc, command="proton", action="install-recommended")
             emit(
@@ -411,9 +428,11 @@ def main(argv: list[str] | None = None) -> int:
         emit(data, as_json=as_json, human_lines=steam.human_status(data))
         return 0
 
-    if command == "steam" and action == "open-download":
+    if command == "steam" and action in ("install", "open-download"):
         try:
-            data = steam.open_download()
+            # open-download is kept as an alias; always use a visible Flatpak pull.
+            visible = True if action == "open-download" else bool(getattr(args, "visible", False))
+            data = steam.install(visible=visible)
         except SteamError as exc:
             payload = {
                 "schema": "arcalium.error/v1",
@@ -422,7 +441,7 @@ def main(argv: list[str] | None = None) -> int:
                 "message": exc.err.message,
                 "detail": exc.detail,
                 "command": "steam",
-                "action": "open-download",
+                "action": action,
             }
             emit(
                 payload,
@@ -430,7 +449,23 @@ def main(argv: list[str] | None = None) -> int:
                 human_lines=[f"{exc.err.code}: {exc.detail or exc.err.message}"],
             )
             return exc.err.exit_code
-        emit(data, as_json=as_json, human_lines=steam.human_open(data))
+        except AppsError as exc:
+            payload = {
+                "schema": "arcalium.error/v1",
+                "ok": False,
+                "code": exc.error.code,
+                "message": exc.error.message,
+                "detail": getattr(exc, "detail", "") or "",
+                "command": "steam",
+                "action": action,
+            }
+            emit(
+                payload,
+                as_json=as_json or True,
+                human_lines=[f"{exc.error.code}: {getattr(exc, 'detail', '') or exc.error.message}"],
+            )
+            return exc.error.exit_code
+        emit(data, as_json=as_json, human_lines=steam.human_install(data))
         return 0 if data.get("ok") else 1
 
     payload: dict[str, Any] = {

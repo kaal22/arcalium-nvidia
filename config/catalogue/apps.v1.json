@@ -4,13 +4,13 @@
     {
       "id": "steam",
       "name": "Steam",
-      "type": "external",
-      "sourceId": "steam",
-      "desktopId": "steam.desktop",
+      "type": "flatpak",
+      "sourceId": "com.valvesoftware.Steam",
+      "desktopId": "com.valvesoftware.Steam.desktop",
       "required": false,
       "category": "gaming",
-      "licenceNotice": "Not shipped with Arcalium. Get Steam from Valve's official download page — their installer presents the Steam Subscriber Agreement.",
-      "website": "https://store.steampowered.com/about/",
+      "licenceNotice": "Not shipped in the OS image. Install pulls Valve's Flatpak from Flathub; Steam shows Valve's Subscriber Agreement on first launch.",
+      "website": "https://store.steampowered.com/",
       "supported": true,
       "roles": ["gaming", "streaming"]
     },

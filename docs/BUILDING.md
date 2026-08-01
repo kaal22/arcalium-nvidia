@@ -218,7 +218,7 @@ Verify any new ID on Flathub before committing it — PRODUCT_SPEC principle 4 f
 
 ### Taskbar and default browser
 
-New users get the daily-use bundled apps pinned on the Icon Tasks panel and in Kickoff favorites. Panel order (left → right): Files, Bazaar, Brave, Heroic, Spotify. Steam is **not** pinned by default — it is not shipped in the image; Control Centre opens Valve’s official download page. Heroic opens directly; it does not download Proton before launch.
+New users get the daily-use bundled apps pinned on the Icon Tasks panel and in Kickoff favorites. Panel order (left → right): Files, Bazaar, Brave, Heroic, Spotify. Steam is **not** pinned by default — it is not shipped in the image; Control Centre installs Valve’s Flatpak from Flathub on demand. Bazzite’s skel Steam autostart and “downloading Steam” firstrun dialog are removed/overridden so first boot does not show a dead install popup. Heroic opens directly; it does not download Proton before launch.
 
 Two deliberate absences from the panel:
 
@@ -346,14 +346,14 @@ arcaliumctl ai ensure --visible --json
 arcaliumctl ai launch
 arcaliumctl ai stop --json
 arcaliumctl steam status --json
-arcaliumctl steam open-download --json
+arcaliumctl steam install --visible --json
 ```
 
 JSON schemas ship in `/usr/share/arcalium/schemas/` from `config/schemas/` (Containerfile `COPY config /config`). Hardware runbook: [`docs/PHASE2_VALIDATION.md`](PHASE2_VALIDATION.md).
 
-### Steam (Valve download, not shipped)
+### Steam (Flathub on demand, not shipped)
 
-Arcalium does **not** redistribute Steam. `build.sh` removes the Bazzite `steam` RPM and asserts `steam.desktop` is gone. Control Centre / Setup / `arcaliumctl steam open-download` opens Valve’s official page (`https://store.steampowered.com/about/`) so the user accepts the Steam Subscriber Agreement with Valve. `arcaliumctl steam status` detects a later native or Flatpak install.
+Arcalium does **not** redistribute Steam in the image. `build.sh` removes the Bazzite `steam` RPM and asserts `steam.desktop` is gone. It also removes `/etc/skel/.config/autostart/steam.desktop` (Bazzite’s silent Steam autostart) and overrides `bazzite-steam` / `bazzite-steam-firstrun` so first boot does not show a “downloading Steam” dialog with nothing to install. Control Centre / Setup / `arcaliumctl steam install --visible` pulls Valve’s Flatpak from Flathub in a terminal (progress visible). Steam shows Valve’s Subscriber Agreement on first launch. `arcaliumctl steam status` detects native or Flatpak installs. `steam open-download` remains an alias for the same Flatpak pull (Atomic cannot use Valve’s `.deb`).
 
 ### Local AI Assistant (§9.14)
 
@@ -408,7 +408,7 @@ Setup wizard shares this codebase (`arcalium-control-centre --setup` / `arcalium
 - Progress: `~/.config/arcalium/setup-progress.json`; completion: `setup-complete.json`; prefs: `setup-prefs.json` (`showOnStartup`) (PRODUCT_SPEC §8.2).
 - CLI: `arcaliumctl setup status|save|mark|complete|reset|set-autostart on|off --json`.
 - 14 steps (§8.3): optional **Local AI** (`localAi`) sits after Validation and before Finish — Install Ollama / Pull model / Skip / Continue.
-- Autostart: `/etc/xdg/autostart/arcalium-setup.desktop` and skel copy call `arcalium-setup --autostart`. Skips live ISO, completed users, and `showOnStartup: false`. Waits for Plasma Welcome / Bazzite Portal to exit before opening.
+- Autostart: `/etc/xdg/autostart/arcalium-setup.desktop` and skel copy call `arcalium-setup --autostart`. Skips live ISO, completed users, and `showOnStartup: false`. Waits up to ~3 minutes for Plasma Welcome / Bazzite Portal to **appear**, then until they **exit** (so Wi‑Fi / desktop first-run finish before Arcalium Setup opens).
 - Menu: `io.arcalium.Setup.desktop` always opens the wizard (Resume) without waiting.
 - Control Centre → Settings: **Show Setup on startup** toggle, Resume / Restart setup (restart confirms then `setup reset`, which re-enables autostart).
 - Privileged policy matches Control Centre: user Flatpak installs OK; `bootc` apply and VPN secret import are guidance only; no disk formatting.

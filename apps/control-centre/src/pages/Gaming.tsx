@@ -59,9 +59,9 @@ export function GamingPage() {
         <h2>Notes</h2>
         <p className="muted small">
           Flatpak installs use <span className="mono">--user</span> so they do not need root. Steam is
-          not shipped in the image — use <strong>Get Steam from Valve</strong> to open Valve&apos;s
-          official download page and accept their agreement. Lutris is not offered — use Heroic for
-          non-Steam stores.
+          not shipped in the image — use <strong>Install Steam</strong> to pull Valve&apos;s Flatpak
+          from Flathub (progress in a terminal). Steam shows Valve&apos;s Subscriber Agreement on first
+          launch. Lutris is not offered — use Heroic for non-Steam stores.
         </p>
       </article>
     </div>

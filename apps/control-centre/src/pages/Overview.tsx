@@ -32,6 +32,7 @@ export function OverviewPage() {
   const [validate, setValidate] = useState<JsonValue | null>(null);
   const [vulkan, setVulkan] = useState<JsonValue | null>(null);
   const [installingProton, setInstallingProton] = useState(false);
+  const [installingSteam, setInstallingSteam] = useState(false);
   const [protonActionMsg, setProtonActionMsg] = useState<string | null>(null);
   const [protonActionErr, setProtonActionErr] = useState<string | null>(null);
   const [steam, setSteam] = useState<JsonValue | null>(null);
@@ -68,11 +69,33 @@ export function OverviewPage() {
     setProtonActionMsg(null);
     setProtonActionErr(null);
     try {
-      const result = await arcaliumctl(["proton", "install-recommended", "--json"]);
+      const result = await arcaliumctl(["proton", "install-recommended", "--visible", "--json"]);
       const action = str(pick(result, "action"), "done");
       const name = str(pick(result, "name"), "GE-Proton");
       if (action === "already_present") {
         setProtonActionMsg(`${name} is already installed.`);
+      } else if (action === "terminal") {
+        setProtonActionMsg(
+          str(
+            pick(result, "message"),
+            "Installing GE-Proton in a terminal — watch progress there.",
+          ),
+        );
+        const started = Date.now();
+        let done = false;
+        while (Date.now() - started < 30 * 60 * 1000) {
+          await new Promise((r) => setTimeout(r, 4000));
+          const list = await arcaliumctl(["proton", "list", "--json"]);
+          if (pick(list, "recommendedPresent") === true) {
+            done = true;
+            break;
+          }
+        }
+        setProtonActionMsg(
+          done
+            ? "GE-Proton installed. See Compatibility for details."
+            : "Still installing in the terminal. Refresh when it finishes.",
+        );
       } else {
         setProtonActionMsg(`Installed ${name}. See Compatibility for details.`);
       }
@@ -82,6 +105,35 @@ export function OverviewPage() {
       setInstallingProton(false);
     }
   }, []);
+
+  const installSteam = useCallback(async () => {
+    setInstallingSteam(true);
+    setProtonActionMsg(null);
+    setProtonActionErr(null);
+    try {
+      const result = await arcaliumctl(["steam", "install", "--visible", "--json"]);
+      setProtonActionMsg(
+        str(
+          pick(result, "message"),
+          "Installing Steam from Flathub in a terminal — Steam's agreement appears on first launch.",
+        ),
+      );
+      if (str(pick(result, "action")) === "terminal" || str(pick(result, "action")) === "opened") {
+        const started = Date.now();
+        while (Date.now() - started < 30 * 60 * 1000) {
+          await new Promise((r) => setTimeout(r, 4000));
+          const st = await arcaliumctl(["steam", "status", "--json"]);
+          setSteam(st);
+          if (pick(st, "installed") === true) break;
+        }
+      }
+      await refresh();
+    } catch (e) {
+      setProtonActionErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setInstallingSteam(false);
+    }
+  }, [refresh]);
 
   const smiGpus = (pick(gpu, "nvidiaSmi.gpus") as JsonValue[] | undefined) || [];
   const primarySmi = smiGpus[0] || null;
@@ -215,7 +267,7 @@ export function OverviewPage() {
 
       {(protonActionMsg || protonActionErr) && (
         <div className={protonActionErr ? "banner error" : "banner ok"}>
-          <strong>{protonActionErr ? "Proton install failed." : protonActionMsg}</strong>
+          <strong>{protonActionErr ? "Action failed." : protonActionMsg}</strong>
           {protonActionErr && <div>{protonActionErr}</div>}
         </div>
       )}
@@ -228,7 +280,7 @@ export function OverviewPage() {
               type="button"
               className="btn"
               onClick={() =>
-                void openDesktop(str(pick(steam, "desktopId"), "steam.desktop"))
+                void openDesktop(str(pick(steam, "desktopId"), "com.valvesoftware.Steam.desktop"))
               }
             >
               Launch Steam
@@ -236,12 +288,11 @@ export function OverviewPage() {
           ) : (
             <button
               type="button"
-              className="btn"
-              onClick={() =>
-                void arcaliumctl(["steam", "open-download", "--json"]).then(() => void refresh())
-              }
+              className={`btn${installingSteam ? " working" : ""}`}
+              disabled={installingSteam}
+              onClick={() => void installSteam()}
             >
-              Get Steam from Valve
+              {installingSteam ? "Installing in terminal…" : "Install Steam"}
             </button>
           )}
           <button
@@ -253,11 +304,11 @@ export function OverviewPage() {
           </button>
           <button
             type="button"
-            className="btn primary"
+            className={`btn primary${installingProton ? " working" : ""}`}
             disabled={installingProton}
             onClick={() => void installProton()}
           >
-            {installingProton ? "Installing Proton-GE…" : "Install Proton-GE"}
+            {installingProton ? "Installing in terminal…" : "Install Proton-GE"}
           </button>
           <button
             type="button"

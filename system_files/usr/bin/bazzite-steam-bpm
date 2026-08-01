@@ -1,0 +1,3 @@
+#!/usr/bin/bash
+# Arcalium override of Bazzite Big Picture launcher — same Steam-deferred policy.
+exec /usr/bin/bazzite-steam steam://open/bigpicture "$@"

@@ -402,14 +402,37 @@ export function WizardApp() {
             <div className="btn-row">
               <button
                 type="button"
-                className="btn primary"
+                className={`btn primary${installingProton ? " working" : ""}`}
                 disabled={installingProton}
                 onClick={async () => {
                   setInstallingProton(true);
                   setError(null);
                   try {
-                    const result = await arcaliumctl(["proton", "install-recommended", "--json"]);
-                    setMsg(`${str(pick(result, "action"))}: ${str(pick(result, "name"))}`);
+                    const result = await arcaliumctl([
+                      "proton",
+                      "install-recommended",
+                      "--visible",
+                      "--json",
+                    ]);
+                    const action = str(pick(result, "action"));
+                    if (action === "terminal") {
+                      setMsg(
+                        str(
+                          pick(result, "message"),
+                          "Installing GE-Proton in a terminal — watch progress there.",
+                        ),
+                      );
+                      const started = Date.now();
+                      while (Date.now() - started < 30 * 60 * 1000) {
+                        await sleep(4000);
+                        await loadProton();
+                        const list = await arcaliumctl(["proton", "list", "--json"]);
+                        if (pick(list, "recommendedPresent") === true) break;
+                      }
+                      setMsg("GE-Proton install finished (or still running in the terminal).");
+                    } else {
+                      setMsg(`${action}: ${str(pick(result, "name"))}`);
+                    }
                     await loadProton();
                   } catch (e) {
                     setError(e instanceof Error ? e.message : String(e));
@@ -418,7 +441,7 @@ export function WizardApp() {
                   }
                 }}
               >
-                {installingProton ? "Installing…" : "Install recommended GE-Proton"}
+                {installingProton ? "Installing in terminal…" : "Install recommended GE-Proton"}
               </button>
               <button
                 type="button"
@@ -438,39 +461,19 @@ export function WizardApp() {
               <strong>{steamApp?.installed ? "installed" : "not installed"}</strong>
             </p>
             <p className="muted">
-              Arcalium does not ship Steam. Open Valve&apos;s official download page to get Steam and
-              accept the Steam Subscriber Agreement there. A Steam account is required. Arcalium never
-              captures or stores Steam credentials.
+              Arcalium does not ship Steam. Install pulls Valve&apos;s Flatpak from Flathub in a
+              terminal. Steam shows the Steam Subscriber Agreement on first launch. A Steam account is
+              required. Arcalium never captures or stores Steam credentials.
             </p>
             <div className="btn-row">
-              {!steamApp?.installed ? (
-                <button
-                  type="button"
-                  className="btn primary"
-                  onClick={() =>
-                    void arcaliumctl(["steam", "open-download", "--json"]).then(() => void loadApps())
-                  }
-                >
-                  Get Steam from Valve
-                </button>
-              ) : null}
-              {steamApp?.installed && steamApp.desktopId ? (
-                <button
-                  type="button"
-                  className="btn primary"
-                  onClick={() => void openDesktop(String(steamApp.desktopId))}
-                >
-                  Launch Steam
-                </button>
-              ) : null}
+              {steamApp ? <AppActions app={steamApp} onChanged={() => void loadApps()} /> : null}
               <button type="button" className="btn" onClick={() => void loadApps()}>
                 Refresh status
               </button>
             </div>
             <p className="muted small" style={{ marginTop: "0.75rem" }}>
               Per-game Proton: Steam → game Properties → Compatibility → Force a specific Steam Play
-              tool. Valve&apos;s page offers their installer; on Fedora Atomic you can also install the
-              Flathub Steam Flatpak after visiting that page.
+              tool.
             </p>
           </article>
         )}
@@ -757,9 +760,13 @@ export function WizardApp() {
                 <button
                   type="button"
                   className="btn primary"
-                  onClick={() => void arcaliumctl(["steam", "open-download", "--json"])}
+                  onClick={() =>
+                    void arcaliumctl(["steam", "install", "--visible", "--json"]).then(() =>
+                      void loadApps(),
+                    )
+                  }
                 >
-                  Get Steam from Valve
+                  Install Steam
                 </button>
               )}
               <button

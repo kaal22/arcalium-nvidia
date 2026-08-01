@@ -58,7 +58,7 @@ Third-party names are used only to describe compatibility.
 ## Release gates (do not skip)
 
 1. Preserve all required Bazzite / Universal Blue notices.
-2. **Steam:** do not ship the Steam client in the image or ISO. `build.sh` removes inherited `steam` RPMs. Users open Valve’s official download via Control Centre / `arcaliumctl steam open-download` (`https://store.steampowered.com/about/`) and accept the Steam Subscriber Agreement there (PRODUCT_SPEC §17.2).
+2. **Steam:** do not ship the Steam client in the image or ISO. `build.sh` removes inherited `steam` RPMs. Users install Valve’s Flatpak from Flathub via Control Centre / `arcaliumctl steam install --visible` (alias `open-download`). Steam shows the Steam Subscriber Agreement on first launch (PRODUCT_SPEC §17.2).
 3. Disclose community Flatpaks (e.g. Spotify) accurately. Brave and Firefox are both publisher-verified on Flathub, so neither carries the "community-maintained" caveat.
 4. Confirm Brave's redistribution and trademark terms before a public ISO bundles it.
 5. Do not ship assets without redistribution rights.

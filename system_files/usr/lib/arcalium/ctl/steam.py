@@ -1,7 +1,8 @@
-"""Steam status and official Valve download (PRODUCT_SPEC §17.2).
+"""Steam status and on-demand Flatpak install (PRODUCT_SPEC §17.2).
 
-Arcalium does not ship the Steam client. Control Centre opens Valve's official
-download page so the user accepts Steam's agreement from Valve, not from us.
+Arcalium does not ship the Steam client in the image. Control Centre installs
+Valve's Flathub Flatpak on demand (visible terminal). Steam's own Subscriber
+Agreement appears when the user first launches Steam — not a .deb download.
 """
 
 from __future__ import annotations
@@ -13,12 +14,7 @@ from typing import Any
 from .errors import ARC_APPS_001, ArcError
 from .jsonutil import run_allowlisted
 
-# Valve's official Steam for Linux download / install landing page.
-# The .deb linked from repo.steampowered.com is also Valve-official, but the
-# store page is the supported user-facing entry that presents their agreement.
 OFFICIAL_DOWNLOAD_URL = "https://store.steampowered.com/about/"
-
-# Optional Flatpak id users may install themselves (not shipped by Arcalium).
 FLATPAK_ID = "com.valvesoftware.Steam"
 FLATPAK_DESKTOP = "com.valvesoftware.Steam.desktop"
 NATIVE_DESKTOP = "steam.desktop"
@@ -73,21 +69,22 @@ def status() -> dict[str, Any]:
     flatpak_desktop = _desktop_present(FLATPAK_DESKTOP)
     installed = bool(rpm or flatpak or native_desktop or flatpak_desktop)
     desktop_id = None
-    if native_desktop:
-        desktop_id = NATIVE_DESKTOP
-    elif flatpak_desktop:
+    if flatpak_desktop:
         desktop_id = FLATPAK_DESKTOP
+    elif native_desktop:
+        desktop_id = NATIVE_DESKTOP
     source = "none"
-    if rpm or native_desktop:
-        source = "native"
-    elif flatpak or flatpak_desktop:
+    if flatpak or flatpak_desktop:
         source = "flatpak"
+    elif rpm or native_desktop:
+        source = "native"
     return {
         "schema": "arcalium.steam.status/v1",
         "installed": installed,
         "source": source,
         "rpmInstalled": rpm,
         "flatpakInstalled": flatpak,
+        "flatpakId": FLATPAK_ID,
         "desktopId": desktop_id,
         "launchable": bool(desktop_id),
         "officialDownloadUrl": OFFICIAL_DOWNLOAD_URL,
@@ -100,44 +97,44 @@ def _guidance(installed: bool) -> str:
     if installed:
         return "Steam is installed. Launch it from the menu or Control Centre."
     return (
-        "Arcalium does not ship Steam. Open Valve's official download page to get "
-        "Steam and accept the Steam Subscriber Agreement there. Valve publishes a "
-        ".deb installer; on Fedora Atomic you may prefer Flathub's "
-        f"{FLATPAK_ID} Flatpak after visiting Valve's page."
+        "Arcalium does not ship Steam. Install pulls Valve's Flatpak from Flathub "
+        f"({FLATPAK_ID}) in a terminal. Steam shows Valve's Subscriber Agreement on "
+        "first launch."
     )
 
 
 def open_download() -> dict[str, Any]:
-    """Open Valve's official Steam download page in the default browser."""
-    from .jsonutil import resolve_binary
-    import subprocess
+    """Compatibility alias — prefer install --visible on Atomic."""
+    return install(visible=True)
 
-    # URL is a module constant — never take a user-supplied location.
-    path = resolve_binary("xdg-open")
-    if path is None:
-        raise SteamError(ARC_APPS_001, "xdg-open is not available to open the Steam download page")
-    try:
-        # Do not wait — browsers often detach; capture would hang or false-fail.
-        subprocess.Popen(
-            [path, OFFICIAL_DOWNLOAD_URL],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
+
+def install(*, visible: bool = True) -> dict[str, Any]:
+    """Install Steam as a user Flatpak from Flathub (not redistributed in the image)."""
+    from . import apps
+
+    st = status()
+    if st.get("installed"):
+        return {
+            "schema": "arcalium.steam.install/v1",
+            "ok": True,
+            "action": "already_present",
+            "source": st.get("source"),
+            "desktopId": st.get("desktopId"),
+            "flatpakId": FLATPAK_ID,
+            "message": "Steam is already installed.",
+            "guidance": _guidance(True),
+        }
+    # Reuse catalogue Flatpak install (visible terminal + Flathub repair).
+    data = apps.install_app("steam", visible=visible)
+    data["schema"] = "arcalium.steam.install/v1"
+    data["flatpakId"] = FLATPAK_ID
+    data["guidance"] = _guidance(False)
+    if not data.get("message"):
+        data["message"] = (
+            "Installing Steam from Flathub in a terminal — watch progress there. "
+            "Steam's agreement appears when you first launch it."
         )
-    except OSError as exc:
-        raise SteamError(ARC_APPS_001, str(exc)) from exc
-    return {
-        "schema": "arcalium.steam.open-download/v1",
-        "ok": True,
-        "action": "opened",
-        "url": OFFICIAL_DOWNLOAD_URL,
-        "message": (
-            "Opened Valve's official Steam download page. "
-            "Accept Steam's agreement there, then install Steam."
-        ),
-        "guidance": _guidance(False),
-    }
+    return data
 
 
 def human_status(data: dict[str, Any]) -> list[str]:
@@ -145,7 +142,7 @@ def human_status(data: dict[str, Any]) -> list[str]:
         f"Steam installed: {data.get('installed')}",
         f"Source:          {data.get('source')}",
         f"Shipped in image: {data.get('shippedInImage')}",
-        f"Download:        {data.get('officialDownloadUrl')}",
+        f"Flatpak:         {data.get('flatpakId')}",
     ]
     if data.get("guidance"):
         lines.append(str(data["guidance"]))
@@ -153,4 +150,16 @@ def human_status(data: dict[str, Any]) -> list[str]:
 
 
 def human_open(data: dict[str, Any]) -> list[str]:
-    return [str(data.get("message") or "Opened Steam download page"), str(data.get("url") or "")]
+    return human_install(data)
+
+
+def human_install(data: dict[str, Any]) -> list[str]:
+    lines = [
+        f"Action:  {data.get('action')}",
+        f"Flatpak: {data.get('flatpakId') or FLATPAK_ID}",
+    ]
+    if data.get("message"):
+        lines.append(str(data["message"]))
+    if data.get("guidance"):
+        lines.append(str(data["guidance"]))
+    return lines

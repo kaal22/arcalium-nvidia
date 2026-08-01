@@ -1,0 +1,36 @@
+#!/usr/bin/bash
+# Arcalium override of Bazzite's Steam launcher.
+# Steam is not shipped in the image. Prefer Flatpak, then native /usr/bin/steam,
+# otherwise open the Control Centre install path (Flathub pull).
+set -euo pipefail
+
+FLATPAK_ID="com.valvesoftware.Steam"
+
+if command -v flatpak >/dev/null 2>&1; then
+  if flatpak info --user "${FLATPAK_ID}" >/dev/null 2>&1 \
+    || flatpak info --system "${FLATPAK_ID}" >/dev/null 2>&1; then
+    exec flatpak run "${FLATPAK_ID}" "$@"
+  fi
+fi
+
+if [[ -x /usr/bin/steam ]]; then
+  IMAGE_INFO="/usr/share/ublue-os/image-info.json"
+  IMAGE_NAME=""
+  if [[ -f "${IMAGE_INFO}" ]] && command -v jq >/dev/null 2>&1; then
+    IMAGE_NAME=$(jq -r '."image-name" // empty' <"${IMAGE_INFO}" 2>/dev/null || true)
+  fi
+  if [[ "${IMAGE_NAME}" == *nvidia* ]]; then
+    export __GL_CONSTANT_FRAME_RATE_HINT="${__GL_CONSTANT_FRAME_RATE_HINT:-3}"
+  fi
+  if [[ "${XDG_SESSION_TYPE:-}" == "wayland" && -f /usr/lib/extest/libextest.so ]]; then
+    exec env LD_PRELOAD=/usr/lib/extest/libextest.so /usr/bin/steam "$@"
+  fi
+  exec /usr/bin/steam "$@"
+fi
+
+# No client yet — install from Flathub in a visible terminal.
+if command -v arcaliumctl >/dev/null 2>&1; then
+  arcaliumctl steam install --visible --json >/dev/null 2>&1 || true
+  exit 0
+fi
+exit 0

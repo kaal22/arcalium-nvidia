@@ -38,14 +38,14 @@ export function AppActions({
   app: AppRow;
   onChanged: () => void;
 }) {
-  const [busy, setBusy] = useState<"install" | "uninstall" | "launch" | "steam-download" | null>(null);
+  const [busy, setBusy] = useState<"install" | "uninstall" | "launch" | "steam-install" | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const cancelled = useRef(false);
   const id = str(app.id, "");
   const desktop = str(app.desktopId, "");
   const name = str(app.name, id);
-  const isSteam = id === "steam" || app.type === "external";
+  const isSteam = id === "steam";
 
   useEffect(() => {
     cancelled.current = false;
@@ -54,13 +54,35 @@ export function AppActions({
     };
   }, []);
 
-  const openSteamDownload = async () => {
-    setBusy("steam-download");
+  const installSteam = async () => {
+    setBusy("steam-install");
     setMsg(null);
     setErr(null);
     try {
-      const result = await arcaliumctl(["steam", "open-download", "--json"]);
-      setMsg(str(result.message, "Opened Valve's Steam download page."));
+      const result = await arcaliumctl(["steam", "install", "--visible", "--json"]);
+      setMsg(
+        str(
+          result.message,
+          "Installing Steam from Flathub in a terminal — Steam's agreement appears on first launch.",
+        ),
+      );
+      if (str(result.action) === "terminal" || str(result.action) === "opened") {
+        const started = Date.now();
+        let done = false;
+        while (!cancelled.current && Date.now() - started < POLL_MAX_MS) {
+          await sleep(POLL_INTERVAL_MS);
+          if (await isInstalled(id)) {
+            done = true;
+            break;
+          }
+        }
+        if (cancelled.current) return;
+        setMsg(
+          done
+            ? "Steam installed. Launch it to accept Valve's agreement."
+            : "Still installing Steam in the terminal window. This page updates when it finishes.",
+        );
+      }
       onChanged();
     } catch (e) {
       if (!cancelled.current) setErr(e instanceof Error ? e.message : String(e));
@@ -144,7 +166,7 @@ export function AppActions({
             {busy === "launch" ? "Launching…" : "Launch"}
           </button>
         ) : null}
-        {app.type === "flatpak" && !app.installed ? (
+        {app.type === "flatpak" && !app.installed && !isSteam ? (
           <button
             type="button"
             className={`btn${busy === "install" ? " working" : ""}`}
@@ -152,6 +174,16 @@ export function AppActions({
             onClick={() => void install()}
           >
             {busy === "install" ? "Installing in terminal…" : "Install (user)"}
+          </button>
+        ) : null}
+        {isSteam && !app.installed ? (
+          <button
+            type="button"
+            className={`btn primary${busy === "steam-install" ? " working" : ""}`}
+            disabled={busy !== null}
+            onClick={() => void installSteam()}
+          >
+            {busy === "steam-install" ? "Installing in terminal…" : "Install Steam"}
           </button>
         ) : null}
         {app.type === "flatpak" && app.installed && app.installScope === "user" ? (
@@ -166,16 +198,6 @@ export function AppActions({
         ) : null}
         {app.type === "flatpak" && app.installed && app.installScope === "system" ? (
           <span className="muted small">System install — uninstall via Flatpak/Bazaar if needed</span>
-        ) : null}
-        {isSteam && !app.installed ? (
-          <button
-            type="button"
-            className={`btn primary${busy === "steam-download" ? " working" : ""}`}
-            disabled={busy !== null}
-            onClick={() => void openSteamDownload()}
-          >
-            {busy === "steam-download" ? "Opening…" : "Get Steam from Valve"}
-          </button>
         ) : null}
         {app.type === "desktop" && !app.installed && !isSteam ? (
           <span className="muted small">Ships with the OS image</span>

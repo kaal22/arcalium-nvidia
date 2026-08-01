@@ -177,11 +177,33 @@ def _download(url: str, dest: Path) -> int:
         headers={"User-Agent": USER_AGENT},
         method="GET",
     )
+    visible = os.environ.get("ARCALIUM_VISIBLE", "").strip() in ("1", "true", "yes")
     try:
         with urllib.request.urlopen(req, timeout=DOWNLOAD_TIMEOUT) as resp, dest.open(
             "wb"
         ) as out:
-            shutil.copyfileobj(resp, out, length=1024 * 1024)
+            total = resp.headers.get("Content-Length")
+            total_i = int(total) if total and total.isdigit() else None
+            written = 0
+            last_pct = -1
+            while True:
+                chunk = resp.read(1024 * 1024)
+                if not chunk:
+                    break
+                out.write(chunk)
+                written += len(chunk)
+                if visible and total_i and total_i > 0:
+                    pct = min(100, int(written * 100 / total_i))
+                    if pct != last_pct and (pct % 5 == 0 or pct == 100):
+                        mb = written / (1024 * 1024)
+                        total_mb = total_i / (1024 * 1024)
+                        print(
+                            f"  Downloading GE-Proton… {pct}% ({mb:.0f}/{total_mb:.0f} MiB)",
+                            flush=True,
+                        )
+                        last_pct = pct
+                elif visible and written and written % (20 * 1024 * 1024) < 1024 * 1024:
+                    print(f"  Downloaded {written / (1024 * 1024):.0f} MiB…", flush=True)
     except urllib.error.HTTPError as exc:
         raise ProtonError(ARC_NET_001, f"Download HTTP {exc.code}: {exc.reason}") from exc
     except urllib.error.URLError as exc:
@@ -194,6 +216,111 @@ def _download(url: str, dest: Path) -> int:
         return dest.stat().st_size
     except OSError:
         return 0
+
+
+SESSION_SCRIPT = "/usr/lib/arcalium/proton/install-session.sh"
+
+
+def _launch_install_terminal() -> dict[str, Any]:
+    from . import terminal
+
+    try:
+        term = terminal.open_script(SESSION_SCRIPT)
+    except terminal.TerminalError as exc:
+        raise ProtonError(ARC_PROTON_001, str(exc)) from exc
+    return {
+        "schema": "arcalium.proton.install-recommended/v1",
+        "ok": True,
+        "action": "terminal",
+        "visible": True,
+        "terminal": term,
+        "sessionScript": SESSION_SCRIPT,
+        "message": (
+            "Installing GE-Proton in a terminal window — watch the download progress there. "
+            "This page updates when it finishes."
+        ),
+    }
+
+
+def install_recommended(*, force: bool = False, visible: bool = False) -> dict[str, Any]:
+    if visible:
+        # Already present → no need to open a terminal.
+        existing_check = list_installed()
+        if existing_check.get("recommendedPresent") and not force:
+            return install_recommended(force=False, visible=False)
+        return _launch_install_terminal()
+
+    home = _home()
+    tools = heroic_tools_dir(home)
+    games = games_heroic_dir(home)
+    try:
+        games.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise ProtonError(ARC_PROTON_001, f"Could not create {games}: {exc}") from exc
+
+    existing = _scan_installed(tools)
+    if existing and not force:
+        chosen = existing[-1]  # last sorted ≈ newest naming often
+        # Prefer highest name lexicographically among GE-Proton*
+        ge = [e for e in existing if e["name"].startswith("GE-Proton")]
+        if ge:
+            chosen = sorted(ge, key=lambda e: e["name"])[-1]
+        bin_path = Path(chosen["bin"])
+        config_updated = _merge_heroic_config(bin_path, chosen["name"], home)
+        return {
+            "schema": "arcalium.proton.install-recommended/v1",
+            "ok": True,
+            "action": "already_present",
+            "name": chosen["name"],
+            "bin": chosen["bin"],
+            "path": chosen["path"],
+            "toolsDir": str(tools),
+            "gamesDir": str(games),
+            "configUpdated": config_updated,
+            "downloadedBytes": 0,
+            "forced": False,
+        }
+
+    if visible is False and os.environ.get("ARCALIUM_VISIBLE", "").strip() in (
+        "1",
+        "true",
+        "yes",
+    ):
+        print("Fetching latest GE-Proton release metadata…", flush=True)
+
+    release = _http_json(GITHUB_LATEST)
+    asset_name, url, size = _pick_tarball_asset(release)
+    tag = str(release.get("tag_name") or asset_name.removesuffix(".tar.gz"))
+
+    with tempfile.TemporaryDirectory(prefix="arcalium-proton-") as tmp:
+        archive = Path(tmp) / asset_name
+        if os.environ.get("ARCALIUM_VISIBLE", "").strip() in ("1", "true", "yes"):
+            print(f"Downloading {asset_name}…", flush=True)
+        downloaded = _download(url, archive)
+        if size is not None and downloaded and abs(downloaded - size) > max(1024, size // 100):
+            # Soft check only — some mirrors omit Content-Length consistency
+            pass
+        if os.environ.get("ARCALIUM_VISIBLE", "").strip() in ("1", "true", "yes"):
+            print("Extracting into Heroic tools directory…", flush=True)
+        install_dir = _extract_tarball(archive, tools)
+
+    bin_path = install_dir / "proton"
+    config_updated = _merge_heroic_config(bin_path, install_dir.name, home)
+    return {
+        "schema": "arcalium.proton.install-recommended/v1",
+        "ok": True,
+        "action": "installed" if not (existing and force) else "updated",
+        "name": install_dir.name,
+        "bin": str(bin_path),
+        "path": str(install_dir),
+        "toolsDir": str(tools),
+        "gamesDir": str(games),
+        "configUpdated": config_updated,
+        "downloadedBytes": downloaded,
+        "releaseTag": tag,
+        "assetName": asset_name,
+        "forced": force,
+    }
 
 
 def _extract_tarball(archive: Path, tools: Path) -> Path:
@@ -286,69 +413,6 @@ def _merge_heroic_config(bin_path: Path, name: str, home: Path) -> bool:
     return True
 
 
-def install_recommended(*, force: bool = False) -> dict[str, Any]:
-    home = _home()
-    tools = heroic_tools_dir(home)
-    games = games_heroic_dir(home)
-    try:
-        games.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        raise ProtonError(ARC_PROTON_001, f"Could not create {games}: {exc}") from exc
-
-    existing = _scan_installed(tools)
-    if existing and not force:
-        chosen = existing[-1]  # last sorted ≈ newest naming often
-        # Prefer highest name lexicographically among GE-Proton*
-        ge = [e for e in existing if e["name"].startswith("GE-Proton")]
-        if ge:
-            chosen = sorted(ge, key=lambda e: e["name"])[-1]
-        bin_path = Path(chosen["bin"])
-        config_updated = _merge_heroic_config(bin_path, chosen["name"], home)
-        return {
-            "schema": "arcalium.proton.install-recommended/v1",
-            "ok": True,
-            "action": "already_present",
-            "name": chosen["name"],
-            "bin": chosen["bin"],
-            "path": chosen["path"],
-            "toolsDir": str(tools),
-            "gamesDir": str(games),
-            "configUpdated": config_updated,
-            "downloadedBytes": 0,
-            "forced": False,
-        }
-
-    release = _http_json(GITHUB_LATEST)
-    asset_name, url, size = _pick_tarball_asset(release)
-    tag = str(release.get("tag_name") or asset_name.removesuffix(".tar.gz"))
-
-    with tempfile.TemporaryDirectory(prefix="arcalium-proton-") as tmp:
-        archive = Path(tmp) / asset_name
-        downloaded = _download(url, archive)
-        if size is not None and downloaded and abs(downloaded - size) > max(1024, size // 100):
-            # Soft check only — some mirrors omit Content-Length consistency
-            pass
-        install_dir = _extract_tarball(archive, tools)
-
-    bin_path = install_dir / "proton"
-    config_updated = _merge_heroic_config(bin_path, install_dir.name, home)
-    return {
-        "schema": "arcalium.proton.install-recommended/v1",
-        "ok": True,
-        "action": "installed" if not (existing and force) else "updated",
-        "name": install_dir.name,
-        "bin": str(bin_path),
-        "path": str(install_dir),
-        "toolsDir": str(tools),
-        "gamesDir": str(games),
-        "configUpdated": config_updated,
-        "downloadedBytes": downloaded,
-        "releaseTag": tag,
-        "assetName": asset_name,
-        "forced": force,
-    }
-
-
 def human_install(data: dict[str, Any]) -> list[str]:
     action = data.get("action")
     lines = [
@@ -358,6 +422,8 @@ def human_install(data: dict[str, Any]) -> list[str]:
         f"Games dir:   {data.get('gamesDir')}",
         f"Config:      {'updated' if data.get('configUpdated') else 'left to Heroic'}",
     ]
+    if data.get("message"):
+        lines.append(str(data["message"]))
     if data.get("downloadedBytes"):
         mb = (data["downloadedBytes"] or 0) / (1024 * 1024)
         lines.append(f"Downloaded:  {mb:.1f} MiB")

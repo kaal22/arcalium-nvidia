@@ -1599,8 +1599,8 @@ Valve’s published Steam client terms prohibit redistribution or preinstallatio
 
 **Arcalium decision (Phase 9):** the published image **does not ship Steam**. `build.sh` removes the inherited Bazzite `steam` / `steam-devices` RPMs and asserts `steam.desktop` is gone. Users obtain Steam from Valve:
 
-- Control Centre / Setup / `arcaliumctl steam open-download` opens Valve’s official page (`https://store.steampowered.com/about/`) so the Steam Subscriber Agreement is presented by Valve, not by Arcalium.
-- `arcaliumctl steam status` reports whether a native or Flatpak Steam install is present after the user installs it themselves.
+- Control Centre / Setup / `arcaliumctl steam install --visible` (alias: `steam open-download`) installs Valve’s Flatpak from Flathub (`com.valvesoftware.Steam`) in a terminal so download progress is visible. Steam presents the Steam Subscriber Agreement on **first launch**, not via a `.deb` download page.
+- `arcaliumctl steam status` reports whether a native or Flatpak Steam install is present.
 
 Before a public ISO / public GHCR package:
 

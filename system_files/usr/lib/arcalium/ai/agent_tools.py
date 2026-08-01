@@ -16,6 +16,7 @@ ARCALIUMCTL = "/usr/bin/arcaliumctl"
 # Must stay aligned with Control Centre allowlists + catalogue Flatpaks.
 ALLOWED_APP_IDS: frozenset[str] = frozenset(
     {
+        "steam",
         "heroic",
         "bottles",
         "prism",
@@ -29,6 +30,7 @@ ALLOWED_APP_IDS: frozenset[str] = frozenset(
         "sunshine",
         "moonlight",
         "protonvpn",
+        "com.valvesoftware.Steam",
         "com.heroicgameslauncher.hgl",
         "com.usebottles.bottles",
         "org.prismlauncher.PrismLauncher",
@@ -131,10 +133,17 @@ TOOLS: dict[str, ToolSpec] = {
     ),
     "steam_open_download": ToolSpec(
         "steam_open_download",
-        False,
-        "Open Valve's official Steam download page (user accepts Steam's agreement there)",
+        True,
+        "Install Steam from Flathub (visible terminal; alias of steam install)",
         _no_args(["steam", "open-download", "--json"]),
-        30,
+        120,
+    ),
+    "steam_install": ToolSpec(
+        "steam_install",
+        True,
+        "Install Steam Flatpak from Flathub (visible terminal; Steam agreement on first launch)",
+        _no_args(["steam", "install", "--visible", "--json"]),
+        120,
     ),
     "apps_install": ToolSpec(
         "apps_install",

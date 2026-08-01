@@ -7,5 +7,6 @@ Exec=arcalium-setup --autostart
 Icon=io.arcalium.ControlCentre
 Terminal=false
 X-GNOME-Autostart-enabled=true
+# After Plasma's own first-run phase; still waits in arcalium-setup --autostart.
 X-KDE-autostart-phase=2
 OnlyShowIn=KDE;GNOME;LXQt;XFCE;

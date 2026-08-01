@@ -133,6 +133,7 @@ chmod 0755 /usr/lib/arcalium/ai/ensure-session.sh
 chmod 0755 /usr/lib/arcalium/ai/install-session.sh
 chmod 0755 /usr/lib/arcalium/ai/assistant-agent.py
 chmod 0755 /usr/lib/arcalium/apps/install-session.sh
+chmod 0755 /usr/lib/arcalium/proton/install-session.sh
 chmod 0755 /usr/lib/arcalium/updates/session.sh
 systemctl enable arcalium-migrate-hostname.service
 
@@ -170,6 +171,22 @@ if [[ -e /usr/share/applications/steam.desktop ]]; then
     echo "ERROR: /usr/share/applications/steam.desktop still present after Steam removal" >&2
     exit 1
 fi
+# Bazzite still ships a skel autostart that runs bazzite-steam -silent and a
+# firstrun kdialog ("downloading the Steam client…") even with no /usr/bin/steam.
+# Remove those entry points; our /usr/bin/bazzite-steam* wrappers prefer Flatpak
+# Steam, then native /usr/bin/steam, else open Control Centre's Flathub install.
+rm -f /etc/skel/.config/autostart/steam.desktop
+rm -f /usr/share/applications/bazzite-steam-bpm.desktop
+rm -f /usr/share/applications/steam.desktop
+if [[ -e /etc/skel/.config/autostart/steam.desktop ]]; then
+    echo "ERROR: skel steam.desktop autostart still present" >&2
+    exit 1
+fi
+# Our overrides must win over any remaining Bazzite scripts.
+test -x /usr/bin/bazzite-steam
+test -x /usr/bin/bazzite-steam-firstrun
+grep -q 'Arcalium override' /usr/bin/bazzite-steam-firstrun
+grep -q 'not shipped in the image' /usr/bin/bazzite-steam
 echo "Steam client removed from image (not redistributed)."
 
 # An import-time error in any ctl module breaks every arcaliumctl command, and

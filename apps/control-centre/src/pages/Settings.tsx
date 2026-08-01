@@ -116,7 +116,8 @@ export function SettingsPage({
         </label>
         <p className="muted small">
           Language, keyboard, and timezone come from the installer. On first login Arcalium waits for
-          Plasma Welcome / Bazzite Portal to finish, then opens this wizard when this toggle is on.
+          Plasma Welcome / Bazzite Portal finish first (Wi‑Fi and desktop setup), then this wizard
+          opens when the toggle is on.
           Finishing setup turns the toggle off; Restart setup turns it back on.
         </p>
         {setupMsg && <p className="banner ok">{setupMsg}</p>}
