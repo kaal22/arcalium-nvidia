@@ -15,6 +15,7 @@ import re
 import signal
 import subprocess
 import sys
+import threading
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -39,10 +40,50 @@ _TOOL_LINE = re.compile(
     re.MULTILINE,
 )
 
+_SPINNER_FRAMES = ("⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏")
+
 
 def _print(text: str = "") -> None:
     sys.stdout.write(text + ("\n" if not text.endswith("\n") else ""))
     sys.stdout.flush()
+
+
+class _Spinner:
+    """Terminal activity indicator while the model (or a tool) is working."""
+
+    def __init__(self, label: str = "Thinking") -> None:
+        self.label = label
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._tty = sys.stdout.isatty()
+
+    def __enter__(self) -> "_Spinner":
+        if not self._tty:
+            _print(f"[Agent] {self.label}…")
+            return self
+        self._thread = threading.Thread(target=self._run, name="arcalium-spinner", daemon=True)
+        self._thread.start()
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.clear()
+
+    def _run(self) -> None:
+        i = 0
+        while not self._stop.wait(0.08):
+            frame = _SPINNER_FRAMES[i % len(_SPINNER_FRAMES)]
+            sys.stdout.write(f"\r[Agent] {self.label}… {frame}  ")
+            sys.stdout.flush()
+            i += 1
+
+    def clear(self) -> None:
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=1.0)
+            self._thread = None
+        if self._tty:
+            sys.stdout.write("\r" + (" " * 48) + "\r")
+            sys.stdout.flush()
 
 
 def _load_system_prompt() -> str:
@@ -58,11 +99,12 @@ def _load_system_prompt() -> str:
 
 
 def _ollama_chat(messages: list[dict[str, str]]) -> str:
+    """Stream the reply so the terminal shows a spinner, then live tokens."""
     body = json.dumps(
         {
             "model": MODEL,
             "messages": messages,
-            "stream": False,
+            "stream": True,
             "options": {"temperature": 0.3},
         }
     ).encode("utf-8")
@@ -72,21 +114,57 @@ def _ollama_chat(messages: list[dict[str, str]]) -> str:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    try:
-        with urllib.request.urlopen(req, timeout=CHAT_TIMEOUT) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:800]
-        raise RuntimeError(f"Ollama HTTP {exc.code}: {detail}") from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(
-            f"Cannot reach Ollama at {OLLAMA_API}. "
-            "Use Install Ollama / Launch assistant from Control Centre first."
-        ) from exc
 
-    message = data.get("message") or {}
-    content = message.get("content")
-    if not isinstance(content, str):
+    parts: list[str] = []
+    started = False
+    spinner = _Spinner("Thinking")
+    spinner.__enter__()
+    try:
+        try:
+            resp = urllib.request.urlopen(req, timeout=CHAT_TIMEOUT)
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:800]
+            raise RuntimeError(f"Ollama HTTP {exc.code}: {detail}") from exc
+        except urllib.error.URLError as exc:
+            raise RuntimeError(
+                f"Cannot reach Ollama at {OLLAMA_API}. "
+                "Use Install Ollama / Launch assistant from Control Centre first."
+            ) from exc
+
+        with resp:
+            while True:
+                raw = resp.readline()
+                if not raw:
+                    break
+                line = raw.decode("utf-8", errors="replace").strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                message = data.get("message") or {}
+                chunk = message.get("content")
+                if isinstance(chunk, str) and chunk:
+                    if not started:
+                        spinner.clear()
+                        started = True
+                        sys.stdout.write("\nAssistant> ")
+                        sys.stdout.flush()
+                    parts.append(chunk)
+                    sys.stdout.write(chunk)
+                    sys.stdout.flush()
+                if data.get("done"):
+                    break
+    finally:
+        spinner.clear()
+
+    if started:
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+
+    content = "".join(parts)
+    if not content:
         raise RuntimeError("Ollama returned an empty chat response")
     return content
 
@@ -144,8 +222,8 @@ def _run_allowlisted(name: str, args: dict[str, Any]) -> dict[str, Any]:
             "error": "Cancelled by user",
         }
 
-    _print("[Agent] Running…")
-    result = agent_tools.run_tool(name, args)
+    with _Spinner(f"Running {name}"):
+        result = agent_tools.run_tool(name, args)
     preview = json.dumps(result.get("result"), indent=2, ensure_ascii=False)
     if len(preview) > 3500:
         preview = preview[:3500] + "\n…(truncated)"
@@ -165,14 +243,8 @@ def _handle_turn(messages: list[dict[str, str]], user_text: str) -> None:
             _print(f"[Agent] Error: {exc}")
             return
 
-        display, tool_name, tool_args = _extract_tool(reply)
-        if display:
-            _print()
-            _print(display)
-            _print()
-
-        # Store the assistant message without forcing the tool line into history
-        # if we are about to execute — keep full reply for fidelity.
+        # Reply was already streamed to the terminal; only parse tools from the full text.
+        _display, tool_name, tool_args = _extract_tool(reply)
         messages.append({"role": "assistant", "content": reply})
 
         if not tool_name:
