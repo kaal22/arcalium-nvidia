@@ -106,7 +106,8 @@ def _build_parser() -> argparse.ArgumentParser:
     ai_p = sub.add_parser("ai", help="Offline Local AI assistant (Ollama)")
     ai_sub = ai_p.add_subparsers(dest="action", required=True)
     ai_sub.add_parser("status", help="Ollama and pinned model status")
-    ai_sub.add_parser("ensure", help="Pull pinned model if Ollama is present")
+    ai_sub.add_parser("install-ollama", help="Install Ollama for the current user with Homebrew")
+    ai_sub.add_parser("ensure", help="Pull and configure the pinned assistant model")
     ai_sub.add_parser("launch", help="Open terminal assistant session (unloads on close)")
     ai_sub.add_parser("stop", help="Force-unload the pinned model from GPU memory")
 
@@ -300,6 +301,11 @@ def main(argv: list[str] | None = None) -> int:
     if command == "ai" and action == "status":
         data = ai.status()
         emit(data, as_json=as_json, human_lines=ai.human_status(data))
+        return 0
+
+    if command == "ai" and action == "install-ollama":
+        data = ai.install_ollama()
+        emit(data, as_json=as_json, human_lines=ai.human_install(data))
         return 0
 
     if command == "ai" and action == "ensure":

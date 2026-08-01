@@ -22,7 +22,7 @@ if [[ -z "${OLLAMA_BIN}" ]]; then
 fi
 
 if [[ -z "${OLLAMA_BIN}" || ! -x "${OLLAMA_BIN}" ]]; then
-  echo "Ollama was not found. Install it (e.g. brew install ollama), then use Ensure model in Control Centre."
+  echo "Ollama was not found. Use Install Ollama on the Local AI page in Control Centre."
   echo
   read -r -p "Press Enter to close…" _
   exit 1
@@ -35,8 +35,6 @@ cleanup() {
   fi
 }
 trap cleanup EXIT INT TERM HUP
-
-export OLLAMA_KEEP_ALIVE=0
 
 echo "Arcalium Local AI — ${MODEL}"
 echo "System prompt: Arcalium OS NVIDIA Edition (bash / bootc / Flatpak). Suggestions only."

@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,8 @@ SYSTEM_PROMPT_PATH = "/usr/lib/arcalium/ai/system-prompt.txt"
 SESSION_SCRIPT = "/usr/lib/arcalium/ai/assistant-session.sh"
 OLLAMA_PULL_TIMEOUT = 3600
 OLLAMA_CREATE_TIMEOUT = 600
+OLLAMA_INSTALL_TIMEOUT = 1800
+OLLAMA_API = "http://127.0.0.1:11434"
 
 # Absolute paths only; basename must remain "ollama".
 _OLLAMA_CANDIDATES: tuple[str, ...] = (
@@ -27,6 +30,12 @@ _OLLAMA_CANDIDATES: tuple[str, ...] = (
     "/usr/local/bin/ollama",
     "/home/linuxbrew/.linuxbrew/bin/ollama",
     "/var/home/linuxbrew/.linuxbrew/bin/ollama",
+)
+
+_BREW_CANDIDATES: tuple[str, ...] = (
+    "/home/linuxbrew/.linuxbrew/bin/brew",
+    "/var/home/linuxbrew/.linuxbrew/bin/brew",
+    "/usr/local/bin/brew",
 )
 
 _TERMINAL_CANDIDATES: tuple[tuple[str, list[str]], ...] = (
@@ -46,9 +55,12 @@ class AiError(Exception):
 
 def status() -> dict[str, Any]:
     ollama_path = resolve_ollama()
+    server_running = _server_reachable()
     ollama: dict[str, Any] = {
         "available": ollama_path is not None,
         "path": ollama_path,
+        "serverRunning": server_running,
+        "installMethod": "homebrew",
     }
     model_info: dict[str, Any] = {
         "id": ASSISTANT_MODEL,
@@ -62,7 +74,7 @@ def status() -> dict[str, Any]:
     loaded: list[dict[str, Any]] = []
     error: str | None = None
 
-    if ollama_path:
+    if ollama_path and server_running:
         listed = _ollama_list(ollama_path)
         if listed.get("error"):
             error = listed["error"]
@@ -88,8 +100,10 @@ def status() -> dict[str, Any]:
         )
         if ps.get("error") and not error:
             error = ps["error"]
-    else:
+    elif not ollama_path:
         error = "Ollama not found on PATH candidates"
+    else:
+        error = "Ollama is installed but its local server is not running"
 
     ready = bool(ollama_path and model_info["installed"])
     return {
@@ -108,6 +122,90 @@ def status() -> dict[str, Any]:
     }
 
 
+def install_ollama() -> dict[str, Any]:
+    """Install Ollama for the logged-in user with Bazzite's Homebrew."""
+    existing = resolve_ollama()
+    if existing:
+        server = _ensure_server(existing)
+        return {
+            "schema": "arcalium.ai.install-ollama/v1",
+            "ok": server["ok"],
+            "action": "already-present",
+            "ollama": {
+                "available": True,
+                "path": existing,
+                "serverRunning": server["ok"],
+            },
+            "message": (
+                "Ollama is installed and its local server is ready."
+                if server["ok"]
+                else server["message"]
+            ),
+        }
+
+    brew = resolve_brew()
+    if not brew:
+        return {
+            "schema": "arcalium.ai.install-ollama/v1",
+            "ok": False,
+            "action": "install",
+            "message": (
+                "Homebrew is not available on this system, so Arcalium could not "
+                "install Ollama automatically."
+            ),
+        }
+
+    env = os.environ.copy()
+    env["HOMEBREW_NO_AUTO_UPDATE"] = "1"
+    env["HOMEBREW_NO_ENV_HINTS"] = "1"
+    env["NONINTERACTIVE"] = "1"
+    try:
+        completed = subprocess.run(
+            [brew, "install", "ollama"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=OLLAMA_INSTALL_TIMEOUT,
+            env=env,
+            shell=False,
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            "schema": "arcalium.ai.install-ollama/v1",
+            "ok": False,
+            "action": "install",
+            "message": f"Ollama installation timed out after {OLLAMA_INSTALL_TIMEOUT}s.",
+        }
+
+    ollama_path = resolve_ollama()
+    if completed.returncode != 0 or not ollama_path:
+        detail = completed.stderr or completed.stdout or "brew install ollama failed"
+        return {
+            "schema": "arcalium.ai.install-ollama/v1",
+            "ok": False,
+            "action": "install",
+            "message": detail.strip()[:1200],
+            "returncode": completed.returncode,
+        }
+
+    server = _ensure_server(ollama_path)
+    return {
+        "schema": "arcalium.ai.install-ollama/v1",
+        "ok": server["ok"],
+        "action": "installed",
+        "ollama": {
+            "available": True,
+            "path": ollama_path,
+            "serverRunning": server["ok"],
+        },
+        "message": (
+            "Ollama installed. Next, pull and configure the AI model."
+            if server["ok"]
+            else f"Ollama installed, but its local server did not start: {server['message']}"
+        ),
+    }
+
+
 def ensure() -> dict[str, Any]:
     """Pull the base model and create the Arcalium-prompted assistant model."""
     ollama_path = resolve_ollama()
@@ -123,6 +221,16 @@ def ensure() -> dict[str, Any]:
             },
             "message": "Install Ollama first, then run Ensure model again.",
             "guidance": _guidance(False, False),
+        }
+
+    server = _ensure_server(ollama_path)
+    if not server["ok"]:
+        return {
+            "schema": "arcalium.ai.ensure/v1",
+            "ok": False,
+            "action": "start-server",
+            "message": server["message"],
+            "guidance": _guidance(True, False),
         }
 
     before = status()
@@ -201,9 +309,13 @@ def ensure() -> dict[str, Any]:
 
 def launch() -> dict[str, Any]:
     """Open a terminal chat session; closing it must unload the model."""
-    st = status()
-    if not st["ollama"]["available"]:
+    ollama_path = resolve_ollama()
+    if not ollama_path:
         raise AiError(ARC_AI_001, "Ollama is not installed")
+    server = _ensure_server(ollama_path)
+    if not server["ok"]:
+        raise AiError(ARC_AI_003, server["message"])
+    st = status()
     if not st["model"]["installed"]:
         raise AiError(
             ARC_AI_002,
@@ -222,7 +334,6 @@ def launch() -> dict[str, Any]:
     env["ARCALIUM_OLLAMA_BIN"] = st["ollama"]["path"]
     env["ARCALIUM_AI_MODEL"] = ASSISTANT_MODEL
     env["ARCALIUM_AI_BASE_MODEL"] = BASE_MODEL
-    env["OLLAMA_KEEP_ALIVE"] = "0"
 
     argv = [term_path, *term_prefix, str(script)]
     try:
@@ -305,6 +416,19 @@ def resolve_ollama() -> str | None:
     return None
 
 
+def resolve_brew() -> str | None:
+    home = Path.home()
+    candidates = list(_BREW_CANDIDATES) + [
+        str(home / ".linuxbrew" / "bin" / "brew"),
+        str(home / "linuxbrew" / ".linuxbrew" / "bin" / "brew"),
+    ]
+    for candidate in candidates:
+        path = Path(candidate)
+        if path.is_file() and os.access(path, os.X_OK) and path.name == "brew":
+            return str(path)
+    return None
+
+
 def resolve_terminal() -> tuple[str | None, list[str]]:
     for path, prefix in _TERMINAL_CANDIDATES:
         p = Path(path)
@@ -337,6 +461,14 @@ def human_status(data: dict[str, Any]) -> list[str]:
 
 
 def human_ensure(data: dict[str, Any]) -> list[str]:
+    return [
+        f"Action:  {data.get('action')}",
+        f"OK:      {data.get('ok')}",
+        f"Message: {data.get('message')}",
+    ]
+
+
+def human_install(data: dict[str, Any]) -> list[str]:
     return [
         f"Action:  {data.get('action')}",
         f"OK:      {data.get('ok')}",
@@ -410,31 +542,69 @@ def _build_system_prompt() -> str:
 
 
 def _guidance(ollama_ok: bool, model_ok: bool) -> dict[str, Any]:
-    install_ollama = [
-        "On Bazzite/Arcalium, preferred: brew install ollama",
-        "Then: ollama serve   # if the daemon is not already running",
-        "Then in Control Centre: Ensure model",
-    ]
-    pull = [
-        f"ollama pull {BASE_MODEL}",
-        f"arcaliumctl ai ensure   # creates {ASSISTANT_MODEL} with system prompt",
-    ]
-    launch = ["arcaliumctl ai launch", "or use Launch assistant in Control Centre"]
-    stop_cmds = [
-        f"ollama stop {ASSISTANT_MODEL}",
-        f"ollama stop {BASE_MODEL}",
-        "arcaliumctl ai stop",
-    ]
     return {
-        "installOllama": install_ollama if not ollama_ok else [],
-        "pullModel": pull if ollama_ok and not model_ok else [],
-        "launch": launch if ollama_ok and model_ok else [],
-        "stop": stop_cmds,
+        "nextAction": (
+            "install-ollama"
+            if not ollama_ok
+            else "pull-model"
+            if not model_ok
+            else "launch"
+        ),
         "note": (
             "The assistant is offline once the model is present. "
             "It suggests maintenance steps; it does not run privileged commands for you. "
             f"Chat uses {ASSISTANT_MODEL}, which includes an Arcalium OS / bash system prompt."
         ),
+    }
+
+
+def _server_reachable() -> bool:
+    try:
+        import urllib.request
+
+        with urllib.request.urlopen(f"{OLLAMA_API}/api/tags", timeout=2) as response:
+            return response.status == 200
+    except Exception:
+        return False
+
+
+def _ensure_server(ollama_path: str) -> dict[str, Any]:
+    """Start a local user Ollama server when one is not already running."""
+    if _server_reachable():
+        return {"ok": True, "action": "already-running", "message": "Ollama server is ready."}
+
+    state_dir = Path.home() / ".local" / "state" / "arcalium"
+    try:
+        state_dir.mkdir(parents=True, exist_ok=True)
+        log_path = state_dir / "ollama.log"
+        log = log_path.open("ab")
+        env = os.environ.copy()
+        env["OLLAMA_HOST"] = "127.0.0.1:11434"
+        # Keep weights warm during the terminal chat. The session EXIT/HUP trap
+        # explicitly calls `ollama stop`, which is what frees VRAM on close.
+        env["OLLAMA_KEEP_ALIVE"] = "5m"
+        subprocess.Popen(
+            [ollama_path, "serve"],
+            stdin=subprocess.DEVNULL,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            env=env,
+            start_new_session=True,
+            shell=False,
+        )
+        log.close()
+    except OSError as exc:
+        return {"ok": False, "action": "start-server", "message": str(exc)}
+
+    deadline = time.monotonic() + 20
+    while time.monotonic() < deadline:
+        if _server_reachable():
+            return {"ok": True, "action": "started", "message": "Ollama server started."}
+        time.sleep(0.5)
+    return {
+        "ok": False,
+        "action": "start-server",
+        "message": f"Ollama server did not become ready. See {log_path}.",
     }
 
 

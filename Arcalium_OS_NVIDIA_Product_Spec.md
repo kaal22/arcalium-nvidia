@@ -756,7 +756,8 @@ Show:
 
 - Ollama and model status.
 - Clear size / VRAM / gaming coexistence warnings (~10 GB pull; unload before gaming).
-- **Install model** (pulls the pinned model when Ollama is present; otherwise show install guidance).
+- **Install Ollama** — performs a non-interactive, user-level Homebrew install; no terminal copy/paste or sudo.
+- **Pull and configure model** — starts the local Ollama server, pulls the pinned base model, and creates `arcalium-assistant` with the system prompt.
 - Optional **Try assistant** (terminal session) after the model is ready.
 - **Skip** — finish setup without Local AI; can configure later in Control Centre.
 - **Continue** — mark the step complete without requiring a successful install.
@@ -1160,6 +1161,7 @@ arcaliumctl vpn import /path/to/config --json
 arcaliumctl updates status --json
 arcaliumctl diagnostics create --output /path/to/file
 arcaliumctl ai status --json
+arcaliumctl ai install-ollama --json
 arcaliumctl ai ensure --json
 arcaliumctl ai launch
 arcaliumctl ai stop --json

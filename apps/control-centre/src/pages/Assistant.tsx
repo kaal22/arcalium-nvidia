@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { arcaliumctl, JsonValue } from "../api";
-import { copyText, pick, str } from "../lib/json";
+import { pick, str } from "../lib/json";
 
 type LoadState = "loading" | "ready" | "error";
 
@@ -9,7 +9,7 @@ export function AssistantPage() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<JsonValue | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"ensure" | "launch" | "stop" | null>(null);
+  const [busy, setBusy] = useState<"install" | "ensure" | "launch" | "stop" | null>(null);
 
   const refresh = useCallback(async () => {
     setState("loading");
@@ -27,6 +27,23 @@ export function AssistantPage() {
     void refresh();
   }, [refresh]);
 
+  const runInstall = async () => {
+    setBusy("install");
+    setMsg(null);
+    setError(null);
+    try {
+      const result = await arcaliumctl(["ai", "install-ollama", "--json"]);
+      setData(await arcaliumctl(["ai", "status", "--json"]));
+      if (!pick(result, "ok")) throw new Error(str(pick(result, "message"), "Could not install Ollama."));
+      setMsg(str(pick(result, "message"), "Ollama installed. Pull the model next."));
+      setState("ready");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const runEnsure = async () => {
     setBusy("ensure");
     setMsg(null);
@@ -34,6 +51,7 @@ export function AssistantPage() {
     try {
       const result = await arcaliumctl(["ai", "ensure", "--json"]);
       setData(await arcaliumctl(["ai", "status", "--json"]));
+      if (!pick(result, "ok")) throw new Error(str(pick(result, "message"), "Could not configure model."));
       setMsg(str(pick(result, "message"), pick(result, "ok") ? "Model ready." : "Could not ensure model."));
       setState("ready");
     } catch (e) {
@@ -78,8 +96,6 @@ export function AssistantPage() {
   const modelOk = Boolean(pick(data, "model.installed"));
   const loaded = Boolean(pick(data, "model.loaded"));
   const ready = Boolean(pick(data, "ready"));
-  const installHints = (pick(data, "guidance.installOllama") as string[]) || [];
-  const pullHints = (pick(data, "guidance.pullModel") as string[]) || [];
 
   return (
     <div className="page">
@@ -117,6 +133,14 @@ export function AssistantPage() {
                   </dd>
                 </div>
                 <div>
+                  <dt>Local server</dt>
+                  <dd>
+                    <span className={`badge ${pick(data, "ollama.serverRunning") ? "ok" : "warn"}`}>
+                      {pick(data, "ollama.serverRunning") ? "running" : "stopped"}
+                    </span>
+                  </dd>
+                </div>
+                <div>
                   <dt>Model</dt>
                   <dd>
                     <span className={`badge ${modelOk ? "ok" : "warn"}`}>
@@ -144,14 +168,26 @@ export function AssistantPage() {
             <article className="card">
               <h2>Actions</h2>
               <div className="btn-row" style={{ flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  className="btn"
-                  disabled={busy !== null}
-                  onClick={() => void runEnsure()}
-                >
-                  {busy === "ensure" ? "Ensuring…" : "Ensure model"}
-                </button>
+                {!ollamaOk && (
+                  <button
+                    type="button"
+                    className="btn primary"
+                    disabled={busy !== null}
+                    onClick={() => void runInstall()}
+                  >
+                    {busy === "install" ? "Installing Ollama…" : "1. Install Ollama"}
+                  </button>
+                )}
+                {ollamaOk && !modelOk && (
+                  <button
+                    type="button"
+                    className="btn primary"
+                    disabled={busy !== null}
+                    onClick={() => void runEnsure()}
+                  >
+                    {busy === "ensure" ? "Pulling model…" : "2. Pull and configure model"}
+                  </button>
+                )}
                 <button
                   type="button"
                   className="btn primary"
@@ -174,28 +210,6 @@ export function AssistantPage() {
               </p>
             </article>
           </div>
-          {(installHints.length > 0 || pullHints.length > 0) && (
-            <article className="card">
-              <h2>Setup commands</h2>
-              <ul className="plain-list mono small">
-                {[...installHints, ...pullHints].map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-              <div className="btn-row">
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={async () => {
-                    await copyText([...installHints, ...pullHints].join("\n"));
-                    setMsg("Setup commands copied.");
-                  }}
-                >
-                  Copy commands
-                </button>
-              </div>
-            </article>
-          )}
         </>
       )}
     </div>

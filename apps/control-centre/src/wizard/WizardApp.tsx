@@ -22,6 +22,7 @@ export function WizardApp() {
   const [diag, setDiag] = useState<JsonValue | null>(null);
   const [aiStatus, setAiStatus] = useState<JsonValue | null>(null);
   const [installingProton, setInstallingProton] = useState(false);
+  const [installingOllama, setInstallingOllama] = useState(false);
   const [ensuringAi, setEnsuringAi] = useState(false);
 
   const step = WIZARD_STEPS[stepIndex];
@@ -566,25 +567,51 @@ export function WizardApp() {
               First pull is roughly 10 GB. Close the assistant terminal before gaming so GPU memory is
               freed. Chat stays on this PC — no cloud API.
             </p>
-            {!pick(aiStatus, "ollama.available") && (
-              <ul className="plain-list mono small" style={{ marginTop: "0.75rem" }}>
-                {(((pick(aiStatus, "guidance.installOllama") as string[]) || []) as string[]).map(
-                  (line) => (
-                    <li key={line}>{line}</li>
-                  ),
-                )}
-              </ul>
-            )}
             <div className="btn-row" style={{ marginTop: "0.75rem" }}>
+              {!pick(aiStatus, "ollama.available") && (
+                <button
+                  type="button"
+                  className="btn primary"
+                  disabled={installingOllama || ensuringAi}
+                  onClick={async () => {
+                    setInstallingOllama(true);
+                    setError(null);
+                    try {
+                      const result = await arcaliumctl(["ai", "install-ollama", "--json"]);
+                      if (!pick(result, "ok")) {
+                        throw new Error(str(pick(result, "message"), "Could not install Ollama."));
+                      }
+                      setMsg(str(pick(result, "message"), "Ollama installed. Pull the model next."));
+                      await loadAi();
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : String(e));
+                    } finally {
+                      setInstallingOllama(false);
+                    }
+                  }}
+                >
+                  {installingOllama ? "Installing Ollama…" : "1. Install Ollama"}
+                </button>
+              )}
+              {pick(aiStatus, "ollama.available") && (
               <button
                 type="button"
                 className="btn primary"
-                disabled={ensuringAi || Boolean(pick(aiStatus, "model.installed"))}
+                disabled={
+                  installingOllama ||
+                  ensuringAi ||
+                  Boolean(pick(aiStatus, "model.installed"))
+                }
                 onClick={async () => {
                   setEnsuringAi(true);
                   setError(null);
                   try {
                     const result = await arcaliumctl(["ai", "ensure", "--json"]);
+                    if (!pick(result, "ok")) {
+                      throw new Error(
+                        str(pick(result, "message"), "Could not pull and configure the model."),
+                      );
+                    }
                     setMsg(str(pick(result, "message")));
                     await loadAi();
                     if (pick(result, "ok")) {
@@ -600,15 +627,18 @@ export function WizardApp() {
                 }}
               >
                 {ensuringAi
-                  ? "Installing…"
+                  ? "Pulling model…"
                   : pick(aiStatus, "model.installed")
                     ? "Model already installed"
-                    : "Install model"}
+                    : "2. Pull and configure model"}
               </button>
+              )}
               <button
                 type="button"
                 className="btn"
-                disabled={!pick(aiStatus, "ready") || ensuringAi}
+                disabled={
+                  !pick(aiStatus, "ready") || ensuringAi || installingOllama
+                }
                 onClick={async () => {
                   try {
                     const result = await arcaliumctl(["ai", "launch", "--json"]);
@@ -620,19 +650,6 @@ export function WizardApp() {
               >
                 Try assistant
               </button>
-              {!pick(aiStatus, "ollama.available") && (
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={async () => {
-                    const lines = (pick(aiStatus, "guidance.installOllama") as string[]) || [];
-                    await copyText(lines.join("\n"));
-                    setMsg("Ollama install commands copied.");
-                  }}
-                >
-                  Copy Ollama install commands
-                </button>
-              )}
             </div>
             <p className="muted small" style={{ marginTop: "0.75rem" }}>
               Use <strong>Skip</strong> to finish setup without Local AI, or <strong>Continue</strong> after

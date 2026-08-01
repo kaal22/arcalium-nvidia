@@ -11,6 +11,7 @@ const TIMEOUT_DEFAULT_SECS: u64 = 60;
 const TIMEOUT_PROTON_INSTALL_SECS: u64 = 1800;
 const TIMEOUT_FLATPAK_SECS: u64 = 1800;
 const TIMEOUT_DIAGNOSTICS_SECS: u64 = 120;
+const TIMEOUT_AI_INSTALL_SECS: u64 = 1800;
 const TIMEOUT_AI_ENSURE_SECS: u64 = 3600;
 
 /// Flatpak source IDs permitted for apps install/uninstall (must match catalogue).
@@ -63,6 +64,7 @@ const ALLOWED_EXACT: &[&[&str]] = &[
     &["diagnostics", "run", "--json"],
     &["diagnostics", "bundle", "--json"],
     &["ai", "status", "--json"],
+    &["ai", "install-ollama", "--json"],
     &["ai", "ensure", "--json"],
     &["ai", "launch", "--json"],
     &["ai", "stop", "--json"],
@@ -142,8 +144,13 @@ fn timeout_for(args: &[String]) -> u64 {
     if args.len() >= 2 && args[0] == "diagnostics" {
         return TIMEOUT_DIAGNOSTICS_SECS;
     }
-    if args.len() >= 2 && args[0] == "ai" && args[1] == "ensure" {
-        return TIMEOUT_AI_ENSURE_SECS;
+    if args.len() >= 2 && args[0] == "ai" {
+        if args[1] == "install-ollama" {
+            return TIMEOUT_AI_INSTALL_SECS;
+        }
+        if args[1] == "ensure" {
+            return TIMEOUT_AI_ENSURE_SECS;
+        }
     }
     TIMEOUT_DEFAULT_SECS
 }

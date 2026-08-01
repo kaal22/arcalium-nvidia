@@ -341,6 +341,7 @@ arcaliumctl vulkan test --json
 arcaliumctl proton list --json
 arcaliumctl proton install-recommended --json
 arcaliumctl ai status --json
+arcaliumctl ai install-ollama --json
 arcaliumctl ai ensure --json
 arcaliumctl ai launch
 arcaliumctl ai stop --json
@@ -352,11 +353,12 @@ JSON schemas ship in `/usr/share/arcalium/schemas/` from `config/schemas/` (Cont
 
 Offline maintenance helper via **Ollama**, base **`gemma4:e4b-it-qat`**, session model **`arcalium-assistant`** (Modelfile + `/usr/lib/arcalium/ai/system-prompt.txt` for Arcalium OS / bash context).
 
-- Control Centre → **Local AI Assistant**: status, Ensure model, Launch assistant, Unload model.
+- Control Centre → **Local AI Assistant**: Install Ollama, Pull and configure model, Launch assistant, Unload model.
+- `arcaliumctl ai install-ollama` runs a non-interactive user-level `brew install ollama`, then starts the local server. No sudo or copy/paste flow.
 - `arcaliumctl ai ensure` pulls the base tag and creates/refreshes `arcalium-assistant` with the system prompt.
 - `arcaliumctl ai launch` opens Konsole/Ptyxis/kgx running `/usr/lib/arcalium/ai/assistant-session.sh`. Closing the terminal runs `ollama stop` so VRAM is freed for gaming.
-- Ollama is **not** layered into the image (atomic desktop). Preferred install guidance: `brew install ollama`, then Ensure model (~10 GB pull).
-- Session sets `OLLAMA_KEEP_ALIVE=0` and traps EXIT to unload.
+- Ollama is **not** layered into the image (atomic desktop); the UI installs it into the user's Homebrew environment on demand. The model pull is separate (~10 GB).
+- The local server keeps weights warm during an active chat; the terminal session traps EXIT/HUP and explicitly unloads both assistant and base models.
 
 ### Heroic Proton setup
 
@@ -396,7 +398,7 @@ Setup wizard shares this codebase (`arcalium-control-centre --setup` / `arcalium
 
 - Progress: `~/.config/arcalium/setup-progress.json`; completion: `setup-complete.json` (PRODUCT_SPEC §8.2).
 - CLI: `arcaliumctl setup status|save|mark|complete|reset --json`.
-- 14 steps (§8.3): optional **Local AI** (`localAi`) sits after Validation and before Finish — Install model / Skip / Continue.
+- 14 steps (§8.3): optional **Local AI** (`localAi`) sits after Validation and before Finish — Install Ollama / Pull model / Skip / Continue.
 - Autostart: `/etc/xdg/autostart/arcalium-setup.desktop` and skel copy call `arcalium-setup --autostart` (no-op on live ISO and when already complete).
 - Menu: `io.arcalium.Setup.desktop` always opens the wizard (Resume).
 - Control Centre → Settings: Resume / Restart setup (restart confirms then `setup reset`).
