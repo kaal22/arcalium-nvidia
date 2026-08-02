@@ -115,10 +115,10 @@ export function SettingsPage({
           Show Setup on startup
         </label>
         <p className="muted small">
-          Language, keyboard, and timezone come from the installer. Plasma Welcome runs before
-          login (Wi‑Fi and desktop setup). On first login this wizard opens shortly after the
-          session starts when this toggle is on. Finishing setup turns the toggle off; Restart
-          setup turns it back on.
+          Language, keyboard, and timezone come from the installer. First boot runs Plasma
+          Welcome (then a restart). Arcalium Setup opens on the next login after Welcome has
+          finished — not during the Welcome session. Finishing setup turns this toggle off;
+          Restart setup turns it back on. Resume setup from the menu always works.
         </p>
         {setupMsg && <p className="banner ok">{setupMsg}</p>}
         {setupErr && <p className="banner bad">{setupErr}</p>}

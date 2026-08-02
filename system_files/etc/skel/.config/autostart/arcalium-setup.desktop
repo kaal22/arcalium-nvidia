@@ -7,6 +7,6 @@ Exec=arcalium-setup --autostart
 Icon=io.arcalium.ControlCentre
 Terminal=false
 X-GNOME-Autostart-enabled=true
-# Plasma Welcome runs before login; autostart opens Setup soon after the session is up.
+# After login only. Setup opens only once Plasma Welcome has finished (post-reboot).
 X-KDE-autostart-phase=2
 OnlyShowIn=KDE;GNOME;LXQt;XFCE;

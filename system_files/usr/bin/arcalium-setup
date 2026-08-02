@@ -4,9 +4,13 @@
 # application menu (Resume / Restart); autostart uses --autostart so completed
 # users and users who disabled "Show on startup" are left alone.
 #
-# Plasma Welcome / Wi‑Fi runs before login on this image. Autostart therefore
-# opens promptly after the user session is up. If Welcome/Portal is still
-# running in this session (rare), wait for it to exit first.
+# First-boot order on this image:
+#   1. Plasma Welcome (Wi‑Fi / desktop) on first boot
+#   2. System restarts
+#   3. User logs in → Arcalium Setup may open
+#
+# Autostart must NOT run in the Welcome session. We only open Setup when
+# plasma-welcomerc has ShouldShow=false (Welcome finished, usually after reboot).
 set -euo pipefail
 
 AUTOSTART=0
@@ -29,6 +33,7 @@ fi
 CONFIG_DIR="${HOME}/.config/arcalium"
 COMPLETE="${CONFIG_DIR}/setup-complete.json"
 PREFS="${CONFIG_DIR}/setup-prefs.json"
+WELCOME_RC="${HOME}/.config/plasma-welcomerc"
 
 # Drop Bazzite's silent Steam autostart when no Steam client is present (skel
 # copy may already exist on upgraded accounts).
@@ -36,11 +41,9 @@ if [[ ! -x /usr/bin/steam ]]; then
   rm -f "${HOME}/.config/autostart/steam.desktop"
 fi
 
-# Match Plasma Welcome, Bazzite Portal / yafti, and common binary names.
-desktop_first_run_running() {
-  pgrep -f \
-    'plasma-welcome|org\.kde\.plasma-welcome|/usr/bin/plasma-welcome|yafti|yafti-gtk|bazzite-portal|bazzite-welcome' \
-    >/dev/null 2>&1
+plasma_welcome_done() {
+  [[ -f "${WELCOME_RC}" ]] || return 1
+  grep -Eqi '^[[:space:]]*ShouldShow[[:space:]]*=[[:space:]]*false[[:space:]]*$' "${WELCOME_RC}" 2>/dev/null
 }
 
 if [[ "${AUTOSTART}" -eq 1 ]]; then
@@ -53,34 +56,21 @@ if [[ "${AUTOSTART}" -eq 1 ]]; then
     exit 0
   fi
 
-  # Wait briefly for a graphical session to exist.
+  # Gate on Welcome completion — do not overlay the pre-reboot Welcome session.
+  # After Welcome finishes and the machine restarts, ShouldShow=false and the
+  # next login autostart opens Setup. Resume from the menu bypasses this gate.
+  if ! plasma_welcome_done; then
+    exit 0
+  fi
+
+  # Wait briefly for the post-login graphical session.
   for _ in $(seq 1 60); do
     if [[ -n "${WAYLAND_DISPLAY:-}" || -n "${DISPLAY:-}" ]]; then
       break
     fi
     sleep 1
   done
-
-  # Short settle so the desktop and any leftover first-run UI can start.
-  # Do not wait minutes for Welcome to appear — it runs before login.
-  sleep 3
-
-  # If Welcome/Portal is still running in this login session, wait for it.
-  # Cap at 45 minutes so a hung Welcome cannot block Setup forever.
-  if desktop_first_run_running; then
-    run_deadline=$((SECONDS + 2700))
-    while (( SECONDS < run_deadline )); do
-      if desktop_first_run_running; then
-        sleep 2
-        continue
-      fi
-      sleep 2
-      if desktop_first_run_running; then
-        continue
-      fi
-      break
-    done
-  fi
+  sleep 2
 fi
 
 export __NV_DISABLE_EXPLICIT_SYNC="${__NV_DISABLE_EXPLICIT_SYNC:-1}"

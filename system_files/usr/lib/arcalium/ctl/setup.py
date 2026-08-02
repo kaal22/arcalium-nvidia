@@ -163,12 +163,11 @@ def status() -> dict[str, Any]:
         "stepIds": list(STEP_IDS),
         "desktopFirstRun": {
             "note": (
-                "Language, keyboard, and timezone are set in the installer. "
-                "Plasma Welcome runs before login. Autostart opens Arcalium Setup "
-                "shortly after the user session starts; it only waits if Welcome/"
-                "Portal is still running in that session."
+                "First boot: Plasma Welcome, then restart. Autostart opens Arcalium "
+                "Setup on a later login only when plasma-welcomerc has ShouldShow=false "
+                "(Welcome finished). Resume from the menu is not gated."
             ),
-            "waitsFor": ["plasma-welcome", "yafti", "yafti-gtk", "bazzite-portal"],
+            "waitsFor": ["plasma-welcomerc ShouldShow=false"],
         },
     }
 
