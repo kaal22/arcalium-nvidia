@@ -5,12 +5,13 @@
 # users and users who disabled "Show on startup" are left alone.
 #
 # First-boot order on this image:
-#   1. Plasma Welcome (Wi‑Fi / desktop) on first boot
-#   2. System restarts
-#   3. User logs in → Arcalium Setup may open
+#   1. Plasma Welcome on first boot (often before / outside a normal login)
+#   2. System may restart
+#   3. User logs in → Arcalium Setup should open
 #
-# Autostart must NOT run in the Welcome session. We only open Setup when
-# plasma-welcomerc has ShouldShow=false (Welcome finished, usually after reboot).
+# Do NOT require ShouldShow=false alone — Plasma 6 often only writes
+# LastSeenVersion and never ShouldShow (KDE bugs). Never overlay Welcome:
+# if Welcome is running this session, exit and try again on a later login.
 set -euo pipefail
 
 AUTOSTART=0
@@ -41,9 +42,23 @@ if [[ ! -x /usr/bin/steam ]]; then
   rm -f "${HOME}/.config/autostart/steam.desktop"
 fi
 
-plasma_welcome_done() {
+desktop_first_run_running() {
+  pgrep -f \
+    'plasma-welcome|org\.kde\.plasma-welcome|/usr/bin/plasma-welcome|plasma\.welcome|yafti|yafti-gtk|bazzite-portal|bazzite-welcome' \
+    >/dev/null 2>&1
+}
+
+# Welcome has been through at least once (finished or skipped). Plasma 6 may
+# only set LastSeenVersion and omit ShouldShow=false.
+plasma_welcome_seen() {
   [[ -f "${WELCOME_RC}" ]] || return 1
-  grep -Eqi '^[[:space:]]*ShouldShow[[:space:]]*=[[:space:]]*false[[:space:]]*$' "${WELCOME_RC}" 2>/dev/null
+  if grep -Eqi '^[[:space:]]*ShouldShow[[:space:]]*=[[:space:]]*false[[:space:]]*$' "${WELCOME_RC}" 2>/dev/null; then
+    return 0
+  fi
+  if grep -Eqi '^[[:space:]]*LastSeenVersion[[:space:]]*=' "${WELCOME_RC}" 2>/dev/null; then
+    return 0
+  fi
+  return 1
 }
 
 if [[ "${AUTOSTART}" -eq 1 ]]; then
@@ -56,14 +71,7 @@ if [[ "${AUTOSTART}" -eq 1 ]]; then
     exit 0
   fi
 
-  # Gate on Welcome completion — do not overlay the pre-reboot Welcome session.
-  # After Welcome finishes and the machine restarts, ShouldShow=false and the
-  # next login autostart opens Setup. Resume from the menu bypasses this gate.
-  if ! plasma_welcome_done; then
-    exit 0
-  fi
-
-  # Wait briefly for the post-login graphical session.
+  # Wait for a graphical user session (post-login).
   for _ in $(seq 1 60); do
     if [[ -n "${WAYLAND_DISPLAY:-}" || -n "${DISPLAY:-}" ]]; then
       break
@@ -71,6 +79,33 @@ if [[ "${AUTOSTART}" -eq 1 ]]; then
     sleep 1
   done
   sleep 2
+
+  # Welcome is on screen this session — do not overlay; next login after it
+  # finishes / reboots will open Setup.
+  if desktop_first_run_running; then
+    exit 0
+  fi
+
+  # Short window for Welcome to start after login (same-session race).
+  # If it appears, leave this login alone.
+  if ! plasma_welcome_seen; then
+    appear_deadline=$((SECONDS + 25))
+    while (( SECONDS < appear_deadline )); do
+      if desktop_first_run_running; then
+        exit 0
+      fi
+      if plasma_welcome_seen; then
+        break
+      fi
+      sleep 1
+    done
+    if desktop_first_run_running; then
+      exit 0
+    fi
+  fi
+
+  # Welcome already finished (or ran before this login / never shows here).
+  # Open Setup.
 fi
 
 export __NV_DISABLE_EXPLICIT_SYNC="${__NV_DISABLE_EXPLICIT_SYNC:-1}"

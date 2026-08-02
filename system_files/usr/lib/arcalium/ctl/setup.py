@@ -163,11 +163,12 @@ def status() -> dict[str, Any]:
         "stepIds": list(STEP_IDS),
         "desktopFirstRun": {
             "note": (
-                "First boot: Plasma Welcome, then restart. Autostart opens Arcalium "
-                "Setup on a later login only when plasma-welcomerc has ShouldShow=false "
-                "(Welcome finished). Resume from the menu is not gated."
+                "First boot may show Plasma Welcome (then restart). Autostart opens "
+                "Arcalium Setup on login when Welcome is not running. Completion is "
+                "detected via ShouldShow=false or LastSeenVersion in plasma-welcomerc "
+                "(Plasma often omits ShouldShow). Resume from the menu is not gated."
             ),
-            "waitsFor": ["plasma-welcomerc ShouldShow=false"],
+            "waitsFor": ["plasma-welcome not running", "plasma-welcomerc LastSeenVersion|ShouldShow=false"],
         },
     }
 

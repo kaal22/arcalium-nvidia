@@ -408,7 +408,7 @@ Setup wizard shares this codebase (`arcalium-control-centre --setup` / `arcalium
 - Progress: `~/.config/arcalium/setup-progress.json`; completion: `setup-complete.json`; prefs: `setup-prefs.json` (`showOnStartup`) (PRODUCT_SPEC §8.2).
 - CLI: `arcaliumctl setup status|save|mark|complete|reset|set-autostart on|off --json`.
 - 14 steps (§8.3): optional **Local AI** (`localAi`) sits after Validation and before Finish — Install Ollama / Pull model / Skip / Continue.
-- Autostart: `/etc/xdg/autostart/arcalium-setup.desktop` and skel copy call `arcalium-setup --autostart`. Skips live ISO, completed users, and `showOnStartup: false`. **Does not open during Plasma Welcome.** Gate: `~/.config/plasma-welcomerc` must have `ShouldShow=false` (Welcome finished, typically after its restart); then Setup opens on that login. Kickoff **Resume setup** bypasses the gate.
+- Autostart: `/etc/xdg/autostart/arcalium-setup.desktop` and skel copy call `arcalium-setup --autostart`. Skips live ISO, completed users, and `showOnStartup: false`. **Does not open while Plasma Welcome / Portal is running.** Treats Welcome as already done if `plasma-welcomerc` has `ShouldShow=false` **or** `LastSeenVersion` (Plasma 6 often never writes ShouldShow). If Welcome never appears after login (~25s), Setup opens anyway (covers Welcome-before-login + reboot). Kickoff **Resume setup** bypasses the gate.
 - Menu: `io.arcalium.Setup.desktop` always opens the wizard (Resume) without waiting.
 - Control Centre → Settings: **Show Setup on startup** toggle, Resume / Restart setup (restart confirms then `setup reset`, which re-enables autostart).
 - Privileged policy matches Control Centre: user Flatpak installs OK; `bootc` apply and VPN secret import are guidance only; no disk formatting.
