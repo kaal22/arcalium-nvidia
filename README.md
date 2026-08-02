@@ -6,7 +6,7 @@ Gaming-first Linux OS for NVIDIA desktops. Built on [Bazzite](https://bazzite.gg
 
 ## Status
 
-**Private alpha / public-prep.** Spec: [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md). Checklist: [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md). Build: [`docs/BUILDING.md`](docs/BUILDING.md). Licensing: [`docs/LICENSING.md`](docs/LICENSING.md). Notices: [`docs/NOTICES.md`](docs/NOTICES.md). Privacy: [`docs/PRIVACY.md`](docs/PRIVACY.md). Support: [`docs/SUPPORT.md`](docs/SUPPORT.md).
+**Private alpha / public-prep.** Doc index: [`docs/README.md`](docs/README.md). Spec: [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md). Checklist: [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md). Build: [`docs/BUILDING.md`](docs/BUILDING.md). Install: [`docs/INSTALL.md`](docs/INSTALL.md). Licensing: [`docs/LICENSING.md`](docs/LICENSING.md). Notices: [`docs/NOTICES.md`](docs/NOTICES.md). Privacy: [`docs/PRIVACY.md`](docs/PRIVACY.md). Support: [`docs/SUPPORT.md`](docs/SUPPORT.md).
 
 | Item | Value |
 |---|---|

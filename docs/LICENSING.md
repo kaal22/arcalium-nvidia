@@ -1,6 +1,6 @@
 # Licensing inventory
 
-Status: **public-prep** — Steam, Brave, and Spotify are **not** bundled in the ISO (Flathub on demand). Firefox, Heroic, and ProtonPlus are bundled. Notices/privacy drafts live under `docs/`. GHCR package remains **private** until remaining public gates clear.
+Status: **public-prep — docs ready for review** — Steam, Brave, and Spotify are **not** bundled in the ISO (Flathub on demand). Firefox, Heroic, and ProtonPlus are bundled. Notices/privacy/support/install docs are in `docs/`. GHCR package remains **private** until you intentionally publish.
 
 ## Arcalium OS
 

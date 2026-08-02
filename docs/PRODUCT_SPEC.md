@@ -245,7 +245,7 @@ Arcalium OS NVIDIA Edition version 1 is successful when:
 7. Steam launches.
 8. A Windows game launches through Proton.
 9. Proton-GE is installed or can be installed through one clearly labelled action.
-10. Spotify is available after first-boot provisioning.
+10. Optional apps (Steam, Brave, Spotify, etc.) can be installed from Control Centre / Flathub; failure of any optional install does not block first boot.
 11. Bazaar can install and update Flatpak applications.
 12. The user can install optional launchers from the Arcalium setup interface.
 13. The user can detect and configure a secondary game drive safely.
@@ -328,9 +328,10 @@ After setup, users should use **Arcalium Control Centre** for:
 
 The completed NVIDIA installation must provide:
 
-- Steam via Valve’s official download (not shipped in the image); Control Centre opens the download page so the user accepts Steam’s agreement.
+- Steam via Valve’s Flathub Flatpak (not shipped in the image); Control Centre installs it so the user accepts Steam’s agreement on first launch.
+- Firefox (bundled default browser).
 - Bazaar app store.
-- Spotify.
+- Brave and Spotify as optional Flathub installs from Control Centre (not preinstalled); disclose Spotify community package.
 - ProtonPlus.
 - Proton-GE.
 - Arcalium Setup.
@@ -406,9 +407,12 @@ Requirements:
 Initial expected IDs must be verified before implementation. Candidate IDs include:
 
 ```text
-Spotify: com.spotify.Client
-ProtonPlus: com.vysp3r.ProtonPlus
-Heroic: com.heroicgameslauncher.hgl
+Firefox (bundled default browser): org.mozilla.firefox
+Spotify (on-demand): com.spotify.Client
+Brave (on-demand): com.brave.Browser
+Steam (on-demand): com.valvesoftware.Steam
+ProtonPlus (bundled): com.vysp3r.ProtonPlus
+Heroic (bundled): com.heroicgameslauncher.hgl
 Bottles: com.usebottles.bottles
 Discord: com.discordapp.Discord
 Vesktop: dev.vencord.Vesktop
@@ -416,11 +420,13 @@ Protontricks: com.github.Matoking.protontricks
 Flatseal: com.github.tchx84.Flatseal
 ```
 
+**ISO bundle policy (Phase 9):** ship only Flatpaks with clear redistribution rights in `installer/flatpaks` (Firefox, Heroic, ProtonPlus). Steam, Brave, and Spotify are Control Centre / Flathub installs — not preinstalled. See `docs/LICENSING.md`.
+
 Cursor must validate every ID against Flathub before committing the manifest.
 
 ## 7.4 Spotify policy
 
-Spotify should be installed through Flatpak.
+Spotify should be installed through Flatpak from Flathub (Control Centre), **not** bundled in the ISO.
 
 The UI and documentation must disclose when the Flatpak is community-maintained rather than officially supported by Spotify.
 
@@ -1605,8 +1611,9 @@ Valve’s published Steam client terms prohibit redistribution or preinstallatio
 Before a public ISO / public GHCR package:
 
 - Keep verifying Steam is absent from image layers (CI/build assertion).
-- Confirm Brave and other bundled Flatpak redistribution notes in `docs/LICENSING.md`.
-- Keep private test packages private until remaining public gates are satisfied.
+- Keep Brave and Spotify **out** of `installer/flatpaks` (Flathub on demand only).
+- Keep Firefox / Heroic / ProtonPlus notices accurate in `docs/LICENSING.md` and `docs/NOTICES.md`.
+- Keep private test packages private until notices, privacy, and support docs are accepted and visibility is flipped intentionally.
 
 This gate does not prevent private development and testing on personally controlled systems.
 
@@ -1620,10 +1627,11 @@ Include a statement similar to:
 
 Have final wording reviewed before release.
 
-## 17.4 ProtonVPN and Spotify disclosures
+## 17.4 ProtonVPN, Brave, and Spotify disclosures
 
 - Mark the Spotify Flatpak appropriately if it is community-maintained.
 - Mark an unofficial ProtonVPN Flatpak as unofficial.
+- Do not bundle Brave or Spotify in the public ISO; prefer Control Centre → Flathub install.
 - Do not use third-party logos in ways their trademark policies prohibit.
 - Prefer user-installed applications over rebundled binaries when rights are unclear.
 
@@ -1954,15 +1962,16 @@ Acceptance:
 
 Deliverables:
 
-- Steam licensing decision (Steam deferred: not shipped; Valve official download from Control Centre).
+- Steam licensing decision (Steam not shipped; Flathub Flatpak from Control Centre).
+- Brave / Spotify not bundled in the ISO (Flathub on demand); Firefox bundled as default browser.
 - Trademark review.
-- Third-party notices.
-- Privacy policy.
-- Support process.
+- Third-party notices (`docs/NOTICES.md`).
+- Privacy policy (`docs/PRIVACY.md`).
+- Support process (`docs/SUPPORT.md`).
 - Download page (planned host: **getarcalium.com** — domain reserved 2026-08-01).
 - Signed stable release.
 
-Steam redistribution is addressed by stripping Steam from the image. Remaining blockers for public distribution are notices, privacy/support docs, Brave/ISO Flatpak checks, and publishing process — not Valve redistribution of a preinstalled client.
+Steam, Brave, and Spotify redistribution is addressed by **not** shipping those clients in the image/ISO. Remaining blockers for public distribution are accepting notices/privacy/support, intentional GHCR visibility, and the download page — not rebundling those clients.
 
 ## Phase 10 — AMD/Intel edition
 
@@ -2188,7 +2197,7 @@ Arcalium OS NVIDIA Edition version 1 is done only when:
 - Vulkan passes.
 - Proton gaming passes.
 - Proton-GE setup works.
-- Spotify provisioning works.
+- Optional Spotify / Brave / Steam installs from Control Centre work when chosen.
 - Bazaar works.
 - ProtonVPN setup works.
 - Storage warnings work.
@@ -2244,6 +2253,6 @@ The following assumptions were verified against current upstream documentation d
 - Btrfs and Ext4 are the intended filesystems for game storage; NTFS and exFAT are not part of the supported gaming-storage path.
 - Secure Boot requires the supported upstream key-enrolment process.
 - ProtonVPN Flatpak support requires clear disclosure because the documented package may be unofficial.
-- Steam redistribution requires separate legal attention before a public Arcalium ISO is distributed.
+- Steam, Brave, and Spotify are not redistributed in the image/ISO; users install them from Flathub via Control Centre. Firefox is the bundled default browser.
 
 Revalidate these assumptions before each major release because upstream images, drivers, workflows and policies change.

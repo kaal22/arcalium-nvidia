@@ -8,15 +8,11 @@
 
 ---
 
-## Where we left off (2026-07-31)
+## Where we left off (2026-08-02)
 
-Phase 0–2 complete on the RTX 3060. Control Centre §9.2 pages are live. **Setup wizard** (`arcalium-setup` / Control Centre `--setup`) is implemented: 14 pages (including optional Local AI install/skip before Finish), per-user progress, Desktop/Kickoff Control Centre first-run opens Setup (no login autostart), Resume/Restart from Settings and the app menu. UI polish still deferred.
+Public-prep docs landed: Firefox bundled / Brave+Spotify+Steam on-demand; notices, privacy, support, recovery, install guide, and draft release notes under `docs/` (see [docs/README.md](README.md)). Code change for Flatpaks is on `main` (`f42ac3d`); **ISO rebuild deferred** until docs review is accepted.
 
-**Next on 3060:** after CI for the setup wizard lands, `sudo bootc upgrade && sudo systemctl reboot`, then:
-
-1. Confirm Control Centre Overview loads.
-2. Open **Arcalium Control Centre** from the Desktop or Kickoff (first open runs Setup) through to Finish; confirm `~/.config/arcalium/setup-complete.json`.
-3. Settings → Restart setup… then Resume, to verify markers.
+**Next:** review `docs/NOTICES.md` / `PRIVACY.md` / `INSTALL.md`, then rebuild `Arcalium-Live-alpha-final.iso` from the Firefox-bundle commit.
 
 **Roles**
 
@@ -167,7 +163,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 |---|---|---|
 | Steam licensing gate | complete | Steam not in image/ISO; Flathub via Control Centre |
 | Brave / Spotify ISO gate | complete | Not bundled; Flathub on demand (Firefox is default browser) |
-| Trademark / notices / privacy | in progress | Drafts in `docs/NOTICES.md` / `PRIVACY.md`; GHCR still private |
+| Trademark / notices / privacy | in progress | Drafts ready for owner review: `docs/NOTICES.md`, `PRIVACY.md`, `SUPPORT.md`, `INSTALL.md`, `RECOVERY.md`, `KNOWN_LIMITATIONS.md`. GHCR still private. |
 | Public download site | not started | Domain reserved: **getarcalium.com** |
 
 ## Phase 10 — AMD/Intel edition
