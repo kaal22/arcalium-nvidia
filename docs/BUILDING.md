@@ -189,6 +189,7 @@ Live-session extras under `installer/system_files/`:
 - Anaconda profile matching Bazzite's `os_id` (without it, Install exits silently)
 - Visible **Install Arcalium OS** launcher (`arcalium-install.sh` → `liveinst --profile bazzite`)
 - Steam and Bazzite announcement autostart disabled for the live session only
+- Control Centre Desktop shortcut removed from the live session (kept in bootc skel for installed users)
 
 There is no autostart welcome dialog — testers open Install from the desktop or application menu. The previous popup framed the live session as a "test environment" and was removed once the stock desktop launcher proved reliable.
 
@@ -408,7 +409,7 @@ Setup wizard shares this codebase (`arcalium-control-centre --setup` / `arcalium
 - Progress: `~/.config/arcalium/setup-progress.json`; completion: `setup-complete.json`; prefs: `setup-prefs.json` (`showOnStartup` = open Setup from Control Centre until finished) (PRODUCT_SPEC §8.2).
 - CLI: `arcaliumctl setup status|save|mark|complete|reset|set-autostart on|off --json`.
 - 14 steps (§8.3): optional **Local AI** (`localAi`) sits after Validation and before Finish — Install Ollama / Pull model / Skip / Continue.
-- **No login autostart.** New users get `~/Desktop/arcalium-control-centre.desktop` (from skel). Kickoff and that icon run `arcalium-control-centre-launch`, which opens Setup while incomplete (and `showOnStartup` is true), otherwise Control Centre. Live ISO always opens Control Centre.
+- **No login autostart.** New *installed* users get `~/Desktop/arcalium-control-centre.desktop` (from bootc image skel). Kickoff and that icon run `arcalium-control-centre-launch`, which opens Setup while incomplete (and `showOnStartup` is true), otherwise Control Centre. The live ISO payload removes that Desktop shortcut (`installer/build.sh`) so the live session stays Install-focused; live Kickoff can still open Control Centre (always as CC, not Setup).
 - Menu: `io.arcalium.Setup.desktop` / `arcalium-setup` always opens the wizard (Resume).
 - Control Centre → Settings: **Open Setup from Control Centre** toggle, Resume / Restart setup (restart confirms then `setup reset`, which re-enables the Control Centre → Setup prompt).
 - Privileged policy matches Control Centre: user Flatpak installs OK; `bootc` apply and VPN secret import are guidance only; no disk formatting.

@@ -184,6 +184,10 @@ EOF
 ### Live session: installer-focused, not a gaming desktop
 # Steam and Bazzite announcements belong on the installed system, not the live ISO.
 rm -f /etc/skel/.config/autostart/steam.desktop
+# Control Centre Desktop shortcut is for installed users (skel in the bootc
+# image). Drop it from the live payload so the live desktop only shows Install.
+rm -f /etc/skel/Desktop/arcalium-control-centre.desktop
+rm -f /home/liveuser/Desktop/arcalium-control-centre.desktop
 if [[ -f /etc/xdg/autostart/bazzite-announcement.desktop ]]; then
     sed -i \
         -e 's/^X-GNOME-Autostart-enabled=.*/X-GNOME-Autostart-enabled=false/' \
