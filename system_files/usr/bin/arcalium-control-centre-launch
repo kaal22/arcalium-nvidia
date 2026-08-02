@@ -1,0 +1,46 @@
+#!/usr/bin/bash
+# Control Centre entry point: first-run opens Setup until the user finishes
+# (or turns off "Open Setup from Control Centre" in Settings). Live ISO always
+# opens Control Centre.
+set -euo pipefail
+
+export __NV_DISABLE_EXPLICIT_SYNC="${__NV_DISABLE_EXPLICIT_SYNC:-1}"
+
+is_live() {
+  if grep -Eq '(^|[[:space:]])(rd\.live|boot=live|liveimg|rd\.live\.image)(=|[[:space:]]|$)' /proc/cmdline 2>/dev/null; then
+    return 0
+  fi
+  if [[ "${USER:-}" == "liveuser" || "${USER:-}" == "anaconda" ]]; then
+    return 0
+  fi
+  if [[ -d /run/anaconda || -f /etc/anaconda-release ]]; then
+    return 0
+  fi
+  return 1
+}
+
+setup_completed() {
+  local complete="${HOME}/.config/arcalium/setup-complete.json"
+  [[ -f "${complete}" ]] \
+    && grep -q '"completed"[[:space:]]*:[[:space:]]*true' "${complete}" 2>/dev/null
+}
+
+open_setup_from_cc() {
+  local prefs="${HOME}/.config/arcalium/setup-prefs.json"
+  # Default while incomplete: open Setup. Explicit false opts out.
+  if [[ -f "${prefs}" ]] \
+    && grep -Eq '"showOnStartup"[[:space:]]*:[[:space:]]*false' "${prefs}" 2>/dev/null; then
+    return 1
+  fi
+  return 0
+}
+
+if is_live; then
+  exec arcalium-control-centre "$@"
+fi
+
+if ! setup_completed && open_setup_from_cc; then
+  exec arcalium-setup
+fi
+
+exec arcalium-control-centre "$@"

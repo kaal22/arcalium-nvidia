@@ -128,6 +128,11 @@ chmod 0755 /usr/libexec/arcalium-migrate-hostname
 chmod 0755 /usr/bin/arcaliumctl
 chmod 0755 /usr/bin/arcalium-heroic
 chmod 0755 /usr/bin/arcalium-setup
+chmod 0755 /usr/bin/arcalium-control-centre-launch
+# Plasma treats executable .desktop files on ~/Desktop as trusted launchers.
+if [[ -f /etc/skel/Desktop/arcalium-control-centre.desktop ]]; then
+    chmod 0755 /etc/skel/Desktop/arcalium-control-centre.desktop
+fi
 chmod 0755 /usr/bin/bazzite-steam
 chmod 0755 /usr/bin/bazzite-steam-firstrun
 chmod 0755 /usr/bin/bazzite-steam-bpm

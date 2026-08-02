@@ -10,12 +10,12 @@
 
 ## Where we left off (2026-07-31)
 
-Phase 0–2 complete on the RTX 3060. Control Centre §9.2 pages are live. **Setup wizard** (`arcalium-setup` / Control Centre `--setup`) is implemented: 14 pages (including optional Local AI install/skip before Finish), per-user progress, autostart for incomplete users, Resume/Restart from Settings and the app menu. UI polish still deferred.
+Phase 0–2 complete on the RTX 3060. Control Centre §9.2 pages are live. **Setup wizard** (`arcalium-setup` / Control Centre `--setup`) is implemented: 14 pages (including optional Local AI install/skip before Finish), per-user progress, Desktop/Kickoff Control Centre first-run opens Setup (no login autostart), Resume/Restart from Settings and the app menu. UI polish still deferred.
 
 **Next on 3060:** after CI for the setup wizard lands, `sudo bootc upgrade && sudo systemctl reboot`, then:
 
 1. Confirm Control Centre Overview loads.
-2. Run **Arcalium Setup** (autostart or Kickoff) through to Finish; confirm `~/.config/arcalium/setup-complete.json`.
+2. Open **Arcalium Control Centre** from the Desktop or Kickoff (first open runs Setup) through to Finish; confirm `~/.config/arcalium/setup-complete.json`.
 3. Settings → Restart setup… then Resume, to verify markers.
 
 **Roles**
@@ -122,7 +122,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 
 | Requirement | Status | Notes |
 |---|---|---|
-| First-run service + resume state | in progress | Per-user markers under `~/.config/arcalium/`; `arcaliumctl setup status/save/mark/complete/reset/set-autostart`; prefs `setup-prefs.json` (`showOnStartup`); autostart waits for Plasma Welcome / Bazzite Portal then opens if incomplete + showOnStartup; Settings toggle + Resume/Restart |
+| First-run service + resume state | in progress | Per-user markers under `~/.config/arcalium/`; `arcaliumctl setup status/save/mark/complete/reset/set-autostart`; prefs `setup-prefs.json` (`showOnStartup`); no login autostart — Desktop/Kickoff Control Centre via `arcalium-control-centre-launch` opens Setup until finished; Settings toggle + Resume/Restart; menu `io.arcalium.Setup` |
 | Wizard pages (hardware → completion) | in progress | Shared Control Centre binary `--setup` mode; 14 pages per §8.3 including optional `localAi` (Install Ollama / Pull model / Skip) before Finish. Updates/VPN secrets/format stay guidance-only (same 2B policy as Control Centre). |
 
 ## Phase 4 — Application provisioning

@@ -3,14 +3,12 @@ Type=Application
 Version=1.0
 Name=Arcalium Control Centre
 GenericName=System Control Centre
-Comment=Hardware status, gaming setup and Arcalium diagnostics (first launch opens Setup until finished)
+Comment=Hardware status, gaming setup and Arcalium diagnostics (first launch opens Setup)
 Exec=env __NV_DISABLE_EXPLICIT_SYNC=1 arcalium-control-centre-launch
 Icon=io.arcalium.ControlCentre
 Terminal=false
 Categories=Settings;System;X-Arcalium;
 Keywords=arcalium;gpu;nvidia;steam;diagnostics;setup;
 StartupNotify=true
-# GTK reports the binary name as the Wayland app_id / X11 WM_CLASS. Without this
-# KWin cannot match the window to this entry and shows a generic icon.
 StartupWMClass=arcalium-control-centre
 X-GNOME-UsesNotifications=false

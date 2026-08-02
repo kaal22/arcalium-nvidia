@@ -69,7 +69,7 @@ def _default_steps() -> dict[str, str]:
 
 
 def _default_prefs(*, completed: bool) -> dict[str, Any]:
-    # Incomplete installs show on startup until finished or the user opts out.
+    # Incomplete installs open Setup from Control Centre until finished or opted out.
     return {
         "schemaVersion": 1,
         "schema": "arcalium.setup.prefs/v1",
@@ -159,16 +159,22 @@ def status() -> dict[str, Any]:
         "completePath": str(complete_path()),
         "prefsPath": str(prefs_path()),
         "showOnStartup": show_on_startup,
+        # Legacy name: means "open Setup when launching Control Centre", not login autostart.
         "shouldAutostart": (not live) and show_on_startup and (not completed),
         "stepIds": list(STEP_IDS),
         "desktopFirstRun": {
             "note": (
-                "First boot may show Plasma Welcome (then restart). Autostart opens "
-                "Arcalium Setup on login when Welcome is not running. Completion is "
-                "detected via ShouldShow=false or LastSeenVersion in plasma-welcomerc "
-                "(Plasma often omits ShouldShow). Resume from the menu is not gated."
+                "No login autostart. New users get a Desktop Control Centre icon; "
+                "Kickoff and that launcher open Setup until setup-complete.json is "
+                "written (or showOnStartup is false). Plasma Welcome is independent. "
+                "Menu Resume (io.arcalium.Setup) always opens the wizard."
             ),
-            "waitsFor": ["plasma-welcome not running", "plasma-welcomerc LastSeenVersion|ShouldShow=false"],
+            "waitsFor": [],
+            "entryPoints": [
+                "Desktop/arcalium-control-centre.desktop",
+                "io.arcalium.ControlCentre.desktop",
+                "io.arcalium.Setup.desktop",
+            ],
         },
     }
 
@@ -239,7 +245,7 @@ def complete(*, steps: dict[str, Any] | None = None) -> dict[str, Any]:
         progress_path().unlink(missing_ok=True)
     except OSError:
         pass
-    # Finishing setup turns off login autostart; Settings can re-enable it.
+    # Finishing setup stops Control Centre from re-opening the wizard.
     _atomic_write(
         prefs_path(),
         {
@@ -268,7 +274,7 @@ def reset() -> dict[str, Any]:
                 removed.append(str(path))
         except OSError as exc:
             raise SetupError(ARC_CMD_003, f"Could not remove {path}: {exc}") from exc
-    # Restarting setup re-enables login autostart.
+    # Restarting setup makes Control Centre open the wizard again.
     _atomic_write(
         prefs_path(),
         {
@@ -311,8 +317,8 @@ def human_status(data: dict[str, Any]) -> list[str]:
     return [
         f"Completed:       {data.get('completed')}",
         f"Live:            {data.get('liveSession')}",
-        f"Show on startup: {data.get('showOnStartup')}",
-        f"Will autostart:  {data.get('shouldAutostart')}",
+        f"Open Setup via CC: {data.get('showOnStartup')}",
+        f"Will open Setup:   {data.get('shouldAutostart')}",
         f"Current:         {data.get('currentStep')}",
         f"Image:           {data.get('imageVersion')}",
     ]

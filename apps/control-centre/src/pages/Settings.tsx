@@ -17,7 +17,7 @@ export function SettingsPage({
   const [setup, setSetup] = useState<JsonValue | null>(null);
   const [setupMsg, setSetupMsg] = useState<string | null>(null);
   const [setupErr, setSetupErr] = useState<string | null>(null);
-  const [busyAutostart, setBusyAutostart] = useState(false);
+  const [busyPrompt, setBusyPrompt] = useState(false);
 
   const refreshSetup = async () => {
     const st = await arcaliumctl(["setup", "status", "--json"]);
@@ -40,7 +40,7 @@ export function SettingsPage({
   }, [currentPage, remember]);
 
   const setupCompleted = setup ? Boolean(pick(setup, "completed")) : null;
-  const showOnStartup = setup ? Boolean(pick(setup, "showOnStartup")) : true;
+  const openSetupFromCc = setup ? Boolean(pick(setup, "showOnStartup")) : true;
 
   return (
     <div className="page">
@@ -88,11 +88,11 @@ export function SettingsPage({
         <label className="check-row" style={{ marginTop: "0.75rem" }}>
           <input
             type="checkbox"
-            checked={showOnStartup}
-            disabled={busyAutostart || setup === null}
+            checked={openSetupFromCc}
+            disabled={busyPrompt || setup === null}
             onChange={(e) => {
               const on = e.target.checked;
-              setBusyAutostart(true);
+              setBusyPrompt(true);
               setSetupErr(null);
               setSetupMsg(null);
               void (async () => {
@@ -101,24 +101,24 @@ export function SettingsPage({
                   await refreshSetup();
                   setSetupMsg(
                     on
-                      ? "Setup will open on the next login until you finish or turn this off."
-                      : "Setup will not open automatically on login.",
+                      ? "Control Centre will open Setup until you finish or turn this off."
+                      : "Control Centre opens normally; use Resume setup when you want the wizard.",
                   );
                 } catch (err) {
                   setSetupErr(err instanceof Error ? err.message : String(err));
                 } finally {
-                  setBusyAutostart(false);
+                  setBusyPrompt(false);
                 }
               })();
             }}
           />
-          Show Setup on startup
+          Open Setup from Control Centre
         </label>
         <p className="muted small">
-          Language, keyboard, and timezone come from the installer. First boot may show Plasma
-          Welcome (sometimes before login, then a restart). Arcalium Setup opens on a later login
-          when Welcome is not running — it does not overlay Welcome. Finishing setup turns this
-          toggle off; Restart setup turns it back on. Resume setup from the menu always works.
+          Language, keyboard, and timezone come from the installer. Plasma Welcome may still run on
+          first boot on its own. There is no Setup login popup — use the Desktop or Kickoff Control
+          Centre icon (first open runs Setup until finished). Resume setup from the menu always
+          works. Finishing setup turns this toggle off; Restart setup turns it back on.
         </p>
         {setupMsg && <p className="banner ok">{setupMsg}</p>}
         {setupErr && <p className="banner bad">{setupErr}</p>}
@@ -127,9 +127,7 @@ export function SettingsPage({
             type="button"
             className="btn"
             onClick={() => {
-              // Resume / relaunch uses the dedicated setup launcher.
               void openDesktop("io.arcalium.Setup.desktop").catch(async () => {
-                // Fallback: spawn via Control Centre entry is not enough; tell the user.
                 setSetupErr(
                   "Could not open the Setup launcher. From a terminal: arcalium-setup",
                 );
@@ -144,7 +142,7 @@ export function SettingsPage({
             onClick={async () => {
               if (
                 !window.confirm(
-                  "Restart setup from the beginning? This clears your setup progress marker and turns Show on startup back on.",
+                  "Restart setup from the beginning? This clears your setup progress marker and makes Control Centre open Setup again.",
                 )
               ) {
                 return;
@@ -154,7 +152,9 @@ export function SettingsPage({
               try {
                 await arcaliumctl(["setup", "reset", "--json"]);
                 await refreshSetup();
-                setSetupMsg("Setup progress cleared. Autostart is on again — use Resume setup to start.");
+                setSetupMsg(
+                  "Setup progress cleared. Control Centre will open Setup again — use Resume setup to start.",
+                );
               } catch (e) {
                 setSetupErr(e instanceof Error ? e.message : String(e));
               }
@@ -165,7 +165,7 @@ export function SettingsPage({
         </div>
         {setup ? (
           <p className="muted small" style={{ marginTop: "0.75rem" }}>
-            Will autostart next login:{" "}
+            Opens Setup from Control Centre:{" "}
             <strong>{pick(setup, "shouldAutostart") ? "yes" : "no"}</strong>
             {pick(setup, "liveSession") ? " (live session)" : ""}
             {" · "}

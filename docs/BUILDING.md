@@ -394,7 +394,7 @@ Source: [`apps/control-centre/`](../apps/control-centre/). Tauri 2 + React; app 
 - **Progress feedback:** any backend call sets `body[data-busy]` so the pointer shows `cursor: progress`, and launches hold it briefly because spawning a `.desktop` returns before the window appears. Long downloads run visibly instead: `apps install <id> --visible` and `ai install-ollama|ensure --visible` open a terminal (`/usr/lib/arcalium/apps/install-session.sh`, `/usr/lib/arcalium/ai/{install,ensure}-session.sh`) via the shared `ctl/terminal.py` launcher, and the page polls status until the work lands. Without `--visible` the same commands stay silent for scripting.
 - **Updates and Recovery:** `updates check|apply|rollback|reboot` open `/usr/lib/arcalium/updates/session.sh` in a terminal so `sudo bootc …` can prompt for a password and show progress (Control Centre never runs privileged bootc silently). Apply/rollback require typing `yes` in the terminal before continuing. Diagnostics can write a redacted bundle under `~/.local/state/arcalium/`. Local AI launches a safe-agent terminal session (does not keep the model warm after close). Quick actions launch allowlisted `.desktop` files via `gio launch` (fallback `gtk-launch` / `kioclient exec`) — never `xdg-open` on the path.
 - Local iteration: `just build-control-centre` (WSL + Podman) extracts artifacts to `output/control-centre/`.
-- Desktop entry: `io.arcalium.ControlCentre.desktop`; in Kickoff favorites for new Plasma users, deliberately not pinned to the panel (its icon is the Arcalium mark and would duplicate the launcher button).
+- Desktop entry: `io.arcalium.ControlCentre.desktop` → `arcalium-control-centre-launch` (Setup until finished); skel Desktop icon for new users; in Kickoff favorites, deliberately not pinned to the panel (its icon is the Arcalium mark and would duplicate the launcher button).
 - **Window icon:** we build with `--no-bundle`, so `bundle.icon` in `tauri.conf.json` is only consumed by bundlers and never reaches the running window — the window showed the toolkit's default mark instead. Two fixes are needed because the two display servers source the icon differently:
   - X11 reads `_NET_WM_ICON`, so `lib.rs` calls `window.set_icon()` with `include_bytes!("../icons/256x256.png")` (requires the `image-png` feature on the `tauri` crate). `apps/control-centre/build.sh` generates those PNGs from `assets/arccleanSVG.svg` before cargo runs, so the include always resolves.
   - Wayland has no per-window icon protocol in GTK3, so KWin takes the icon from the `.desktop` file it matches by `app_id`. GTK reports the program name (`arcalium-control-centre`), which does not match `io.arcalium.ControlCentre.desktop`, hence `StartupWMClass=arcalium-control-centre` in the entry. To confirm the value on a live machine, run `qdbus6 org.kde.KWin /KWin org.kde.KWin.queryWindowInfo` and click the window; `resourceClass` must equal `StartupWMClass`.
@@ -405,12 +405,12 @@ Setup wizard shares this codebase (`arcalium-control-centre --setup` / `arcalium
 
 ### Setup wizard
 
-- Progress: `~/.config/arcalium/setup-progress.json`; completion: `setup-complete.json`; prefs: `setup-prefs.json` (`showOnStartup`) (PRODUCT_SPEC §8.2).
+- Progress: `~/.config/arcalium/setup-progress.json`; completion: `setup-complete.json`; prefs: `setup-prefs.json` (`showOnStartup` = open Setup from Control Centre until finished) (PRODUCT_SPEC §8.2).
 - CLI: `arcaliumctl setup status|save|mark|complete|reset|set-autostart on|off --json`.
 - 14 steps (§8.3): optional **Local AI** (`localAi`) sits after Validation and before Finish — Install Ollama / Pull model / Skip / Continue.
-- Autostart: `/etc/xdg/autostart/arcalium-setup.desktop` and skel copy call `arcalium-setup --autostart`. Skips live ISO, completed users, and `showOnStartup: false`. **Does not open while Plasma Welcome / Portal is running.** Treats Welcome as already done if `plasma-welcomerc` has `ShouldShow=false` **or** `LastSeenVersion` (Plasma 6 often never writes ShouldShow). If Welcome never appears after login (~25s), Setup opens anyway (covers Welcome-before-login + reboot). Kickoff **Resume setup** bypasses the gate.
-- Menu: `io.arcalium.Setup.desktop` always opens the wizard (Resume) without waiting.
-- Control Centre → Settings: **Show Setup on startup** toggle, Resume / Restart setup (restart confirms then `setup reset`, which re-enables autostart).
+- **No login autostart.** New users get `~/Desktop/arcalium-control-centre.desktop` (from skel). Kickoff and that icon run `arcalium-control-centre-launch`, which opens Setup while incomplete (and `showOnStartup` is true), otherwise Control Centre. Live ISO always opens Control Centre.
+- Menu: `io.arcalium.Setup.desktop` / `arcalium-setup` always opens the wizard (Resume).
+- Control Centre → Settings: **Open Setup from Control Centre** toggle, Resume / Restart setup (restart confirms then `setup reset`, which re-enables the Control Centre → Setup prompt).
 - Privileged policy matches Control Centre: user Flatpak installs OK; `bootc` apply and VPN secret import are guidance only; no disk formatting.
 
 ### Install time and the deploy step

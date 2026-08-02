@@ -4,10 +4,10 @@ Tauri 2 + React + TypeScript app (`io.arcalium.ControlCentre`).
 
 ## Modes
 
-- **Control Centre** (default) — all §9.2 pages
+- **Control Centre** (default) — all §9.2 pages; `arcalium-control-centre-launch` opens Setup first while incomplete
 - **Setup wizard** — `arcalium-control-centre --setup` or `arcalium-setup`
 
-Autostart: `arcalium-setup --autostart` (skips live installer and completed users).
+No login autostart. Desktop + Kickoff Control Centre use the launch router.
 Resume / restart: Kickoff → **Arcalium Setup**, or Settings → Setup wizard.
 
 ## Pages
@@ -36,9 +36,9 @@ Catalogue source: `config/catalogue/apps.v1.json` → `/usr/share/arcalium/catal
 
 Setup progress: `~/.config/arcalium/setup-progress.json`  
 Setup complete: `~/.config/arcalium/setup-complete.json`  
-Setup prefs: `~/.config/arcalium/setup-prefs.json` (`showOnStartup`)  
+Setup prefs: `~/.config/arcalium/setup-prefs.json` (`showOnStartup` = open Setup from Control Centre)
 
-Settings: **Show Setup on startup** toggle + Resume / Restart. Autostart waits for Plasma Welcome / Bazzite Portal.
+Settings: **Open Setup from Control Centre** toggle + Resume / Restart.
 
 **Deferred:** UI polish after Setup wizard and Control Centre pages are solid.
 

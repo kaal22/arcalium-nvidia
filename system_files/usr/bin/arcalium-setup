@@ -1,25 +1,9 @@
 #!/usr/bin/bash
 # Launch the Arcalium first-run setup wizard (Control Centre --setup).
-# Skips the live installer environment. Always launches when invoked from the
-# application menu (Resume / Restart); autostart uses --autostart so completed
-# users and users who disabled "Show on startup" are left alone.
-#
-# First-boot order on this image:
-#   1. Plasma Welcome on first boot (often before / outside a normal login)
-#   2. System may restart
-#   3. User logs in → Arcalium Setup should open
-#
-# Do NOT require ShouldShow=false alone — Plasma 6 often only writes
-# LastSeenVersion and never ShouldShow (KDE bugs). Never overlay Welcome:
-# if Welcome is running this session, exit and try again on a later login.
+# Skips the live installer environment. Always opens when invoked from the
+# application menu (Resume) or from arcalium-control-centre-launch when setup
+# is incomplete. There is no login autostart.
 set -euo pipefail
-
-AUTOSTART=0
-for arg in "$@"; do
-  if [[ "${arg}" == "--autostart" ]]; then
-    AUTOSTART=1
-  fi
-done
 
 if grep -Eq '(^|[[:space:]])(rd\.live|boot=live|liveimg|rd\.live\.image)(=|[[:space:]]|$)' /proc/cmdline 2>/dev/null; then
   exit 0
@@ -31,82 +15,12 @@ if [[ -d /run/anaconda || -f /etc/anaconda-release ]]; then
   exit 0
 fi
 
-CONFIG_DIR="${HOME}/.config/arcalium"
-COMPLETE="${CONFIG_DIR}/setup-complete.json"
-PREFS="${CONFIG_DIR}/setup-prefs.json"
-WELCOME_RC="${HOME}/.config/plasma-welcomerc"
-
 # Drop Bazzite's silent Steam autostart when no Steam client is present (skel
 # copy may already exist on upgraded accounts).
 if [[ ! -x /usr/bin/steam ]]; then
   rm -f "${HOME}/.config/autostart/steam.desktop"
 fi
 
-desktop_first_run_running() {
-  pgrep -f \
-    'plasma-welcome|org\.kde\.plasma-welcome|/usr/bin/plasma-welcome|plasma\.welcome|yafti|yafti-gtk|bazzite-portal|bazzite-welcome' \
-    >/dev/null 2>&1
-}
-
-# Welcome has been through at least once (finished or skipped). Plasma 6 may
-# only set LastSeenVersion and omit ShouldShow=false.
-plasma_welcome_seen() {
-  [[ -f "${WELCOME_RC}" ]] || return 1
-  if grep -Eqi '^[[:space:]]*ShouldShow[[:space:]]*=[[:space:]]*false[[:space:]]*$' "${WELCOME_RC}" 2>/dev/null; then
-    return 0
-  fi
-  if grep -Eqi '^[[:space:]]*LastSeenVersion[[:space:]]*=' "${WELCOME_RC}" 2>/dev/null; then
-    return 0
-  fi
-  return 1
-}
-
-if [[ "${AUTOSTART}" -eq 1 ]]; then
-  if [[ -f "${COMPLETE}" ]] \
-    && grep -q '"completed"[[:space:]]*:[[:space:]]*true' "${COMPLETE}" 2>/dev/null; then
-    exit 0
-  fi
-  if [[ -f "${PREFS}" ]] \
-    && grep -Eq '"showOnStartup"[[:space:]]*:[[:space:]]*false' "${PREFS}" 2>/dev/null; then
-    exit 0
-  fi
-
-  # Wait for a graphical user session (post-login).
-  for _ in $(seq 1 60); do
-    if [[ -n "${WAYLAND_DISPLAY:-}" || -n "${DISPLAY:-}" ]]; then
-      break
-    fi
-    sleep 1
-  done
-  sleep 2
-
-  # Welcome is on screen this session — do not overlay; next login after it
-  # finishes / reboots will open Setup.
-  if desktop_first_run_running; then
-    exit 0
-  fi
-
-  # Short window for Welcome to start after login (same-session race).
-  # If it appears, leave this login alone.
-  if ! plasma_welcome_seen; then
-    appear_deadline=$((SECONDS + 25))
-    while (( SECONDS < appear_deadline )); do
-      if desktop_first_run_running; then
-        exit 0
-      fi
-      if plasma_welcome_seen; then
-        break
-      fi
-      sleep 1
-    done
-    if desktop_first_run_running; then
-      exit 0
-    fi
-  fi
-
-  # Welcome already finished (or ran before this login / never shows here).
-  # Open Setup.
-fi
-
+# Ignore legacy --autostart from older desktop entries / docs.
 export __NV_DISABLE_EXPLICIT_SYNC="${__NV_DISABLE_EXPLICIT_SYNC:-1}"
 exec arcalium-control-centre --setup
