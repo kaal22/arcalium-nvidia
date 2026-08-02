@@ -4,9 +4,9 @@
 # application menu (Resume / Restart); autostart uses --autostart so completed
 # users and users who disabled "Show on startup" are left alone.
 #
-# Autostart must NOT race Plasma Welcome / Bazzite Portal: those handle Wi‑Fi
-# and desktop first-run. We wait until they have had time to start, then until
-# they exit (or Welcome marks itself done), then open Arcalium Setup.
+# Plasma Welcome / Wi‑Fi runs before login on this image. Autostart therefore
+# opens promptly after the user session is up. If Welcome/Portal is still
+# running in this session (rare), wait for it to exit first.
 set -euo pipefail
 
 AUTOSTART=0
@@ -29,7 +29,6 @@ fi
 CONFIG_DIR="${HOME}/.config/arcalium"
 COMPLETE="${CONFIG_DIR}/setup-complete.json"
 PREFS="${CONFIG_DIR}/setup-prefs.json"
-WELCOME_RC="${HOME}/.config/plasma-welcomerc"
 
 # Drop Bazzite's silent Steam autostart when no Steam client is present (skel
 # copy may already exist on upgraded accounts).
@@ -44,11 +43,6 @@ desktop_first_run_running() {
     >/dev/null 2>&1
 }
 
-plasma_welcome_done() {
-  [[ -f "${WELCOME_RC}" ]] || return 1
-  grep -Eqi '^[[:space:]]*ShouldShow[[:space:]]*=[[:space:]]*false[[:space:]]*$' "${WELCOME_RC}" 2>/dev/null
-}
-
 if [[ "${AUTOSTART}" -eq 1 ]]; then
   if [[ -f "${COMPLETE}" ]] \
     && grep -q '"completed"[[:space:]]*:[[:space:]]*true' "${COMPLETE}" 2>/dev/null; then
@@ -60,41 +54,27 @@ if [[ "${AUTOSTART}" -eq 1 ]]; then
   fi
 
   # Wait briefly for a graphical session to exist.
-  for _ in $(seq 1 90); do
+  for _ in $(seq 1 60); do
     if [[ -n "${WAYLAND_DISPLAY:-}" || -n "${DISPLAY:-}" ]]; then
       break
     fi
     sleep 1
   done
 
-  # Phase 1: give Plasma Welcome / Portal time to appear (do not race ahead).
-  # Fresh sessions often take well over 8s before Welcome is visible.
-  seen=0
-  appear_deadline=$((SECONDS + 180))
-  while (( SECONDS < appear_deadline )); do
-    if desktop_first_run_running; then
-      seen=1
-      break
-    fi
-    if plasma_welcome_done; then
-      # Welcome already finished on a prior login; do not block forever.
-      seen=0
-      break
-    fi
-    sleep 2
-  done
+  # Short settle so the desktop and any leftover first-run UI can start.
+  # Do not wait minutes for Welcome to appear — it runs before login.
+  sleep 3
 
-  # Phase 2: if a first-run UI is up, wait until it exits (user may set Wi‑Fi).
+  # If Welcome/Portal is still running in this login session, wait for it.
   # Cap at 45 minutes so a hung Welcome cannot block Setup forever.
-  if (( seen )) || desktop_first_run_running; then
+  if desktop_first_run_running; then
     run_deadline=$((SECONDS + 2700))
     while (( SECONDS < run_deadline )); do
       if desktop_first_run_running; then
         sleep 2
         continue
       fi
-      # Brief settle so Welcome can write plasma-welcomerc before we open.
-      sleep 3
+      sleep 2
       if desktop_first_run_running; then
         continue
       fi
