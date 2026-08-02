@@ -10,7 +10,7 @@ ISOs are **milestone artifacts**, not per-commit ones. A live ISO build is ~6 GB
 |---|---|---|
 | `system_files/`, `build_files/`, `Containerfile` — desktop defaults, taskbar pins, branding, layered packages | `just build` locally, or CI → `bootc upgrade` | No |
 | `installer/` — Anaconda profile, Install launcher, live-session tweaks | live media only | **Yes** |
-| `installer/flatpaks` — bundled apps such as Brave | copied to disk by Anaconda at install time | **Yes** |
+| `installer/flatpaks` — bundled apps (Firefox, Heroic, ProtonPlus) | copied to disk by Anaconda at install time | **Yes** |
 | `disk_config/`, `Justfile` build recipes | whichever build you run | Only if testing that build |
 
 The trap worth remembering: **Flatpaks do not travel with `bootc upgrade`.** Anything in `installer/flatpaks` reaches only machines installed from a rebuilt ISO. On an existing box, `flatpak install` it by hand rather than cutting a new ISO.
@@ -30,7 +30,8 @@ Arcalium is the update source of truth. An installed machine tracks `ghcr.io/kaa
 |---|---|
 | Kernel, NVIDIA driver, Plasma (Bazzite base) | Only when we re-pin the base digest and publish a new Arcalium image |
 | Arcalium branding, pins, wallpaper, Control Centre later | With every Arcalium image push |
-| Brave / Spotify / ProtonPlus / Heroic Flatpaks | Flatpak or Bazaar on the machine; the bundled *set* changes only with a new ISO |
+| Firefox / Heroic / ProtonPlus Flatpaks (bundled) | Flatpak or Bazaar on the machine; the bundled *set* changes only with a new ISO |
+| Brave / Spotify / Steam Flatpaks | Control Centre / Flathub on demand (not in `installer/flatpaks`) |
 | Home directory, Steam library, user settings | Not touched by image updates |
 
 The `Containerfile` pins the base by digest, so the `:stable` tag in the `FROM` line is documentation — the digest is what actually builds. Bazzite moving `:stable` therefore changes nothing here until we act, which is the point: no tester receives a base change nobody reviewed. The trade-off is that **upstream security and driver fixes do not arrive on their own**, so re-pin on a deliberate cadence.
@@ -143,10 +144,10 @@ Keep `disk_config/iso.toml` and `.github/workflows/build-disk.yml` in sync with 
 | Surface | Setting | Reason |
 |---|---|---|
 | GitHub repository | public | Free Actions minutes and artifact storage; spec principle 9 (open maintenance) |
-| GHCR image package | private | Still private during alpha; Steam is no longer shipped in the image (§17.2 deferred). Other public gates (Brave ISO, notices, privacy) remain. |
+| GHCR image package | private | Still private during public-prep; Steam/Brave/Spotify are not shipped in the image/ISO. Notices/privacy drafts are in `docs/`; flip GHCR public only intentionally. |
 | Disk images (ISO/QCOW2) | private artifacts | Downloaded by the maintainer, or built locally |
 
-Making a GHCR package public is irreversible. Do not change the package to public until the Steam licensing gate is resolved.
+Making a GHCR package public is irreversible. Do not change the package to public until notices, privacy, and support docs are accepted.
 
 ## Build disk images (QCOW2 / ISO) — local, preferred
 
@@ -198,8 +199,7 @@ There is no autostart welcome dialog — testers open Install from the desktop o
 Applications for the **installed** system are Flatpaks listed one ref per line in `installer/flatpaks`, following PRODUCT_SPEC §7.3 rather than layering RPMs into the immutable image:
 
 ```
-app/com.brave.Browser/x86_64/stable
-app/com.spotify.Client/x86_64/stable
+app/org.mozilla.firefox/x86_64/stable
 app/com.vysp3r.ProtonPlus/x86_64/stable
 app/com.heroicgameslauncher.hgl/x86_64/stable
 ```
@@ -219,30 +219,30 @@ Verify any new ID on Flathub before committing it — PRODUCT_SPEC principle 4 f
 
 ### Taskbar and default browser
 
-New users get the daily-use bundled apps pinned on the Icon Tasks panel and in Kickoff favorites. Panel order (left → right): Files, Bazaar, Brave, Heroic, Spotify. Steam is **not** pinned by default — it is not shipped in the image; Control Centre installs Valve’s Flatpak from Flathub on demand. Bazzite’s skel Steam autostart and “downloading Steam” firstrun dialog are removed/overridden so first boot does not show a dead install popup. Heroic opens directly; it does not download Proton before launch.
+New users get the daily-use bundled apps pinned on the Icon Tasks panel and in Kickoff favorites. Panel order (left → right): Files, Bazaar, browser (`preferred://browser` → Firefox), Heroic. Steam, Brave, and Spotify are **not** pinned by default — they are Flathub install-on-demand from Control Centre. Bazzite’s skel Steam autostart and “downloading Steam” firstrun dialog are removed/overridden so first boot does not show a dead install popup. Heroic opens directly; it does not download Proton before launch.
 
 Two deliberate absences from the panel:
 
 - **Control Centre** — its icon is the Arcalium mark, the same artwork as the Kickoff launcher button at the far left, so pinning it placed two identical marks side by side. It stays in Kickoff favorites. If it ever gets its own distinct icon, it can be pinned again.
 - **ProtonPlus** — a setup/utility tool rather than a daily launcher, so Kickoff favorites only.
 
-The ChatGPT Brave web-app launcher was removed entirely (2026-07-31); Brave itself remains the default browser.
+The ChatGPT Brave web-app launcher was removed entirely (2026-07-31). Firefox is the default bundled browser; Brave remains an optional Flathub install.
 
 The pins come from the **panel layout template**, which is the part that trips people up. Plasma runs `/usr/share/plasma/layout-templates/org.kde.plasma.desktop.defaultPanel/contents/layout.js` when it first creates a panel for a new user, and Bazzite patches that file to write its own launcher list. Update scripts under `shells/org.kde.plasma.desktop/contents/updates/` run *after* that and every one of them guards on `launchers` being empty — so by the time they run there is nothing left to do.
 
-We originally shipped `arcalium-pins.js` as an update script and it never had any effect. Fresh installs came up with Bazzite's list, and because `preferred://browser` resolves through our `mimeapps.list` default, Brave appeared pinned while nothing else of ours did. That looked like a partial success and was actually zero.
+We originally shipped `arcalium-pins.js` as an update script and it never had any effect. Fresh installs came up with Bazzite's list, and because `preferred://browser` resolves through our `mimeapps.list` default, the default browser appeared pinned while nothing else of ours did. That looked like a partial success and was actually zero.
 
 - `build_files/patch_panel_pins.py` — rewrites the launcher array in the layout template, and in `bazzite-pins.js` as a defensive second writer. Owns the pin order; it is the only place the list is defined. Fails the build if upstream moves or renames the template.
-- `system_files/etc/xdg/mimeapps.list` — Brave as the default for `http`/`https`/`text/html` (keeps Bazzite's Bazaar `.flatpakref` association)
+- `system_files/etc/xdg/mimeapps.list` — Firefox as the default for `http`/`https`/`text/html` (keeps Bazzite's Bazaar `.flatpakref` association)
 - `system_files/.../kicker-extra-favoritesrc` — the same bundled apps in application-launcher favorites
 
-The browser slot deliberately stays `preferred://browser` rather than naming `com.brave.Browser.desktop`. It is the one entry confirmed to pin correctly on a fresh install, and it follows the user's default browser if they change it.
+The browser slot deliberately stays `preferred://browser` rather than naming `org.mozilla.firefox.desktop`. It is the one entry confirmed to pin correctly on a fresh install, and it follows the user's default browser if they change it.
 
 These live in the **bootc image**, not the live ISO payload, so they reach machines via `just build` + `bootc upgrade`/`switch`, or a fresh ISO install. Only brand-new user profiles get them: the template does not run for a user whose panel already exists, which is intended — PRODUCT_SPEC §11.2 forbids reapplying the desktop layout over a user's own changes.
 
 ### ChatGPT web app
 
-Removed 2026-07-31. The previous Brave `--app=https://chatgpt.com/` launcher (`arcalium-chatgpt.desktop`) is gone from the image, Kickoff favorites and the panel pins. Users open ChatGPT in Brave themselves if they want it.
+Removed 2026-07-31. The previous Brave `--app=https://chatgpt.com/` launcher (`arcalium-chatgpt.desktop`) is gone from the image, Kickoff favorites and the panel pins. Users open ChatGPT in their browser themselves if they want it.
 
 ### Desktop wallpaper
 
@@ -542,6 +542,6 @@ sudo chmod 600 /etc/ostree/auth.json
 
 ## Important gates
 
-- Do not publish a public ISO until remaining licensing gates in `docs/LICENSING.md` are resolved (Steam is deferred / not shipped; Brave and notices remain).
+- Do not publish a public ISO until remaining gates in `docs/LICENSING.md` are accepted (notices/privacy/support; GHCR still private by default).
 - Do not start the Control Centre until the base image and ISO workflow are proven (spec §28).
 - Do not invent Flatpak IDs, `ujust` paths, or bootc flags — verify against upstream first.

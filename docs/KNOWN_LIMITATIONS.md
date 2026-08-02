@@ -1,0 +1,20 @@
+# Known limitations
+
+For Arcalium OS NVIDIA Edition version 1 / private alpha:
+
+- Not every Windows game works on Linux.
+- Some anti-cheat systems block Linux or Proton.
+- Xbox PC Game Pass titles generally cannot be installed locally the way they are on Windows; cloud gaming may be an alternative.
+- NVIDIA Steam Gaming Mode / console session is **not** the version 1 target.
+- HDR and VRR depend on GPU, display, cable, and game.
+- Proton-GE is not automatically better for every game.
+- VPN use can increase latency.
+- NTFS game libraries are unsupported for the intended Bazzite-style gaming workflow.
+- `bootc` rollback restores a previous OS deployment; it does **not** undelete personal files.
+- Community Flatpaks (e.g. Spotify on Flathub) may not be supported by the original vendor.
+- Brave and Spotify are optional Flathub installs — they are not preinstalled.
+- Steam is optional Flathub install — not shipped in the image.
+- Live installer graphics on NVIDIA may need **Basic Graphics Mode** (`nomodeset`); the installed system uses nvidia-open.
+- Arcalium is an independent Bazzite-derived project, not an official Valve, NVIDIA, or Bazzite product.
+
+See also [`docs/PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §25.

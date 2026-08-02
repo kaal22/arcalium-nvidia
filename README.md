@@ -6,15 +6,16 @@ Gaming-first Linux OS for NVIDIA desktops. Built on [Bazzite](https://bazzite.gg
 
 ## Status
 
-**Private alpha / Phase 0.** Spec: [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md). Checklist: [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md). Build guide: [`docs/BUILDING.md`](docs/BUILDING.md).
+**Private alpha / public-prep.** Spec: [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md). Checklist: [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md). Build: [`docs/BUILDING.md`](docs/BUILDING.md). Licensing: [`docs/LICENSING.md`](docs/LICENSING.md). Notices: [`docs/NOTICES.md`](docs/NOTICES.md). Privacy: [`docs/PRIVACY.md`](docs/PRIVACY.md). Support: [`docs/SUPPORT.md`](docs/SUPPORT.md).
 
 | Item | Value |
 |---|---|
 | Image | `arcalium-os-nvidia` |
 | Base | `ghcr.io/ublue-os/bazzite-nvidia-open:stable` |
 | Desktop | KDE Plasma (Wayland) |
-| Channel | `dev` |
-| Test GPUs | RTX 3090, RTX 2060 |
+| Channel | `dev` (GHCR package still private) |
+| Default browser | Firefox (bundled); Brave/Spotify/Steam via Flathub |
+| Test GPU | RTX 3060 12 GB (primary) |
 
 ## Quick start (maintainers)
 
@@ -47,7 +48,7 @@ cosign verify --key cosign.pub ghcr.io/kaal22/arcalium-os-nvidia:dev
 - Not a theme pack or post-install script collection
 - Not a full Bazzite fork
 - Not Steam Gaming Mode / console session (v1)
-- Not a public release until licensing gates pass
+- Not a public release until you intentionally publish (GHCR still private; see `docs/LICENSING.md`)
 
 ## Repository layout
 

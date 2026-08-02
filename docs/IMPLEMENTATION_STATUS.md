@@ -57,7 +57,7 @@ Phase 0–2 complete on the RTX 3060. Control Centre §9.2 pages are live. **Set
 4. ~~Rebuild ISO at the next milestone~~ — done 2026-07-30 evening from `89b31ba`. Carries the progress-window race fix, the bundled Flatpaks and the branding. **Next: install it on the 3060** and confirm the taskbar pins, default browser, wallpaper, application-menu mark and splash wordmark all appear for the new user created during setup.
    - **ISO rebuild pending (deliberately batched, 2026-07-30).** The Heroic bundle is an app-set change and so an ISO trigger, but it was batched rather than cut immediately. The next ISO must cover: Heroic Flatpak + pin, the initramfs Plymouth watermark, the plasmalogin login wallpaper, and the hostname/Konsole welcome. Until then Heroic reaches existing machines only via `flatpak install`.
 5. Branding — Plymouth watermark now lands in the **initramfs** (boot splash was still Bazzite because Plymouth boots from initrd and shuts down from `/usr`); login greeter wallpaper now goes through `plasmalogin` `defaults.conf` (Plasma 6.7 replaced SDDM, so `kscreenlockerrc` alone never reached the login screen). Remaining: dark-panel mark, first-run wizard.
-6. ~~Decide browser for the installed system~~ — Brave Flatpak + taskbar pin + default-browser (`arcalium-pins.js`, `mimeapps.list`, Kickoff favorites). New ISO installs get all three; the 3060 needs `flatpak install` by hand and a one-time pin (existing Plasma layout is not overwritten).
+6. ~~Decide browser for the installed system~~ — **Firefox** Flatpak bundled + `mimeapps.list` + Kickoff; Brave/Spotify on-demand like Steam (2026-08-02).
 7. ~~**Phase 2 CLI on 3060**~~ — done 2026-07-31: all four `arcaliumctl … --json` commands passed as expected.
 8. ~~**Phase 2 game path**~~ — done 2026-07-31: Steam and Heroic exercised on the 3060 (owner-confirmed). Hardware gate for Control Centre is open; licensing still blocks *public* ISO only.
 9. **Control Centre Overview MVP** — Tauri + React shell; Overview live from `arcaliumctl`; then batched ISO.
@@ -130,7 +130,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 | Requirement | Status | Notes |
 |---|---|---|
 | Declarative app catalogue | not started | Flatpak IDs must be re-validated on Flathub before commit |
-| Spotify / ProtonPlus / optional launchers | in progress | Spotify, ProtonPlus and Heroic bundled and pinned. **Lutris dropped** (2026-07-31) — Heroic is the non-Steam launcher. Bottles and Prism Launcher from PRODUCT_SPEC §game-launchers still unbundled. Setup UI, retry/uninstall and Spotify community-package disclosure UI remain |
+| Spotify / ProtonPlus / optional launchers | in progress | **ISO bundles** Firefox, ProtonPlus, Heroic. **On-demand:** Brave, Spotify, Steam (Flathub via Control Centre). Lutris dropped. |
 
 ## Phase 5 — Proton-GE
 
@@ -156,16 +156,19 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 
 | Requirement | Status | Notes |
 |---|---|---|
-| `0.1.0-alpha.1` signed image + ISO + QCOW2 | not started | |
+| `0.1.0-alpha.1` signed image + ISO + QCOW2 | in progress | Draft release notes in `docs/RELEASE_NOTES_0.1.0-alpha.1.md`; tag/checksums when ready |
 | Hardware matrix (RTX 3090 + 2× RTX 2060) | deferred | Primary alpha hardware is RTX **3060 12 GB**; original matrix optional if those GPUs appear |
+| Notices / privacy / support / recovery | in progress | `docs/NOTICES.md`, `PRIVACY.md`, `SUPPORT.md`, `RECOVERY.md`, `KNOWN_LIMITATIONS.md` |
+| Brave / Spotify ISO redistribution | complete | Removed from `installer/flatpaks`; Firefox bundled instead; Brave/Spotify Flathub on demand |
 
 ## Phase 9 — Public-release preparation
 
 | Requirement | Status | Notes |
 |---|---|---|
-| Steam licensing gate | in progress | Steam **removed** from image at build; Control Centre / `arcaliumctl steam install --visible` pulls Flathub Flatpak (agreement on first Steam launch). Verify on next image build; GHCR stays private until other public gates clear. |
-| Trademark / notices / privacy | not started | |
-| Public download site | not started | Domain reserved: **getarcalium.com** (ISO / download page when public gates clear) |
+| Steam licensing gate | complete | Steam not in image/ISO; Flathub via Control Centre |
+| Brave / Spotify ISO gate | complete | Not bundled; Flathub on demand (Firefox is default browser) |
+| Trademark / notices / privacy | in progress | Drafts in `docs/NOTICES.md` / `PRIVACY.md`; GHCR still private |
+| Public download site | not started | Domain reserved: **getarcalium.com** |
 
 ## Phase 10 — AMD/Intel edition
 
@@ -284,7 +287,7 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 1. ~~**`SIGNING_SECRET`:**~~ Set 2026-07-30 via `gh secret set`. Never commit `cosign.key`.
 2. **Bootc Image Builder ISO (`just build-iso`):** Cannot produce an Anaconda ISO from this base ([BIB #1188](https://github.com/osbuild/bootc-image-builder/issues/1188)). Use `just build-iso-live` instead. The `installer/` payload layer is implemented.
 3. **CI disk builds vs private package:** `osbuild/bootc-image-builder-action` documents no authentication or pull-secret input, so `build-disk.yml` cannot pull the private `arcalium-os-nvidia` package. Upstream interface unconfirmed — not worked around. Disk images are built locally instead.
-4. **Steam redistribution:** Image strips Steam at build; Control Centre pulls Valve’s Flathub Flatpak on demand. Public ISO still waits on remaining LICENSING gates (Brave, notices, privacy), not Steam preinstall.
+4. **Steam / Brave / Spotify:** not in the ISO; Flathub via Control Centre. Firefox is the bundled default browser. Public release still waits on intentional GHCR visibility after notices/privacy acceptance.
 
 Resolved: local build host — WSL2 Ubuntu 24.04 on the Windows workstation runs Podman with working loop devices, and has produced both an image and a QCOW2. See `docs/BUILDING.md`.
 

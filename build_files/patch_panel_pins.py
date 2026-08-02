@@ -6,7 +6,7 @@ Plasma first creates the panel. Update scripts under shells/.../updates/ run
 afterwards and all guard on `launchers` being empty, so by the time they run the
 template has already filled it in and they do nothing. Shipping our own update
 script therefore had no effect: fresh installs came up with Bazzite's list, with
-`preferred://browser` resolving to Brave and none of our bundled apps present.
+`preferred://browser` resolving to Firefox and none of our bundled apps present.
 
 Every writer of the list is patched so the value cannot depend on ordering.
 """
@@ -19,7 +19,7 @@ import sys
 
 # The order here is the left-to-right order of the pins.
 #
-# The browser slot stays `preferred://browser` rather than naming Brave's
+# The browser slot stays `preferred://browser` rather than naming Firefox's
 # desktop file. It resolves through our mimeapps.list default and is the one
 # entry already confirmed to pin correctly on a fresh install.
 #
@@ -30,12 +30,14 @@ import sys
 #
 # ProtonPlus is also absent from the panel: it is a setup/utility tool, not a
 # daily launcher, so it belongs in Kickoff favourites rather than Icon Tasks.
+#
+# Brave and Spotify are not pinned: they are Flathub install-on-demand (like
+# Steam), not bundled in the ISO.
 LAUNCHERS = [
     "preferred://filemanager",
     "applications:io.github.kolunmi.Bazaar.desktop",
     "preferred://browser",
     "applications:com.heroicgameslauncher.hgl.desktop",
-    "applications:com.spotify.Client.desktop",
 ]
 
 # The template is authoritative; the update script is patched defensively so it

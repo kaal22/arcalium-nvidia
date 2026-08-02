@@ -61,7 +61,7 @@
       "desktopId": "com.brave.Browser.desktop",
       "required": false,
       "category": "browser",
-      "licenceNotice": null,
+      "licenceNotice": "Not bundled in the ISO. Install from Flathub via Control Centre (same pattern as Steam).",
       "website": "https://brave.com/",
       "supported": true,
       "roles": ["applications"]
@@ -74,8 +74,21 @@
       "desktopId": "com.spotify.Client.desktop",
       "required": false,
       "category": "media",
-      "licenceNotice": "Community package — not officially supported by Spotify.",
+      "licenceNotice": "Not bundled in the ISO. Community Flatpak — not officially supported by Spotify. Install from Flathub via Control Centre.",
       "website": "https://www.spotify.com/",
+      "supported": true,
+      "roles": ["applications"]
+    },
+    {
+      "id": "firefox",
+      "name": "Firefox",
+      "type": "flatpak",
+      "sourceId": "org.mozilla.firefox",
+      "desktopId": "org.mozilla.firefox.desktop",
+      "required": false,
+      "category": "browser",
+      "licenceNotice": "Bundled in the ISO (MPL-2.0). Default browser for new installs.",
+      "website": "https://www.mozilla.org/firefox/",
       "supported": true,
       "roles": ["applications"]
     },
