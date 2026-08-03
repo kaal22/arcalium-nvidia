@@ -628,9 +628,10 @@ export function WizardApp() {
               </div>
             </dl>
             <p className="muted small" style={{ marginTop: "0.75rem" }}>
-              First pull is roughly 10 GB. Install and pull open a terminal so you can watch live
-              progress; this step refreshes when they finish. Close the assistant terminal before
-              gaming so GPU memory is freed. Chat stays on this PC — no cloud API.
+              First pull is roughly 10 GB. Install and pull open a progress window; this step
+              refreshes when they finish. When ready, a Desktop shortcut is added. Close the
+              assistant window before gaming so GPU memory is freed. Chat stays on this PC — no
+              cloud API.
             </p>
             <div className="btn-row" style={{ marginTop: "0.75rem" }}>
               {!pick(aiStatus, "ollama.available") && (
@@ -700,8 +701,8 @@ export function WizardApp() {
                       if (polled.status) setAiStatus(polled.status);
                       setMsg(
                         polled.ok
-                          ? "Model ready. You can Continue, or Skip if you changed your mind."
-                          : "Still waiting on the download terminal. When the pull finishes, Continue or Refresh.",
+                          ? "Model ready — Desktop shortcut added. You can Continue, or Skip if you changed your mind."
+                          : "Still waiting on the download. When the pull finishes, Continue or Refresh.",
                       );
                     } else {
                       await loadAi();

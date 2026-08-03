@@ -1,0 +1,12 @@
+#!/usr/bin/bash
+# Launch the Arcalium Local AI assistant terminal session.
+# Closing the terminal unloads the model so GPU VRAM is freed for gaming.
+set -euo pipefail
+
+if ! command -v arcaliumctl >/dev/null 2>&1; then
+  echo "arcaliumctl was not found." >&2
+  exit 1
+fi
+
+# Discard JSON noise when launched from a .desktop icon.
+exec arcaliumctl ai launch --json >/dev/null

@@ -41,6 +41,19 @@ else
     echo "WARNING: Control Centre binary missing from /ctx/control-centre/" >&2
 fi
 
+# Local AI Assistant icon — Space Invaders-style pixel face (assets/).
+if [[ -f /ctx/assets/io.arcalium.Assistant.png ]]; then
+    for size in 48 64 128 256; do
+        install -d "/usr/share/icons/hicolor/${size}x${size}/apps"
+        src="/ctx/assets/io.arcalium.Assistant-${size}.png"
+        if [[ ! -f "${src}" ]]; then
+            src="/ctx/assets/io.arcalium.Assistant.png"
+        fi
+        install -Dm0644 "${src}" \
+            "/usr/share/icons/hicolor/${size}x${size}/apps/io.arcalium.Assistant.png"
+    done
+fi
+
 # Primary mark (arccleanSVG) → application menu / distributor icons.
 # Wordmark (ARG_fullSVG) → /usr/share/arcalium for splash and Plymouth.
 # The ctx stage copies build_files/ to /, so siblings of this script are at /ctx.
@@ -135,9 +148,13 @@ chmod 0755 /usr/bin/arcaliumctl
 chmod 0755 /usr/bin/arcalium-heroic
 chmod 0755 /usr/bin/arcalium-setup
 chmod 0755 /usr/bin/arcalium-control-centre-launch
+chmod 0755 /usr/bin/arcalium-assistant
 # Plasma treats executable .desktop files on ~/Desktop as trusted launchers.
 if [[ -f /etc/skel/Desktop/arcalium-control-centre.desktop ]]; then
     chmod 0755 /etc/skel/Desktop/arcalium-control-centre.desktop
+fi
+if [[ -f /usr/share/applications/io.arcalium.Assistant.desktop ]]; then
+    chmod 0644 /usr/share/applications/io.arcalium.Assistant.desktop
 fi
 chmod 0755 /usr/bin/bazzite-steam
 chmod 0755 /usr/bin/bazzite-steam-firstrun

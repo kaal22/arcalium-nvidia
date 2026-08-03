@@ -311,9 +311,10 @@ export function AssistantPage() {
                 </button>
               </div>
               <p className="muted small" style={{ marginTop: "0.75rem" }}>
-                Install and pull open a terminal so you can watch live progress (~10 GB for the first
-                model). Launch opens an agent session that can run allowlisted checks and asks before
-                changes. {str(pick(data, "guidance.note"))}
+                Install and pull open a progress window (~10 GB for the first model). When the model
+                is ready, a Desktop shortcut with the pixel-art invader icon is added for quick
+                launch. Closing the assistant window frees the GPU.{" "}
+                {str(pick(data, "guidance.note"))}
               </p>
             </article>
           </div>

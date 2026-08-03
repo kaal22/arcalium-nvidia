@@ -1,11 +1,9 @@
 # Before next ISO
 
-Do a **full** `just build` (image), then `just build-iso-live`.
+Last alpha live ISO: `Arcalium-Live-alpha-final.iso` on the Desktop  
+Built from `cf0008f` (public-friendly app descriptions + Partition Manager + Ollama brew fix).
 
-ISO-only is not enough. Unshipped image changes since `Arcalium-Live-alpha-final.iso`:
+**Unshipped since that ISO:**
+- Local AI Desktop shortcut after model pull + Space Invaders pixel-art icon
 
-1. **Disk utility** — `kde-partitionmanager` *(in GHCR `fa4162f` — already on bootc)*
-2. **Ollama install** — brew non-zero OK when binary present *(in GHCR `fa4162f`)*
-3. **App catalogue descriptions** — human blurbs for OBS etc.; no Flatpak IDs as card copy *(local, not pushed yet)*
-
-Desktop target: `Arcalium-Live-alpha-final.iso` (via WSL Ubuntu helpers under `tools/`).
+Next rebuild: full `just build` then `just build-iso-live` via WSL Ubuntu (`tools/wsl-cleanup-and-rebuild.sh`).

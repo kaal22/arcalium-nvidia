@@ -83,7 +83,8 @@ fi
 
 echo
 echo "Done. ${ASSISTANT_MODEL} is ready."
-echo "You can close this window and use Launch assistant in Control Centre."
+echo "A Desktop shortcut (Arcalium Local AI) was added for quick launch."
+echo "You can also use Launch assistant in Control Centre."
 echo
 read -r -p "Press Enter to close…" _
 exit 0

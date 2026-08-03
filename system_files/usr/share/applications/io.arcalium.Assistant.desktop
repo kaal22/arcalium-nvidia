@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Arcalium Local AI
+GenericName=Local AI Assistant
+Comment=Offline helper for Arcalium system and gaming questions — close the window to free the GPU
+Exec=arcalium-assistant
+Icon=io.arcalium.Assistant
+Terminal=false
+Categories=Utility;System;X-Arcalium;
+Keywords=arcalium;ai;assistant;ollama;help;
+StartupNotify=false
+X-GNOME-UsesNotifications=false

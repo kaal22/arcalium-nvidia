@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 import time
@@ -306,6 +307,9 @@ def ensure(*, visible: bool = False) -> dict[str, Any]:
     else:
         message = "; ".join(actions)
         action = "ensure"
+    shortcut = _install_desktop_shortcut() if ok else {"ok": False}
+    if ok and shortcut.get("ok"):
+        message = f"{message} Desktop shortcut added."
     return {
         "schema": "arcalium.ai.ensure/v1",
         "ok": ok,
@@ -314,6 +318,7 @@ def ensure(*, visible: bool = False) -> dict[str, Any]:
         "ollama": after["ollama"],
         "message": message,
         "guidance": after["guidance"],
+        "desktopShortcut": shortcut,
     }
 
 
@@ -380,18 +385,24 @@ def _launch_ensure_terminal() -> dict[str, Any]:
         # Refresh Modelfile/system prompt (agent instructions change across OS updates).
         create = _create_assistant_model(ollama_path)
         after = status()
+        ok = bool(create.get("ok") and after["model"]["installed"])
+        shortcut = _install_desktop_shortcut() if ok else {"ok": False}
+        message = (
+            f"Refreshed {ASSISTANT_MODEL} with the current Arcalium agent prompt."
+            if create.get("ok")
+            else create.get("message") or "Could not refresh assistant model."
+        )
+        if ok and shortcut.get("ok"):
+            message = f"{message} Desktop shortcut ready."
         return {
             "schema": "arcalium.ai.ensure/v1",
-            "ok": bool(create.get("ok") and after["model"]["installed"]),
+            "ok": ok,
             "action": "refreshed" if create.get("ok") else "create-assistant",
             "model": after["model"],
             "ollama": after["ollama"],
-            "message": (
-                f"Refreshed {ASSISTANT_MODEL} with the current Arcalium agent prompt."
-                if create.get("ok")
-                else create.get("message") or "Could not refresh assistant model."
-            ),
+            "message": message,
             "guidance": after["guidance"],
+            "desktopShortcut": shortcut,
         }
 
     try:
@@ -584,6 +595,31 @@ def resolve_brew() -> str | None:
         if path.is_file() and os.access(path, os.X_OK) and path.name == "brew":
             return str(path)
     return None
+
+
+def _install_desktop_shortcut() -> dict[str, Any]:
+    """Place a trusted Local AI launcher on the user's Desktop after the model is ready."""
+    src = Path("/usr/share/applications/io.arcalium.Assistant.desktop")
+    if not src.is_file():
+        return {"ok": False, "message": "Assistant desktop entry is missing from the image."}
+
+    home = Path.home()
+    desktop = home / "Desktop"
+    try:
+        desktop.mkdir(parents=True, exist_ok=True)
+        dst = desktop / "arcalium-assistant.desktop"
+        shutil.copy2(src, dst)
+        # Plasma only treats ~/Desktop launchers as clickable when executable.
+        os.chmod(dst, 0o755)
+    except OSError as exc:
+        return {"ok": False, "message": str(exc)}
+
+    return {
+        "ok": True,
+        "path": str(dst),
+        "desktopId": "io.arcalium.Assistant.desktop",
+        "message": "Desktop shortcut added.",
+    }
 
 
 def error_payload(exc: AiError, *, action: str) -> dict[str, Any]:

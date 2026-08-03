@@ -85,6 +85,7 @@ fn open_desktop(desktop_id: String) -> Result<(), String> {
         "org.nvidia.Settings.desktop",
         "io.arcalium.ControlCentre.desktop",
         "io.arcalium.Setup.desktop",
+        "io.arcalium.Assistant.desktop",
     ];
     if !ALLOWED.contains(&desktop_id.as_str()) {
         return Err(format!("desktop entry not allowlisted: {desktop_id}"));
