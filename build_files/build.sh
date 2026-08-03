@@ -20,6 +20,12 @@ if ! rpm -q webkit2gtk4.1 >/dev/null 2>&1; then
     dnf5 -y install webkit2gtk4.1 || dnf -y install webkit2gtk4.1
 fi
 
+# Setup / Control Centre "Open disk utility" launches Partition Manager.
+# bazzite-nvidia-open does not ship it; without this the UI fell back to System Settings.
+if ! rpm -q kde-partitionmanager >/dev/null 2>&1; then
+    dnf5 -y install kde-partitionmanager || dnf -y install kde-partitionmanager
+fi
+
 if [[ -x /ctx/control-centre/arcalium-control-centre ]]; then
     install -Dm0755 /ctx/control-centre/arcalium-control-centre \
         /usr/bin/arcalium-control-centre

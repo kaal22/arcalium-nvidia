@@ -89,25 +89,28 @@ fn open_desktop(desktop_id: String) -> Result<(), String> {
     if !ALLOWED.contains(&desktop_id.as_str()) {
         return Err(format!("desktop entry not allowlisted: {desktop_id}"));
     }
-    let path = resolve_desktop_path(&desktop_id).ok_or_else(|| {
-        format!("desktop entry not found for {desktop_id} (is the Flatpak installed?)")
-    })?;
+    if let Some(path) = resolve_desktop_path(&desktop_id) {
+        if try_spawn("gio", &["launch", path.to_str().unwrap_or_default()]) {
+            return Ok(());
+        }
+        if try_spawn("gtk-launch", &[desktop_id.as_str()]) {
+            return Ok(());
+        }
+        if try_spawn("kioclient", &["exec", path.to_str().unwrap_or_default()])
+            || try_spawn("kioclient5", &["exec", path.to_str().unwrap_or_default()])
+            || try_spawn("kioclient6", &["exec", path.to_str().unwrap_or_default()])
+        {
+            return Ok(());
+        }
+    }
 
-    if try_spawn("gio", &["launch", path.to_str().unwrap_or_default()]) {
-        return Ok(());
-    }
-    if try_spawn("gtk-launch", &[desktop_id.as_str()]) {
-        return Ok(());
-    }
-    if try_spawn("kioclient", &["exec", path.to_str().unwrap_or_default()])
-        || try_spawn("kioclient5", &["exec", path.to_str().unwrap_or_default()])
-        || try_spawn("kioclient6", &["exec", path.to_str().unwrap_or_default()])
-    {
+    // Binary fallback when the .desktop file is missing (e.g. older images).
+    if desktop_id == "org.kde.partitionmanager.desktop" && try_spawn("partitionmanager", &[]) {
         return Ok(());
     }
 
     Err(format!(
-        "could not launch {desktop_id}: gio launch, gtk-launch, and kioclient all unavailable"
+        "could not launch {desktop_id}: desktop entry missing or gio/gtk-launch/kioclient unavailable"
     ))
 }
 

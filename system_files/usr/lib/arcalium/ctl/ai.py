@@ -178,8 +178,10 @@ def install_ollama(*, visible: bool = False) -> dict[str, Any]:
             "message": f"Ollama installation timed out after {OLLAMA_INSTALL_TIMEOUT}s.",
         }
 
+    # brew can exit non-zero (link warnings, already-installed edge cases) while
+    # still leaving a working ollama binary — treat binary presence as success.
     ollama_path = resolve_ollama()
-    if completed.returncode != 0 or not ollama_path:
+    if not ollama_path:
         detail = completed.stderr or completed.stdout or "brew install ollama failed"
         return {
             "schema": "arcalium.ai.install-ollama/v1",
@@ -190,6 +192,9 @@ def install_ollama(*, visible: bool = False) -> dict[str, Any]:
         }
 
     server = _ensure_server(ollama_path)
+    brew_note = ""
+    if completed.returncode != 0:
+        brew_note = f" (brew exited {completed.returncode}; ollama was still found)"
     return {
         "schema": "arcalium.ai.install-ollama/v1",
         "ok": server["ok"],
@@ -199,10 +204,11 @@ def install_ollama(*, visible: bool = False) -> dict[str, Any]:
             "path": ollama_path,
             "serverRunning": server["ok"],
         },
+        "brewReturncode": completed.returncode,
         "message": (
-            "Ollama installed. Next, pull and configure the AI model."
+            f"Ollama installed{brew_note}. Next, pull and configure the AI model."
             if server["ok"]
-            else f"Ollama installed, but its local server did not start: {server['message']}"
+            else f"Ollama installed{brew_note}, but its local server did not start: {server['message']}"
         ),
     }
 
@@ -543,6 +549,27 @@ def resolve_ollama() -> str | None:
         path = Path(candidate)
         if path.is_file() and os.access(path, os.X_OK) and path.name == "ollama":
             return str(path)
+
+    brew = resolve_brew()
+    if brew:
+        try:
+            completed = subprocess.run(
+                [brew, "--prefix", "ollama"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                shell=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            completed = None
+        if completed and completed.returncode == 0:
+            prefix = Path((completed.stdout or "").strip())
+            if prefix.is_dir():
+                for rel in ("bin/ollama", "libexec/ollama"):
+                    path = prefix / rel
+                    if path.is_file() and os.access(path, os.X_OK) and path.name == "ollama":
+                        return str(path)
     return None
 
 

@@ -508,11 +508,15 @@ export function WizardApp() {
               <button
                 type="button"
                 className="btn"
-                onClick={() =>
-                  void openDesktop("org.kde.partitionmanager.desktop").catch(() =>
-                    openDesktop("systemsettings.desktop"),
-                  )
-                }
+                onClick={() => {
+                  void openDesktop("org.kde.partitionmanager.desktop").catch((e) => {
+                    setError(
+                      e instanceof Error
+                        ? e.message
+                        : "Could not open KDE Partition Manager.",
+                    );
+                  });
+                }}
               >
                 Open disk utility
               </button>
