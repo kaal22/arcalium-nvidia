@@ -271,6 +271,7 @@ def list_apps() -> dict[str, Any]:
                 "desktopId": desktop or None,
                 "category": entry.get("category"),
                 "required": bool(entry.get("required")),
+                "description": entry.get("description"),
                 "licenceNotice": entry.get("licenceNotice"),
                 "website": entry.get("website"),
                 "supported": bool(entry.get("supported", True)),
@@ -323,7 +324,7 @@ def _launch_install_terminal(entry: dict[str, Any], source: str) -> dict[str, An
         "sourceId": source,
         "scope": "user",
         "message": (
-            f"Installing {name} in a terminal window — watch the download progress there. "
+            f"Installing {name} — a progress window opens so you can watch the download. "
             "This page updates when it finishes."
         ),
     }
@@ -400,6 +401,7 @@ def uninstall_app(app_id: str) -> dict[str, Any]:
             "id": entry.get("id"),
             "sourceId": source,
             "scope": "user",
+            "message": f"{entry.get('name') or source} uninstalled.",
         }
     sys_info = run_allowlisted("flatpak", ["info", "--system", source], timeout=20)
     if sys_info.ok:
@@ -413,6 +415,7 @@ def uninstall_app(app_id: str) -> dict[str, Any]:
         "action": "not_installed",
         "id": entry.get("id"),
         "sourceId": source,
+        "message": f"{entry.get('name') or source} is not installed.",
     }
 
 

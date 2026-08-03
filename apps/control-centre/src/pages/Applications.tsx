@@ -33,7 +33,7 @@ export function ApplicationsPage() {
       <header className="page-header">
         <div>
           <h1>Applications</h1>
-          <p className="muted">Optional apps from the Arcalium catalogue (Flatpak where applicable).</p>
+          <p className="muted">Optional apps you can install when you need them.</p>
         </div>
         <button type="button" className="btn" onClick={() => void refresh()}>
           Refresh
@@ -47,7 +47,7 @@ export function ApplicationsPage() {
             <article className="card" key={str(app.id)}>
               <h2>{str(app.name)}</h2>
               <p className="muted small">
-                {str(app.category)} · {app.installed ? "installed" : "available"}
+                {app.installed ? "Installed" : "Not installed"}
               </p>
               <AppActions app={app} onChanged={() => void refresh()} />
             </article>

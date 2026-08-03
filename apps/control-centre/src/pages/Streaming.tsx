@@ -87,10 +87,9 @@ export function StreamingPage() {
           <article className="card">
             <h2>Sunshine notes</h2>
             <p className="muted small">
-              The Sunshine Flatpak often needs{" "}
-              <span className="mono">flatpak run --command=additional-install.sh dev.lizardbyte.app.Sunshine</span>{" "}
-              after install. Prefer distro packages when available. Disable streaming services from the
-              app itself or by uninstalling when you are done — do not leave hosts exposed on public networks.
+              After installing Sunshine, check its documentation for one extra setup step some
+              systems need. Prefer keeping streaming off when you are not using it, and avoid exposing
+              a streaming host on public networks.
             </p>
           </article>
         </>

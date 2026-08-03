@@ -48,7 +48,6 @@ export function GamingPage() {
               <h2>{str(app.name)}</h2>
               <p className="muted small">
                 {app.installed ? `Installed (${str(app.installScope, "local")})` : "Not installed"}
-                {app.type === "flatpak" ? ` · ${str(app.sourceId)}` : " · OS package / desktop entry"}
               </p>
               <AppActions app={app} onChanged={() => void refresh()} />
             </article>
@@ -58,10 +57,10 @@ export function GamingPage() {
       <article className="card">
         <h2>Notes</h2>
         <p className="muted small">
-          Flatpak installs use <span className="mono">--user</span> so they do not need root. Steam is
-          not shipped in the image — use <strong>Install Steam</strong> to pull Valve&apos;s Flatpak
-          from Flathub (progress in a terminal). Steam shows Valve&apos;s Subscriber Agreement on first
-          launch. Lutris is not offered — use Heroic for non-Steam stores.
+          Apps install for your user account — no admin password required. Steam is not included by
+          default; use <strong>Install Steam</strong> when you are ready (a progress window opens).
+          Steam shows Valve&apos;s Subscriber Agreement on first launch. For Epic, GOG, and Amazon
+          games, use Heroic.
         </p>
       </article>
     </div>

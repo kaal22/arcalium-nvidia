@@ -10,6 +10,7 @@ export type AppRow = {
   desktopId?: string | null;
   installed?: boolean;
   installScope?: string | null;
+  description?: string | null;
   licenceNotice?: string | null;
   website?: string | null;
   dataDir?: string | null;
@@ -63,7 +64,7 @@ export function AppActions({
       setMsg(
         str(
           result.message,
-          "Installing Steam from Flathub in a terminal — Steam's agreement appears on first launch.",
+          "Installing Steam — a progress window opens. Valve’s agreement appears on first launch.",
         ),
       );
       if (str(result.action) === "terminal" || str(result.action) === "opened") {
@@ -79,8 +80,8 @@ export function AppActions({
         if (cancelled.current) return;
         setMsg(
           done
-            ? "Steam installed. Launch it to accept Valve's agreement."
-            : "Still installing Steam in the terminal window. This page updates when it finishes.",
+            ? "Steam installed. Launch it to accept Valve’s agreement."
+            : "Steam is still installing in the progress window. This page updates when it finishes.",
         );
       }
       onChanged();
@@ -97,7 +98,7 @@ export function AppActions({
     setErr(null);
     try {
       const result = await arcaliumctl(["apps", "install", id, "--visible", "--json"]);
-      setMsg(str(result.message, `${str(result.action)} ${str(result.sourceId || id)}`));
+      setMsg(str(result.message, `Installing ${name}…`));
 
       if (str(result.action) === "terminal") {
         const started = Date.now();
@@ -113,7 +114,7 @@ export function AppActions({
         setMsg(
           done
             ? `${name} installed.`
-            : `Still installing ${name} in the terminal window. This page updates when it finishes.`,
+            : `${name} is still installing in the progress window. This page updates when it finishes.`,
         );
       }
       onChanged();
@@ -130,7 +131,7 @@ export function AppActions({
     setErr(null);
     try {
       const result = await arcaliumctl(["apps", "uninstall", id, "--json"]);
-      setMsg(`${str(result.action)} ${str(result.sourceId || id)}`);
+      setMsg(str(result.message, `${name} uninstalled.`));
       onChanged();
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -155,6 +156,7 @@ export function AppActions({
 
   return (
     <div>
+      {app.description ? <p className="muted small">{app.description}</p> : null}
       <div className="btn-row">
         {app.launchable && desktop ? (
           <button
@@ -173,7 +175,7 @@ export function AppActions({
             disabled={busy !== null}
             onClick={() => void install()}
           >
-            {busy === "install" ? "Installing in terminal…" : "Install (user)"}
+            {busy === "install" ? "Installing…" : "Install"}
           </button>
         ) : null}
         {isSteam && !app.installed ? (
@@ -183,7 +185,7 @@ export function AppActions({
             disabled={busy !== null}
             onClick={() => void installSteam()}
           >
-            {busy === "steam-install" ? "Installing in terminal…" : "Install Steam"}
+            {busy === "steam-install" ? "Installing…" : "Install Steam"}
           </button>
         ) : null}
         {app.type === "flatpak" && app.installed && app.installScope === "user" ? (
@@ -197,18 +199,13 @@ export function AppActions({
           </button>
         ) : null}
         {app.type === "flatpak" && app.installed && app.installScope === "system" ? (
-          <span className="muted small">System install — uninstall via Flatpak/Bazaar if needed</span>
+          <span className="muted small">Included with the system — remove it from Discover/Bazaar if you need to</span>
         ) : null}
         {app.type === "desktop" && !app.installed && !isSteam ? (
-          <span className="muted small">Ships with the OS image</span>
+          <span className="muted small">Included with Arcalium</span>
         ) : null}
       </div>
       {app.licenceNotice ? <p className="muted small">{app.licenceNotice}</p> : null}
-      {app.dataDir ? (
-        <p className="muted small mono">
-          Data: {app.dataDir}
-        </p>
-      ) : null}
       {msg ? <p className="banner ok">{msg}</p> : null}
       {err ? <p className="banner bad">{err}</p> : null}
     </div>
