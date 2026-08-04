@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { arcaliumctl, openDesktop, JsonValue } from "../api";
 import { AppActions, AppRow } from "../components/AppActions";
+import { AiMinSpec } from "../components/AiMinSpec";
 import { copyText, pick, str } from "../lib/json";
 import { WIZARD_STEPS, WizardStepId } from "./steps";
 
@@ -633,6 +634,7 @@ export function WizardApp() {
               assistant window before gaming so GPU memory is freed. Chat stays on this PC — no
               cloud API.
             </p>
+            <AiMinSpec status={aiStatus} />
             <div className="btn-row" style={{ marginTop: "0.75rem" }}>
               {!pick(aiStatus, "ollama.available") && (
                 <button

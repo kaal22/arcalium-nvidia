@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -27,6 +28,10 @@ OLLAMA_PULL_TIMEOUT = 3600
 OLLAMA_CREATE_TIMEOUT = 600
 OLLAMA_INSTALL_TIMEOUT = 1800
 OLLAMA_API = "http://127.0.0.1:11434"
+
+# Soft gate for Local AI — warn below this; do not hard-block Skip/install.
+MIN_RAM_GIB = 16
+MIN_VRAM_GIB = 8
 
 # Absolute paths only; basename must remain "ollama".
 _OLLAMA_CANDIDATES: tuple[str, ...] = (
@@ -105,6 +110,7 @@ def status() -> dict[str, Any]:
         error = "Ollama is installed but its local server is not running"
 
     ready = bool(ollama_path and model_info["installed"])
+    hardware = _hardware_requirements()
     return {
         "schema": "arcalium.ai.status/v1",
         "ok": ready,
@@ -112,6 +118,10 @@ def status() -> dict[str, Any]:
         "model": model_info,
         "ollama": ollama,
         "loadedModels": loaded,
+        "requirements": hardware["requirements"],
+        "hardware": hardware["measured"],
+        "hardwareOk": hardware["ok"],
+        "hardwareWarnings": hardware["warnings"],
         "gamingNotice": (
             "Close the assistant terminal before launching demanding games. "
             "Closing the terminal unloads the model so GPU VRAM is freed."
@@ -636,13 +646,104 @@ def error_payload(exc: AiError, *, action: str) -> dict[str, Any]:
 
 def human_status(data: dict[str, Any]) -> list[str]:
     model = data.get("model") or {}
-    return [
+    req = data.get("requirements") or {}
+    hw = data.get("hardware") or {}
+    lines = [
         f"Ollama:    {'yes' if data.get('ollama', {}).get('available') else 'no'} ({data.get('ollama', {}).get('path') or '—'})",
         f"Base:      {BASE_MODEL} ({'installed' if model.get('baseInstalled') else 'missing'})",
         f"Assistant: {ASSISTANT_MODEL} ({'installed' if model.get('assistantInstalled') else 'missing'})",
         f"Loaded:    {'yes' if model.get('loaded') else 'no'}",
         f"Ready:     {'yes' if data.get('ready') else 'no'}",
+        (
+            f"Min spec:  {req.get('ramGiB', MIN_RAM_GIB)} GiB RAM + "
+            f"{req.get('vramGiB', MIN_VRAM_GIB)} GiB VRAM"
+        ),
+        (
+            f"This PC:   RAM {hw.get('ramGiB') if hw.get('ramGiB') is not None else '—'} GiB · "
+            f"VRAM {hw.get('vramGiB') if hw.get('vramGiB') is not None else '—'} GiB · "
+            f"{'meets min' if data.get('hardwareOk') else 'below min'}"
+        ),
     ]
+    for warning in data.get("hardwareWarnings") or []:
+        lines.append(f"Warning:   {warning}")
+    return lines
+
+
+def _hardware_requirements() -> dict[str, Any]:
+    """Compare this machine to Local AI minimum RAM/VRAM (soft gate)."""
+    from . import gpu as gpu_mod
+    from . import system as system_mod
+
+    ram_gib: float | None = None
+    vram_gib: float | None = None
+    try:
+        summary = system_mod.summary()
+        raw_ram = summary.get("memoryGiB")
+        if isinstance(raw_ram, (int, float)):
+            ram_gib = float(raw_ram)
+    except Exception:
+        pass
+    try:
+        gpu_status = gpu_mod.status()
+        vram_gib = _parse_vram_gib(gpu_status.get("memoryTotal"))
+    except Exception:
+        pass
+
+    warnings: list[str] = []
+    if ram_gib is not None and ram_gib + 0.05 < MIN_RAM_GIB:
+        warnings.append(
+            f"This PC has about {ram_gib:.0f} GiB RAM; Local AI needs at least {MIN_RAM_GIB} GiB."
+        )
+    if vram_gib is not None and vram_gib + 0.05 < MIN_VRAM_GIB:
+        warnings.append(
+            f"This GPU has about {vram_gib:.0f} GiB VRAM; Local AI needs at least {MIN_VRAM_GIB} GiB."
+        )
+    if ram_gib is None:
+        warnings.append("Could not read system RAM — check you have at least 16 GiB before installing.")
+    if vram_gib is None:
+        warnings.append("Could not read GPU VRAM — check you have at least 8 GiB before installing.")
+
+    ok = (
+        ram_gib is not None
+        and vram_gib is not None
+        and ram_gib + 0.05 >= MIN_RAM_GIB
+        and vram_gib + 0.05 >= MIN_VRAM_GIB
+    )
+
+    return {
+        "ok": ok,
+        "requirements": {
+            "ramGiB": MIN_RAM_GIB,
+            "vramGiB": MIN_VRAM_GIB,
+            "diskPullGiB": 10,
+            "note": (
+                f"Minimum {MIN_RAM_GIB} GiB system RAM and {MIN_VRAM_GIB} GiB GPU VRAM. "
+                "Smaller PCs will struggle or fail — Skip if unsure."
+            ),
+        },
+        "measured": {
+            "ramGiB": round(ram_gib, 1) if ram_gib is not None else None,
+            "vramGiB": round(vram_gib, 1) if vram_gib is not None else None,
+        },
+        "warnings": warnings if not ok else [],
+    }
+
+
+def _parse_vram_gib(raw: Any) -> float | None:
+    if raw is None or raw == "":
+        return None
+    if isinstance(raw, (int, float)):
+        # nvidia-smi --format=nounits reports MiB
+        return float(raw) / 1024.0
+    text = str(raw).strip().lower().replace(",", "")
+    m = re.search(r"([0-9]+(?:\.[0-9]+)?)", text)
+    if not m:
+        return None
+    value = float(m.group(1))
+    if "gi" in text or "gb" in text:
+        return value
+    # Default: MiB from nvidia-smi
+    return value / 1024.0
 
 
 def human_ensure(data: dict[str, Any]) -> list[str]:

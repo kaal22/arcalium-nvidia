@@ -538,19 +538,19 @@ Example structure:
 }
 ```
 
-The wizard should launch through a systemd user service or supported desktop autostart entry.
+The wizard launches when the user opens **Arcalium Control Centre** from the Desktop or Kickoff while setup is incomplete (and **Open Setup from Control Centre** remains enabled). There is **no login autostart** for Setup — Plasma Welcome / first-session noise made that unreliable.
 
 Rules:
 
-- Launch on login while **Show on startup** is enabled and setup is incomplete (default on for new users).
+- Prefer opening Setup from Control Centre until setup is complete and the Settings toggle remains on (default for new installed users).
 - Language, keyboard, and timezone remain the installer’s job; Wi‑Fi/network remain Plasma’s.
-- Autostart must wait for Plasma Welcome / Bazzite Portal (yafti) to finish before opening Arcalium Setup.
-- Do not launch during the installer environment.
+- Do not fight Plasma Welcome / Bazzite Portal for a login autostart slot.
+- Do not launch during the installer / live environment (Desktop Control Centre shortcut is removed from the live ISO; Kickoff opens Control Centre only).
 - Do not launch before a usable desktop session exists.
-- Preserve partial progress across logins while Show on startup remains on.
-- Provide a **Resume setup** launcher and a Settings toggle for **Show Setup on startup**.
-- Provide a **Restart setup** action that clears progress (with confirmation) and re-enables Show on startup.
-- Completing setup turns Show on startup off so the wizard does not reappear unless manually relaunched or Restarted.
+- Preserve partial progress across sessions while the Control Centre → Setup prompt remains on.
+- Provide a **Resume setup** menu launcher (`io.arcalium.Setup` / `arcalium-setup`) and a Settings toggle for **Open Setup from Control Centre**.
+- Provide a **Restart setup** action that clears progress (with confirmation) and re-enables the Control Centre → Setup prompt.
+- Completing setup turns that prompt off so Setup does not reappear unless Resume or Restart is used.
 - Never require root for the entire application.
 
 ## 8.3 Wizard pages
@@ -760,12 +760,15 @@ Display:
 
 Optional offline maintenance helper (Ollama + pinned `gemma4:e4b-it-qat`).
 
+**Minimum hardware:** **16 GiB system RAM** and **8 GiB GPU VRAM** (plus ~10 GiB free disk for the first pull). Control Centre and Setup must show this clearly and warn when the PC is below it. Do not hard-block Skip.
+
 Show:
 
 - Ollama and model status.
+- Minimum spec + this PC’s measured RAM/VRAM (soft warning if below).
 - Clear size / VRAM / gaming coexistence warnings (~10 GB pull; unload before gaming).
-- **Install Ollama** — opens a terminal with live Homebrew progress (user-level; no copy/paste or sudo). The wizard/Control Centre page refreshes when Ollama appears.
-- **Pull and configure model** — opens a terminal showing live `ollama pull` progress (~10 GB), then creates `arcalium-assistant` with the system prompt. The UI polls until the model is ready.
+- **Install Ollama** — opens a progress window with live Homebrew output (user-level; no copy/paste or sudo). The wizard/Control Centre page refreshes when Ollama appears. A non-zero brew exit is success if the `ollama` binary is present.
+- **Pull and configure model** — opens a progress window showing live `ollama pull` (~10 GB), then creates `arcalium-assistant` with the system prompt. The UI polls until the model is ready. On success, add a **Desktop shortcut** (`io.arcalium.Assistant` / Space Invaders-style pixel icon) for quick launch.
 - Optional **Try assistant** (terminal session) after the model is ready.
 - **Skip** — finish setup without Local AI; can configure later in Control Centre.
 - **Continue** — mark the step complete without requiring a successful install.
@@ -1112,6 +1115,7 @@ Arcalium may include an **optional offline local AI assistant** for system-maint
 - Base weights: **`gemma4:e4b-it-qat`** (Gemma 4 E4B instruction-tuned, QAT). Pin this tag in scripts; do not silently float to a larger or different tag.
 - Session model: **`arcalium-assistant`**, created from the base via Modelfile with a fixed **Arcalium system prompt** (`/usr/lib/arcalium/ai/system-prompt.txt`) so replies assume Arcalium OS NVIDIA Edition (Bazzite/bootc), KDE Plasma, and **bash** — never Windows PowerShell/cmd or apt/pacman unless the user asks about another OS.
 - First use may require a one-time model pull (~10 GB class). Do not force the pull during first-boot for every user; offer it from Control Centre with clear size, VRAM, and disk warnings.
+- **Minimum recommended hardware for Local AI:** 16 GiB system RAM and 8 GiB GPU VRAM. Show this in Setup and Control Centre; warn (do not hard-block) when the machine is below it.
 - Offline after install: no Arcalium cloud endpoint, no third-party chat API, and no prompt/response telemetry.
 
 ### Control Centre launch behaviour
@@ -1119,11 +1123,12 @@ Arcalium may include an **optional offline local AI assistant** for system-maint
 The Local AI Assistant page (and an optional Diagnostics quick action) must:
 
 1. Show Ollama / model status (installed, pulling, ready, busy, error).
-2. Offer **Install Ollama** / **Pull and configure model** with **visible terminal progress** (not a silent background wait), then **Launch assistant** as the primary action once ready.
+2. Offer **Install Ollama** / **Pull and configure model** with **visible progress** (not a silent background wait), then **Launch assistant** as the primary action once ready.
 3. Open a **terminal session** (system terminal, e.g. Konsole) that runs an Arcalium-managed chat wrapper — not a permanent background GUI that keeps weights loaded.
 4. On session start, load `arcalium-assistant` (system-prompted) for interactive use.
 5. On terminal close / session exit (including Ctrl+C / shell exit), **unload the model** so GPU VRAM is freed for gaming (for example `ollama stop arcalium-assistant` / base tag and/or keep-alive zero for that run). Closing the terminal is the intended “I’m done — free the GPU” gesture.
 6. Surface a clear notice before launch: gaming and the assistant should not share the GPU while the model is loaded; close the assistant terminal before launching demanding games.
+7. After a successful model configure, place a **Desktop shortcut** and keep a Kickoff menu entry (`io.arcalium.Assistant` / `arcalium-assistant`) with a distinct custom icon for quick launch.
 
 ### Non-goals for version 1 of this feature
 
@@ -1265,9 +1270,9 @@ Suggested defaults:
 
 - Bottom panel.
 - Application launcher at left.
-- Pinned Steam.
-- Pinned Bazaar.
-- Pinned Arcalium Control Centre.
+- Pinned Files, Bazaar, default browser (`preferred://browser` → Firefox), Heroic.
+- Steam, Brave, and Spotify are **not** pinned by default (install on demand from Control Centre).
+- Arcalium Control Centre in Kickoff favorites; Desktop icon for new installed users (not on the panel — its mark duplicates the launcher).
 - System tray.
 - Update visibility.
 - Dark theme by default.

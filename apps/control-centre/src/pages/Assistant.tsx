@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { arcaliumctl, JsonValue } from "../api";
+import { AiMinSpec } from "../components/AiMinSpec";
 import { pick, str } from "../lib/json";
 
 type LoadState = "loading" | "ready" | "error";
@@ -208,6 +209,12 @@ export function AssistantPage() {
           Refresh
         </button>
       </header>
+      {state === "ready" && (
+        <article className="card">
+          <h2>Minimum hardware</h2>
+          <AiMinSpec status={data} />
+        </article>
+      )}
       {state === "loading" && <p className="muted">Checking Ollama…</p>}
       {state === "error" && <p className="banner bad">{error}</p>}
       {msg && <p className="banner ok">{msg}</p>}
