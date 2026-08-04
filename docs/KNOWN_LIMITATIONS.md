@@ -1,6 +1,6 @@
 # Known limitations
 
-For Arcalium OS NVIDIA Edition version 1 / private alpha:
+For Arcalium OS NVIDIA Edition **0.2.0**:
 
 - Not every Windows game works on Linux.
 - Some anti-cheat systems block Linux or Proton.
@@ -15,6 +15,7 @@ For Arcalium OS NVIDIA Edition version 1 / private alpha:
 - Brave and Spotify are optional Flathub installs — they are not preinstalled.
 - Steam is optional Flathub install — not shipped in the image.
 - Live installer graphics on NVIDIA may need **Basic Graphics Mode** (`nomodeset`); the installed system uses nvidia-open.
+- Local AI needs about **16 GiB system RAM** and **8 GiB GPU VRAM**; Setup and Control Centre warn when the PC is below that.
 - Arcalium is an independent Bazzite-derived project, not an official Valve, NVIDIA, or Bazzite product.
 
 See also [`docs/PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §25.

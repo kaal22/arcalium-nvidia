@@ -1,13 +1,13 @@
 # Install Arcalium OS (NVIDIA Edition)
 
-Private alpha — expect rough edges. Read [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) first.
+Version **0.2.0** — read [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) first. Downloads: [getarcalium.com](https://getarcalium.com).
 
 ## What you need
 
-- A PC with a supported NVIDIA GPU (primary test hardware: RTX 3060 12 GB)
-- 8 GB+ RAM recommended; more for ISO builds is irrelevant to install
+- A PC with a supported NVIDIA GPU (primary validation: RTX 3060 12 GB)
+- Enough RAM for gaming (Local AI wants 16 GiB+ if you use it)
 - USB stick or Ventoy
-- Current live ISO (e.g. `Arcalium-Live-alpha-final.iso`)
+- Current live ISO (`Arcalium-Live-0.2.0.iso` from the GitHub Release / download site)
 
 ## Boot the live ISO
 
@@ -30,24 +30,23 @@ Private alpha — expect rough edges. Read [KNOWN_LIMITATIONS.md](KNOWN_LIMITATI
 
 ## After install: updates
 
-The ISO may leave the system tracking a local image reference. To follow the published `dev` channel (private GHCR during alpha):
+Point the system at the public **stable** channel (required if the ISO still tracked a localhost image, or while GHCR was private at install time):
 
 ```bash
-# Token needs read:packages for the private package
-podman login ghcr.io -u YOUR_GITHUB_USER
-# Prefer the bootc/ostree auth path documented in BUILDING.md if upgrades fail after reboot
-sudo bootc switch ghcr.io/kaal22/arcalium-os-nvidia:dev
+sudo bootc switch ghcr.io/kaal22/arcalium-os-nvidia:stable
 sudo systemctl reboot
 ```
 
-Later:
+If the GHCR package is still private during your install window, authenticate first (see [BUILDING.md](BUILDING.md) — ostree/`/etc/ostree/auth.json`). Once the package is public, no login is needed for pulls.
+
+Later upgrades:
 
 ```bash
 sudo bootc upgrade && sudo systemctl reboot
 ```
 
-Full detail: [BUILDING.md](BUILDING.md). Rollback: [RECOVERY.md](RECOVERY.md).
+Rollback: [RECOVERY.md](RECOVERY.md).
 
 ## Help
 
-[SUPPORT.md](SUPPORT.md) · [NOTICES.md](NOTICES.md) · [PRIVACY.md](PRIVACY.md)
+[SUPPORT.md](SUPPORT.md) · [NOTICES.md](NOTICES.md) · [PRIVACY.md](PRIVACY.md) · [RELEASE_NOTES_0.2.0.md](RELEASE_NOTES_0.2.0.md)

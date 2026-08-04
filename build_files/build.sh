@@ -135,6 +135,7 @@ cat >/etc/arcalium/image-info.json <<'EOF'
   "edition": "NVIDIA Edition",
   "imageName": "arcalium-os-nvidia",
   "channel": "dev",
+  "website": "https://getarcalium.com",
   "baseImage": "ghcr.io/ublue-os/bazzite-nvidia-open:stable",
   "independentProjectNotice": "Arcalium OS is an independent project built on Bazzite and is not affiliated with or endorsed by Valve, NVIDIA, Spotify, Proton AG, Fedora, Universal Blue or the Bazzite project."
 }

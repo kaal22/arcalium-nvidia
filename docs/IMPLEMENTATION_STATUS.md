@@ -1,18 +1,26 @@
 # Arcalium OS — Implementation Status
 
 **Edition:** NVIDIA Edition  
-**Channel:** private alpha / `dev`  
+**Channel:** `0.2.0` / `stable` prep (CI tip `:dev`; GHCR still private until download page)  
 **Upstream template:** [ublue-os/image-template](https://github.com/ublue-os/image-template) @ `3d68ac893a31f5947dfe6210c04aee2cc469a02e`  
 **Base image:** `ghcr.io/ublue-os/bazzite-nvidia-open:stable@sha256:83c6084f9713abda10b966dce3631f4c9b4430e419f06c9a76dad10bfc43cbe9` (resolved 2026-07-29)  
 **Status values:** `not started` · `in progress` · `blocked` · `tested` · `complete`
 
 ---
 
-## Where we left off (2026-08-02)
+## Where we left off (2026-08-04)
 
-Public-prep docs landed: Firefox bundled / Brave+Spotify+Steam on-demand; notices, privacy, support, recovery, install guide, and draft release notes under `docs/` (see [docs/README.md](README.md)). Code change for Flatpaks is on `main` (`f42ac3d`); **ISO rebuild deferred** until docs review is accepted.
+**0.2.0 public release path:** notices/privacy/support accepted; Promote stable workflow added; getarcalium.com must ship a real ISO download before flipping GHCR public. Primary hardware remains the **3060**.
 
-**Next:** review `docs/NOTICES.md` / `PRIVACY.md` / `INSTALL.md`, then rebuild `Arcalium-Live-alpha-final.iso` from the Firefox-bundle commit.
+**Shipped on `main` through Local AI min-spec (`335e611`+):**
+- Public-prep app policy: Firefox bundled; Brave / Spotify / Steam on-demand
+- KDE Partition Manager in image — Setup/Control Centre **Open disk utility**
+- Ollama install tolerates brew non-zero exit when the `ollama` binary is present
+- Public-friendly catalogue descriptions (no Flatpak IDs as card copy)
+- Local AI Desktop shortcut + Space Invaders pixel icon after model pull (`io.arcalium.Assistant` / `arcalium-assistant`)
+- Local AI minimum hardware soft-warn: **16 GiB RAM / 8 GiB VRAM** in Setup + Control Centre
+
+**Next:** RC smoke on 3060 (`docs/RC_SMOKE_0.2.0.md`); cut `Arcalium-Live-0.2.0.iso`; Promote `0.2.0`+`stable`; GitHub Release; then public GHCR after download page.
 
 **Roles**
 
@@ -22,42 +30,28 @@ Public-prep docs landed: Firefox bundled / Brave+Spotify+Steam on-demand; notice
 | Hardware test | separate bare-metal PC, RTX **3060 12 GB** | Installs and post-boot checks only; not the build host |
 | VMware | retired for install validation | Used once to prove the ISO chain; further installs are bare metal |
 
-**Last successful artifacts (on the Windows Desktop and in WSL `~/arcalium-nvidia/output/`):**
+**Last successful artifacts**
 
 | Artifact | Location | Notes |
 |---|---|---|
-| Live ISO — **current** | Desktop `Arcalium-Live-CC.iso` + Ventoy `F:\Arcalium-Live.iso` + WSL `~/arcalium-nvidia/output/Arcalium-Live.iso` (7.7 GB) | Commit `49b5e7d`; Heroic, Plymouth initramfs, plasmalogin wallpaper, hostname/Konsole ASCII, Control Centre Overview MVP |
-| Live ISO — previous | Desktop `Arcalium-Live.iso` (5.8 GB, locked) / `Arcalium-Live-20260730-89b31ba.iso` (6.9 GB) | Prior known-good / mid-branding builds |
-| QCOW2 | WSL `~/arcalium-nvidia/output/qcow2/disk.qcow2` (~5.8 GB) | Not needed for current validation |
-| OCI image | WSL `localhost/arcalium-os-nvidia:dev` | 13.2 GB |
-| Payload image | WSL `localhost/arcalium-os-nvidia-payload:dev` | 31.4 GB live/installer layer |
+| Live ISO — **current** | Desktop `Arcalium-Live-alpha-final.iso` (~7.3 GB) + WSL `~/arcalium-nvidia/output/Arcalium-Live.iso` | Built **2026-08-03** from `cf0008f` (public-friendly app descriptions). Does **not** yet include `2b77d67` AI Desktop shortcut — that needs another full ISO or bootc upgrade only for installed systems |
+| GHCR image — **current** | `ghcr.io/kaal22/arcalium-os-nvidia:dev` (private) | Through `2b77d67` (AI shortcut); 3060 uses `sudo bootc upgrade` |
+| OCI image (WSL) | `localhost/arcalium-os-nvidia:dev` | Local build cache for ISO |
+| Payload image (WSL) | `localhost/arcalium-os-nvidia-payload:dev` | Live/installer layer |
 
 **Proven**
 
-- `just build` and `just build-qcow2` in WSL Ubuntu
-- Titanoboa live ISO path (`just build-iso-live`) — not Bootc Image Builder
-- Full chain on VMware, then **full chain on bare metal**
-- Bare-metal install on RTX 3060 12 GB: `bootc` tracks `:dev`, `nvidia-smi` OK, Wayland, Secure Boot disabled, `systemctl --failed` empty
-
-**Bare-metal live-session notes**
-
-- Default GRUB entry can black-screen for minutes on Nouveau; **Basic Graphics Mode** (`nomodeset`) gives a usable installer desktop
-- Ventoy: use **GRUB2** mode, then Arcalium Basic Graphics Mode
-- Deploy throughput ~17–30 MiB/s on bare metal vs ~7 MiB/s in VMware (disk-bound in the VM)
+- `just build` and `just build-iso-live` in WSL Ubuntu (titanoboa — not BIB)
+- Full install chain on VMware (retired) then **bare metal RTX 3060**
+- Repeated `bootc upgrade` on the 3060 from private GHCR
+- Partition Manager, Firefox-default / Brave·Spotify on-demand, Local AI pull path exercised in alpha
 
 **Not finished — next**
 
-1. ~~Set GitHub Actions secret `SIGNING_SECRET`~~ — done 2026-07-30.
-2. ~~Publish and sign `ghcr.io/kaal22/arcalium-os-nvidia:dev`~~ — done 2026-07-30 ([run 30524876626](https://github.com/kaal22/arcalium-nvidia/actions/runs/30524876626)); digest `sha256:bbcea032d6369e77927d3497a3d64ade5dbb1dae6805198d2ec128c37c6ebe90`.
-3. ~~On the 3060 test PC: `podman login ghcr.io` then `bootc switch ghcr.io/kaal22/arcalium-os-nvidia:dev`~~ — done 2026-07-30.
-4. ~~Rebuild ISO at the next milestone~~ — done 2026-07-30 evening from `89b31ba`. Carries the progress-window race fix, the bundled Flatpaks and the branding. **Next: install it on the 3060** and confirm the taskbar pins, default browser, wallpaper, application-menu mark and splash wordmark all appear for the new user created during setup.
-   - **ISO rebuild pending (deliberately batched, 2026-07-30).** The Heroic bundle is an app-set change and so an ISO trigger, but it was batched rather than cut immediately. The next ISO must cover: Heroic Flatpak + pin, the initramfs Plymouth watermark, the plasmalogin login wallpaper, and the hostname/Konsole welcome. Until then Heroic reaches existing machines only via `flatpak install`.
-5. Branding — Plymouth watermark now lands in the **initramfs** (boot splash was still Bazzite because Plymouth boots from initrd and shuts down from `/usr`); login greeter wallpaper now goes through `plasmalogin` `defaults.conf` (Plasma 6.7 replaced SDDM, so `kscreenlockerrc` alone never reached the login screen). Remaining: dark-panel mark, first-run wizard.
-6. ~~Decide browser for the installed system~~ — **Firefox** Flatpak bundled + `mimeapps.list` + Kickoff; Brave/Spotify on-demand like Steam (2026-08-02).
-7. ~~**Phase 2 CLI on 3060**~~ — done 2026-07-31: all four `arcaliumctl … --json` commands passed as expected.
-8. ~~**Phase 2 game path**~~ — done 2026-07-31: Steam and Heroic exercised on the 3060 (owner-confirmed). Hardware gate for Control Centre is open; licensing still blocks *public* ISO only.
-9. **Control Centre Overview MVP** — Tauri + React shell; Overview live from `arcaliumctl`; then batched ISO.
-10. Optional later: second-GPU matrix (3090 / 2060) if those machines appear; not blocking alpha on the 3060.
+1. RC smoke on 3060 (`docs/RC_SMOKE_0.2.0.md`) after CI for min-spec image.
+2. Cut `Arcalium-Live-0.2.0.iso` (full `just build` first) — see `NEXT_ISO.md`.
+3. Promote `0.2.0` + `stable` (Promote stable workflow); GitHub Release with checksums.
+4. Ship real download on getarcalium.com → flip GHCR public.
 
 **Resume commands**
 
@@ -65,10 +59,10 @@ Public-prep docs landed: Firefox bundled / Brave+Spotify+Steam on-demand; notice
 wsl -d Ubuntu -u root
 cd /home/kaal/arcalium-nvidia && git pull
 just build && just build-iso-live
-cp output/Arcalium-Live.iso /mnt/c/Users/Kaal/Desktop/
+# Copy via the WSL helpers; Desktop target: Arcalium-Live-alpha-final.iso
 ```
 
-On the 3060 after upgrade: see `docs/PHASE2_VALIDATION.md`.
+On the 3060: `sudo bootc upgrade && sudo systemctl reboot` (private GHCR may need ostree/podman auth — see `docs/BUILDING.md`).
 
 Repo: https://github.com/kaal22/arcalium-nvidia
 
@@ -81,10 +75,10 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 | Repository created from current `ublue-os/image-template` | complete | Copied template tree; history retained from template commit above |
 | `docs/PRODUCT_SPEC.md` | complete | Copied from `Arcalium_OS_NVIDIA_Product_Spec.md` |
 | `docs/IMPLEMENTATION_STATUS.md` | complete | This file |
-| Licence inventory | in progress | Apache-2.0 template LICENSE retained; Arcalium notices TBD in `docs/LICENSING.md` |
+| Licence inventory | complete | Accepted for 0.2.0 in `docs/LICENSING.md` |
 | Confirmed image tag `bazzite-nvidia-open:stable` | complete | GHCR tags include `stable`; digest pinned in Containerfile |
 | Confirmed build workflow | complete | `.github/workflows/build.yml` + `build-disk.yml` present |
-| Cosign setup (public key committed, private key secret) | in progress | `cosign.pub` generated; `cosign.key` local only — must set GitHub secret `SIGNING_SECRET` before publish |
+| Cosign setup (public key committed, private key secret) | complete | `cosign.pub` in repo; `SIGNING_SECRET` set in Actions |
 | Private GHCR `dev` image | complete | `ghcr.io/kaal22/arcalium-os-nvidia:dev` published and Cosign-signed 2026-07-30; package stays private per spec §17.2 |
 | Image signature verifies | blocked | Depends on first successful signed publish |
 | Test machine switch / QCOW2 boot | blocked | Depends on published image; bootstrap path is rebase from stock Bazzite, see `docs/BUILDING.md` |
@@ -97,8 +91,8 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 | Arcalium image metadata | complete | `image-template.env` + `/etc/arcalium/image-info.json` |
 | Basic branding | in progress | Wallpaper (desktop + lock + login), logo mark/wordmark, Plasma splash, Plymouth watermark + initrd-release NAME wired; dark-panel mark still needed |
 | Arcalium wallpaper | in progress | 5504×3072 asset installed for new Plasma desktops; lock screen via `kscreenlockerrc`; login screen via `/usr/lib/plasmalogin/defaults.conf` (not SDDM). Redistribution licence record pending |
-| Control Centre placeholder | in progress | Overview MVP (Tauri) shipped in image build; Setup wizard still deferred |
-| First-boot placeholder | not started | Same gate |
+| Control Centre placeholder | complete | Full Control Centre + Setup wizard shipped in image; overview-only placeholder retired |
+| First-boot placeholder | complete | Setup via Desktop/Kickoff Control Centre (`arcalium-control-centre-launch`); no login Setup autostart |
 | QCOW2 workflow | tested | Built locally in WSL2, 5.8 GB; superseded by bare-metal validation |
 | ISO workflow | tested | Bare-metal install on RTX 3060 12 GB; live session needs Basic Graphics (`nomodeset`) on Nouveau |
 | Bootc Image Builder ISO (`just build-iso`) | blocked | Upstream BIB #1188 — do not use |
@@ -118,15 +112,15 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 
 | Requirement | Status | Notes |
 |---|---|---|
-| First-run service + resume state | in progress | Per-user markers under `~/.config/arcalium/`; `arcaliumctl setup status/save/mark/complete/reset/set-autostart`; prefs `setup-prefs.json` (`showOnStartup`); no login autostart — Desktop/Kickoff Control Centre via `arcalium-control-centre-launch` opens Setup until finished; Settings toggle + Resume/Restart; menu `io.arcalium.Setup` |
-| Wizard pages (hardware → completion) | in progress | Shared Control Centre binary `--setup` mode; 14 pages per §8.3 including optional `localAi` (Install Ollama / Pull model / Skip) before Finish. Updates/VPN secrets/format stay guidance-only (same 2B policy as Control Centre). |
+| First-run service + resume state | complete | Per-user markers under `~/.config/arcalium/`; `arcaliumctl setup status/save/mark/complete/reset/set-autostart`; prefs `setup-prefs.json` (`showOnStartup`); **no login autostart** — Desktop/Kickoff Control Centre via `arcalium-control-centre-launch` opens Setup until finished; Settings toggle + Resume/Restart; menu `io.arcalium.Setup` |
+| Wizard pages (hardware → completion) | complete | Shared Control Centre binary `--setup` mode; 14 pages per §8.3 including optional `localAi` before Finish. Updates/VPN secrets/format stay guidance-only. |
 
 ## Phase 4 — Application provisioning
 
 | Requirement | Status | Notes |
 |---|---|---|
-| Declarative app catalogue | not started | Flatpak IDs must be re-validated on Flathub before commit |
-| Spotify / ProtonPlus / optional launchers | in progress | **ISO bundles** Firefox, ProtonPlus, Heroic. **On-demand:** Brave, Spotify, Steam (Flathub via Control Centre). Lutris dropped. |
+| Declarative app catalogue | complete | `config/catalogue/apps.v1.json` → `/usr/share/arcalium/catalogue/`; public-friendly descriptions; Control Centre Applications/Gaming/Streaming cards |
+| Spotify / ProtonPlus / optional launchers | complete | **ISO bundles** Firefox, ProtonPlus, Heroic. **On-demand:** Brave, Spotify, Steam (Flathub via Control Centre). Lutris dropped. |
 
 ## Phase 5 — Proton-GE
 
@@ -138,23 +132,23 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 
 | Requirement | Status | Notes |
 |---|---|---|
-| Drive scan / filesystem warnings | not started | |
-| ProtonVPN import flow | not started | |
+| Drive scan / filesystem warnings | in progress | Control Centre / Setup Storage: read-only `arcaliumctl storage scan`; **Open disk utility** → KDE Partition Manager (`kde-partitionmanager` layered in image). No format from UI. |
+| ProtonVPN import flow | in progress | Status + optional Proton VPN Flatpak; secret import stays in the VPN client / Plasma Network — not Control Centre. |
 
 ## Phase 7 — Control Centre completion
 
 | Requirement | Status | Notes |
 |---|---|---|
-| All version 1 pages | in progress | All §9.2 pages live including Local AI Assistant (2026-08-01). User Flatpak install/uninstall; no Polkit / no bootc mutate from UI. **UI polish deferred**. Setup wizard shipped separately. |
-| Local AI Assistant (§9.14) | in progress | Safe terminal agent (`assistant-agent.py` + `ARCALIUM_TOOL`): allowlisted `arcaliumctl` auto-runs for reads, `yes` confirm for mutations. Homebrew Ollama + model pull with live terminal progress. Base `gemma4:e4b-it-qat`. |
+| All version 1 pages | complete | All §9.2 pages live including Local AI Assistant. User Flatpak install/uninstall; no Polkit / no bootc mutate from UI. **Visual polish deferred**. |
+| Local AI Assistant (§9.14) | complete | Safe terminal agent; Homebrew Ollama + model pull with live progress; base `gemma4:e4b-it-qat`. Brew non-zero exit treated as OK when `ollama` is present. After pull: Desktop shortcut + menu entry `io.arcalium.Assistant` (Space Invaders pixel icon) via `arcalium-assistant`. |
 
 ## Phase 8 — Private alpha
 
 | Requirement | Status | Notes |
 |---|---|---|
-| `0.1.0-alpha.1` signed image + ISO + QCOW2 | in progress | Draft release notes in `docs/RELEASE_NOTES_0.1.0-alpha.1.md`; tag/checksums when ready |
-| Hardware matrix (RTX 3090 + 2× RTX 2060) | deferred | Primary alpha hardware is RTX **3060 12 GB**; original matrix optional if those GPUs appear |
-| Notices / privacy / support / recovery | in progress | `docs/NOTICES.md`, `PRIVACY.md`, `SUPPORT.md`, `RECOVERY.md`, `KNOWN_LIMITATIONS.md` |
+| `0.1.0-alpha.1` signed image + ISO + QCOW2 | complete | Superseded by 0.2.0 path; historical notes kept |
+| Hardware matrix (RTX 3090 + 2× RTX 2060) | deferred | Primary hardware is RTX **3060 12 GB** |
+| Notices / privacy / support / recovery | complete | Accepted for 0.2.0 |
 | Brave / Spotify ISO redistribution | complete | Removed from `installer/flatpaks`; Firefox bundled instead; Brave/Spotify Flathub on demand |
 
 ## Phase 9 — Public-release preparation
@@ -162,9 +156,11 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 | Requirement | Status | Notes |
 |---|---|---|
 | Steam licensing gate | complete | Steam not in image/ISO; Flathub via Control Centre |
-| Brave / Spotify ISO gate | complete | Not bundled; Flathub on demand (Firefox is default browser) |
-| Trademark / notices / privacy | in progress | Drafts ready for owner review: `docs/NOTICES.md`, `PRIVACY.md`, `SUPPORT.md`, `INSTALL.md`, `RECOVERY.md`, `KNOWN_LIMITATIONS.md`. GHCR still private. |
-| Public download site | not started | Domain reserved: **getarcalium.com** |
+| Brave / Spotify ISO gate | complete | Not bundled; Flathub on demand (Firefox is the default browser) |
+| Trademark / notices / privacy | complete | Accepted for 0.2.0 |
+| Promote `0.2.0` / `:stable` workflow | complete | `.github/workflows/promote-stable.yml` |
+| Public download site | in progress | Domain live as placeholder; **must** host ISO + checksums before GHCR public flip |
+| Public GHCR package | blocked | Waiting on getarcalium.com download page |
 
 ## Phase 10 — AMD/Intel edition
 
@@ -252,6 +248,11 @@ Repo: https://github.com/kaal22/arcalium-nvidia
 | 2026-07-31 | Phase 2 game path on RTX 3060 | **pass** — Steam and Heroic exercised (owner-confirmed). Phase 2 hardware validation complete; Control Centre gate open for private alpha. |
 | 2026-07-31 | Control Centre Overview MVP | Tauri 2 + React app `io.arcalium.ControlCentre`: nav shell for all §9.2 pages, Overview live from allowlisted `arcaliumctl` JSON, stubs elsewhere. Built in Containerfile `control-centre` stage; installed to `/usr/bin/arcalium-control-centre` with WebKit runtime + Kickoff favourite (panel pin dropped 2026-07-31 — its icon duplicates the Kickoff launcher mark). |
 | 2026-07-31 | Control Centre Compatibility page | First live page beyond Overview. Allowlists `proton list` / `install-recommended` (30 min timeout for download), Open ProtonPlus via Flatpak export path resolution, static ProtonDB / anti-cheat links. Overview Quick action Install Proton-GE uses the same install command. |
+| 2026-08-03 | Local AI Desktop shortcut | After model pull/ensure: trusted `~/Desktop/arcalium-assistant.desktop` + menu `io.arcalium.Assistant` + `arcalium-assistant` launcher; Space Invaders-style pixel icon (`assets/io.arcalium.Assistant.png`). GHCR `2b77d67`. |
+| 2026-08-03 | Alpha live ISO rebuild | Desktop `Arcalium-Live-alpha-final.iso` (~7.3 GB) from `cf0008f` (friendly catalogue descriptions). Old Desktop/WSL Arcalium ISOs deleted before rebuild. |
+| 2026-08-03 | Partition Manager | `kde-partitionmanager` layered in image; Setup/Control Centre Open disk utility no longer falls back to System Settings. GHCR `fa4162f`. |
+| 2026-08-03 | Ollama brew false failure | Install succeeds when `ollama` binary is present even if `brew install` exits non-zero. |
+| 2026-08-02 | Public-prep Flatpaks + docs | Firefox bundled as default; Brave/Spotify/Steam on-demand. Notices, privacy, support, recovery, install guide, draft release notes. |
 | 2026-08-01 | Setup wizard (Phase 3) | Shared Control Centre `--setup` mode with 13 pages (§8.3). State via `arcaliumctl setup` → `~/.config/arcalium/setup-progress.json` / `setup-complete.json`. Autostart `arcalium-setup --autostart` (live + completed skipped); menu `io.arcalium.Setup.desktop`; Settings Resume/Restart. Updates/VPN secrets/format remain guidance-only. |
 | 2026-08-01 | Every `arcaliumctl` command crashed after the pages commit | `apps.py` computed a repo-checkout catalogue fallback with `Path(__file__).resolve().parents[5]` at import time. That index is valid in the checkout (`<repo>/system_files/usr/lib/arcalium/ctl/`) but the installed path `/usr/lib/arcalium/ctl/` has only five parents, so it raised `IndexError: 5` while importing — taking down every subcommand and the whole Control Centre, which reported only "Could not load diagnostics". Now probed by `len(parents)` instead of indexed blindly. `build.sh` runs `arcaliumctl --help` and parses the catalogue so an import-time break fails CI rather than shipping. |
 | 2026-07-31 | Control Centre showed the wrong icon in two places | Both were placeholders never revisited. **Window/taskbar icon:** `--no-bundle` means `bundle.icon` is consumed only by bundlers, so the running window fell back to the toolkit default. X11 needed `window.set_icon()` (`image-png` feature, embedding the generated `icons/256x256.png`); Wayland has no GTK3 window-icon protocol and matches `app_id` to a desktop file instead, so the entry gained `StartupWMClass=arcalium-control-centre` to match GTK's program name against `io.arcalium.ControlCentre.desktop`. **Sidebar mark:** a CSS `clip-path` triangle, now the real `assets/arccleanSVG.svg` imported from the repo root so the UI and OS icons share one source. |
@@ -298,5 +299,7 @@ Resolved: local build host — WSL2 Ubuntu 24.04 on the Windows workstation runs
 | 2026-07-29 | Kickstart `%post` registry switch runs without `--erroronfail` | The GHCR package is private, so the installer cannot reach it and the switch fails. A registry lookup must never abort a tester's install. Consequence: installed systems track `localhost/arcalium-os-nvidia:dev` and need one manual `bootc switch` before they can update — documented in `docs/BUILDING.md`. Publishing the package removes the step. |
 | 2026-07-30 | Build host vs test host | Builds stay on this Windows/WSL workstation. Hardware validation runs on a separate RTX 3060 12 GB PC — never conflate the two. |
 | 2026-07-30 | ISO builds run detached, on a WSL VM with explicit memory and swap | The VM died at 90% of `mksquashfs` with no error and no exit status, losing ~40 minutes. Default WSL2 gets half of host RAM and no swap. `%USERPROFILE%\.wslconfig` now sets `memory=24GB`/`swap=8GB`, and the build runs under `setsid nohup` writing to `output/iso-build.log` so it survives a disconnecting terminal. Reruns are cheap: the payload image is cached, so only the squashfs is repeated. |
+| 2026-08-02 | Setup opens from Control Centre, not login | Fighting Plasma Welcome for login autostart failed repeatedly. Final approach: no Setup login autostart; Desktop + Kickoff Control Centre → `arcalium-control-centre-launch` opens Setup while incomplete; live ISO strips the CC Desktop shortcut. |
+| 2026-08-02 | Firefox default; Brave/Spotify on-demand | Bundled ISO Flatpaks: Firefox, Heroic, ProtonPlus. Brave/Spotify/Steam install from Flathub via Control Centre (same pattern as Steam). |
 | 2026-07-31 | Control Centre UI polish waits until all pages work | Ship one live page at a time with a functional shell. Visual polish (layout, typography, motion, empty states, copy tone) is a dedicated pass after every §9.2 page and the Setup wizard share a working codebase — not interleaved with feature wiring. |
 | 2026-07-30 | Bazzite updates arrive only by re-pinning the base digest | Machines track `ghcr.io/kaal22/arcalium-os-nvidia:dev` and never rebase onto `bazzite-nvidia-open` — doing so would take them off Arcalium. The `Containerfile` pins the base by digest, so upstream moving `:stable` changes nothing until we re-pin, rebuild and publish; `bootc upgrade` then delivers Bazzite fixes and Arcalium changes as one atomic image with the previous deployment kept for rollback. Matches PRODUCT_SPEC §14 (Arcalium updates by receiving a new signed Arcalium image) and principle 7 (stay close to upstream). Accepted trade-off: upstream security and driver fixes do not flow automatically, so re-pinning needs a deliberate cadence. Procedure and digest-resolution command in `docs/BUILDING.md`. |

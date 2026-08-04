@@ -19,13 +19,13 @@ Resume / restart: Kickoff → **Arcalium Setup**, or Settings → Setup wizard.
 | Compatibility | `proton list` / `install-recommended`, ProtonPlus, Protontricks |
 | GPU and Display | `gpu status` / `validate`, `vulkan test` |
 | Applications | catalogue-driven `apps` ops |
-| Storage | `storage scan` (read-only) |
+| Storage | `storage scan` (read-only); Open disk utility → KDE Partition Manager |
 | Network and VPN | `network status` + Proton VPN Flatpak |
 | Controllers | `controllers list` |
 | Streaming | Sunshine / Moonlight / OBS via `apps` |
 | Updates and Recovery | `updates status` / `check` / `apply` / `rollback` / `reboot` (terminal + sudo) |
 | Diagnostics | `diagnostics run` / `bundle` |
-| Local AI Assistant | agentic `ai launch` (allowlisted `arcaliumctl` tools) / `install-ollama --visible` / `ensure --visible` / `status` / `stop` |
+| Local AI Assistant | `ai install-ollama` / `ensure` / `launch` / `stop`; min 16 GiB RAM / 8 GiB VRAM soft warning; Desktop shortcut after successful ensure |
 | Settings | prefs + setup resume/restart |
 | About | image identity |
 

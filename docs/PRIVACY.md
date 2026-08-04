@@ -1,7 +1,8 @@
 # Privacy
 
-**Effective for:** private alpha / public-prep documentation  
-**Product:** Arcalium OS NVIDIA Edition
+**Effective for:** Arcalium OS NVIDIA Edition **0.2.0** (`stable`)  
+**Product:** Arcalium OS NVIDIA Edition  
+**Website:** https://getarcalium.com
 
 ## Summary
 
@@ -20,7 +21,7 @@ When you use Steam, Brave, Spotify, Firefox accounts, Heroic store logins, Proto
 
 ## Updates
 
-OS updates come from the container registry you configure (private GHCR during alpha). That uses normal HTTPS image pulls. Arcalium does not add a separate telemetry channel to updates.
+OS updates come from the container registry you configure (`ghcr.io/kaal22/arcalium-os-nvidia:stable` for the public channel). That uses normal HTTPS image pulls. Arcalium does not add a separate telemetry channel to updates.
 
 ## Contact
 

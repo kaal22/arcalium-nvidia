@@ -144,10 +144,10 @@ Keep `disk_config/iso.toml` and `.github/workflows/build-disk.yml` in sync with 
 | Surface | Setting | Reason |
 |---|---|---|
 | GitHub repository | public | Free Actions minutes and artifact storage; spec principle 9 (open maintenance) |
-| GHCR image package | private | Still private during public-prep; Steam/Brave/Spotify are not shipped in the image/ISO. Notices/privacy drafts are in `docs/`; flip GHCR public only intentionally. |
-| Disk images (ISO/QCOW2) | private artifacts | Downloaded by the maintainer, or built locally |
+| GHCR image package | private until download page ships | Notices/privacy/support accepted for 0.2.0. Flip GHCR public only after getarcalium.com has a real ISO download + checksums. |
+| Disk images (ISO/QCOW2) | Release artifacts | `Arcalium-Live-0.2.0.iso` via GitHub Release / getarcalium.com; QCOW2 stays maintainer-local |
 
-Making a GHCR package public is irreversible. Do not change the package to public until notices, privacy, and support docs are accepted.
+Making a GHCR package public is irreversible. Promote `0.2.0` / `:stable` with **Promote stable** (`promote-stable.yml`) after RC smoke — still private until the site gate clears.
 
 ## Build disk images (QCOW2 / ISO) — local, preferred
 
@@ -362,11 +362,16 @@ Offline maintenance helper via **Ollama**, base **`gemma4:e4b-it-qat`**, session
 
 - Control Centre → **Local AI Assistant**: Install Ollama, Pull and configure model, Launch assistant, Refresh agent prompt, Unload model.
 - UI **Install** / **Pull** use `--visible`: open Konsole (or Ptyxis/kgx) running `/usr/lib/arcalium/ai/install-session.sh` / `ensure-session.sh` so brew / `ollama pull` progress is visible; the page polls status until ready.
-- `arcaliumctl ai install-ollama` (no `--visible`) runs a non-interactive user-level `brew install ollama`, then starts the local server — for scripts. No sudo or copy/paste flow.
-- `arcaliumctl ai ensure` (no `--visible`) pulls the base tag and creates/refreshes `arcalium-assistant` silently (also used by **Refresh agent prompt** after prompt/tool-catalog changes).
-- `arcaliumctl ai launch` opens Konsole/Ptyxis/kgx running `/usr/lib/arcalium/ai/assistant-session.sh`, which starts the safe agent `/usr/lib/arcalium/ai/assistant-agent.py` with allowlisted tools from `agent_tools.py`. The model requests tools with `ARCALIUM_TOOL <name> {}`; read-only tools auto-run; mutating ones require typing `yes`. Closing the terminal runs `ollama stop` so VRAM is freed for gaming.
+- `arcaliumctl ai install-ollama` (no `--visible`) runs a non-interactive user-level `brew install ollama`, then starts the local server — for scripts. No sudo or copy/paste flow. **Success = `ollama` binary present**, even if brew exits non-zero (link/caveat noise).
+- `arcaliumctl ai ensure` (no `--visible`) pulls the base tag and creates/refreshes `arcalium-assistant` silently (also used by **Refresh agent prompt** after prompt/tool-catalog changes). On success it installs a trusted Desktop shortcut.
+- `arcaliumctl ai launch` / `/usr/bin/arcalium-assistant` opens Konsole/Ptyxis/kgx running `/usr/lib/arcalium/ai/assistant-session.sh`, which starts the safe agent `/usr/lib/arcalium/ai/assistant-agent.py` with allowlisted tools from `agent_tools.py`. The model requests tools with `ARCALIUM_TOOL <name> {}`; read-only tools auto-run; mutating ones require typing `yes`. Closing the terminal runs `ollama stop` so VRAM is freed for gaming.
+- Menu entry: `io.arcalium.Assistant.desktop` (Space Invaders-style pixel icon under `io.arcalium.Assistant`). Desktop: `~/Desktop/arcalium-assistant.desktop` after the first successful ensure (executable so Plasma trusts it).
 - Ollama is **not** layered into the image (atomic desktop); the UI installs it into the user's Homebrew environment on demand. The model pull is separate (~10 GB).
 - The local server keeps weights warm during an active chat; the terminal session traps EXIT/HUP and explicitly unloads both assistant and base models.
+
+### Storage / disk utility
+
+Setup and Control Centre **Storage** offer **Open disk utility**, which launches **KDE Partition Manager** (`org.kde.partitionmanager.desktop`). The image layers `kde-partitionmanager` (not on stock `bazzite-nvidia-open`). There is no GParted and no silent fallback to System Settings.
 
 ### Heroic Proton setup
 
@@ -391,7 +396,7 @@ Source: [`apps/control-centre/`](../apps/control-centre/). Tauri 2 + React; app 
 
 - The Containerfile `control-centre` stage builds the Linux binary on Fedora 42 and places it in the `ctx` mount as `/control-centre/arcalium-control-centre`.
 - `build_files/build.sh` installs it to `/usr/bin/arcalium-control-centre`, ensures `webkit2gtk4.1` is present, and installs the hicolor icon.
-- The UI invokes only allowlisted `arcaliumctl` argv sequences (see `apps/control-centre/src-tauri/src/ctl.rs`). All §9.2 pages are live, including **Local AI Assistant**. App catalogue: `config/catalogue/apps.v1.json` → `/usr/share/arcalium/catalogue/`. `apps install|uninstall` are user Flatpak only (ID allowlisted in Rust + catalogue).
+- The UI invokes only allowlisted `arcaliumctl` argv sequences (see `apps/control-centre/src-tauri/src/ctl.rs`). All §9.2 pages are live, including **Local AI Assistant**. App catalogue: `config/catalogue/apps.v1.json` → `/usr/share/arcalium/catalogue/` (each app has a **public-friendly description**; cards must not lead with Flatpak IDs). `apps install|uninstall` are user Flatpak only (ID allowlisted in Rust + catalogue).
 - **Progress feedback:** any backend call sets `body[data-busy]` so the pointer shows `cursor: progress`, and launches hold it briefly because spawning a `.desktop` returns before the window appears. Long downloads run visibly instead: `apps install <id> --visible` and `ai install-ollama|ensure --visible` open a terminal (`/usr/lib/arcalium/apps/install-session.sh`, `/usr/lib/arcalium/ai/{install,ensure}-session.sh`) via the shared `ctl/terminal.py` launcher, and the page polls status until the work lands. Without `--visible` the same commands stay silent for scripting.
 - **Updates and Recovery:** `updates check|apply|rollback|reboot` open `/usr/lib/arcalium/updates/session.sh` in a terminal so `sudo bootc …` can prompt for a password and show progress (Control Centre never runs privileged bootc silently). Apply/rollback require typing `yes` in the terminal before continuing. Diagnostics can write a redacted bundle under `~/.local/state/arcalium/`. Local AI launches a safe-agent terminal session (does not keep the model warm after close). Quick actions launch allowlisted `.desktop` files via `gio launch` (fallback `gtk-launch` / `kioclient exec`) — never `xdg-open` on the path.
 - Local iteration: `just build-control-centre` (WSL + Podman) extracts artifacts to `output/control-centre/`.
@@ -542,6 +547,7 @@ sudo chmod 600 /etc/ostree/auth.json
 
 ## Important gates
 
-- Do not publish a public ISO until remaining gates in `docs/LICENSING.md` are accepted (notices/privacy/support; GHCR still private by default).
+- Notices/privacy/support accepted for 0.2.0 (`docs/LICENSING.md`). Keep GHCR private until getarcalium.com ships a real download page, then flip intentionally.
+- Promote validated digests with **Promote stable** — do not retarget `:stable` from unreviewed commits.
 - Do not start the Control Centre until the base image and ISO workflow are proven (spec §28).
 - Do not invent Flatpak IDs, `ujust` paths, or bootc flags — verify against upstream first.

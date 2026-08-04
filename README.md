@@ -6,50 +6,44 @@ Gaming-first Linux OS for NVIDIA desktops. Built on [Bazzite](https://bazzite.gg
 
 ## Status
 
-**Private alpha / public-prep.** Doc index: [`docs/README.md`](docs/README.md). Spec: [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md). Checklist: [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md). Build: [`docs/BUILDING.md`](docs/BUILDING.md). Install: [`docs/INSTALL.md`](docs/INSTALL.md). Licensing: [`docs/LICENSING.md`](docs/LICENSING.md). Notices: [`docs/NOTICES.md`](docs/NOTICES.md). Privacy: [`docs/PRIVACY.md`](docs/PRIVACY.md). Support: [`docs/SUPPORT.md`](docs/SUPPORT.md).
+**0.2.0 / `stable` release prep.** Download site: [getarcalium.com](https://getarcalium.com). Doc index: [`docs/README.md`](docs/README.md). Spec: [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md). Checklist: [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md). Build: [`docs/BUILDING.md`](docs/BUILDING.md). Install: [`docs/INSTALL.md`](docs/INSTALL.md). Release notes: [`docs/RELEASE_NOTES_0.2.0.md`](docs/RELEASE_NOTES_0.2.0.md).
 
 | Item | Value |
 |---|---|
 | Image | `arcalium-os-nvidia` |
 | Base | `ghcr.io/ublue-os/bazzite-nvidia-open:stable` |
 | Desktop | KDE Plasma (Wayland) |
-| Channel | `dev` (GHCR package still private) |
+| Public channel | `stable` / `0.2.0` (CI tip remains `dev`) |
 | Default browser | Firefox (bundled); Brave/Spotify/Steam via Flathub |
 | Test GPU | RTX 3060 12 GB (primary) |
 
-## Quick start (maintainers)
+## End users
+
+1. Get the live ISO from [getarcalium.com](https://getarcalium.com) or the GitHub Release.
+2. Follow [`docs/INSTALL.md`](docs/INSTALL.md).
+3. After install, track updates with:
+
+```bash
+sudo bootc switch ghcr.io/kaal22/arcalium-os-nvidia:stable
+sudo systemctl reboot
+```
+
+## Maintainers
 
 1. Set GitHub Actions secret `SIGNING_SECRET` from your local `cosign.key` (never commit the key).
 2. Confirm `REPO_ORGANIZATION` in `image-template.env`.
 3. Push to `main` → **Build container image** publishes `ghcr.io/<owner>/arcalium-os-nvidia:dev`.
-4. Build disk images locally — see the standard workflow below.
-5. Hardware-test before any Control Centre work.
-
-## Standard ISO build workflow
-
-Edit on Windows → push to GitHub → pull in WSL → build in WSL → copy the ISO back. Git is the transfer mechanism; disk images are never built from `/mnt/c` or in CI. Full detail in [`docs/BUILDING.md`](docs/BUILDING.md).
+4. After hardware validation, run **Promote stable** (`promote-stable.yml`) to tag `0.2.0` and `stable`.
+5. Build disk images locally — see [`docs/BUILDING.md`](docs/BUILDING.md).
 
 ```bash
 cd /home/kaal/arcalium-nvidia && git pull && just build && just build-iso-live
 ```
 
-```bash
-sudo bootc switch ghcr.io/kaal22/arcalium-os-nvidia:dev
-```
-
 ## Verify signatures
 
 ```bash
-cosign verify --key cosign.pub ghcr.io/kaal22/arcalium-os-nvidia:dev
+cosign verify --key cosign.pub ghcr.io/kaal22/arcalium-os-nvidia:stable
 ```
 
-## What this is not
-
-- Not a theme pack or post-install script collection
-- Not a full Bazzite fork
-- Not Steam Gaming Mode / console session (v1)
-- Not a public release until you intentionally publish (GHCR still private; see `docs/LICENSING.md`)
-
-## Repository layout
-
-Inherited from Universal Blue `image-template`, plus Arcalium docs and identity files under `system_files/` and `docs/`.
+Licensing: [`docs/LICENSING.md`](docs/LICENSING.md). Notices: [`docs/NOTICES.md`](docs/NOTICES.md). Privacy: [`docs/PRIVACY.md`](docs/PRIVACY.md). Support: [`docs/SUPPORT.md`](docs/SUPPORT.md).

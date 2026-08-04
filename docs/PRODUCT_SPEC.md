@@ -7,7 +7,7 @@
 **Desktop:** KDE Plasma on Wayland  
 **Initial test hardware:** NVIDIA GeForce RTX 3090 and NVIDIA GeForce RTX 2060 systems  
 **Future edition:** Arcalium OS AMD/Intel Edition  
-**Initial release channel:** Private alpha  
+**Initial release channel:** `stable` (0.2.0)  
 
 ---
 
@@ -937,7 +937,7 @@ Each entry should contain:
   "required": false,
   "category": "media",
   "licenceNotice": "Community package",
-  "website": "",
+  "website": "https://getarcalium.com",
   "supported": true
 }
 ```
@@ -1973,10 +1973,10 @@ Deliverables:
 - Third-party notices (`docs/NOTICES.md`).
 - Privacy policy (`docs/PRIVACY.md`).
 - Support process (`docs/SUPPORT.md`).
-- Download page (planned host: **getarcalium.com** — domain reserved 2026-08-01).
-- Signed stable release.
+- Download page (**getarcalium.com** — domain reserved; must host ISO + checksums before GHCR goes public).
+- Signed stable release (`0.2.0` / `:stable` via Promote stable workflow).
 
-Steam, Brave, and Spotify redistribution is addressed by **not** shipping those clients in the image/ISO. Remaining blockers for public distribution are accepting notices/privacy/support, intentional GHCR visibility, and the download page — not rebundling those clients.
+Steam, Brave, and Spotify redistribution is addressed by **not** shipping those clients in the image/ISO. Notices/privacy/support are accepted for 0.2.0. Remaining public-distribution blocker is shipping a real download page on getarcalium.com, then flipping GHCR visibility intentionally.
 
 ## Phase 10 — AMD/Intel edition
 

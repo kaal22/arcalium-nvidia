@@ -1,12 +1,13 @@
 # Licensing inventory
 
-Status: **public-prep — docs ready for review** — Steam, Brave, and Spotify are **not** bundled in the ISO (Flathub on demand). Firefox, Heroic, and ProtonPlus are bundled. Notices/privacy/support/install docs are in `docs/`. GHCR package remains **private** until you intentionally publish.
+Status: **accepted for 0.2.0 public release** — Steam, Brave, and Spotify are **not** bundled in the ISO (Flathub on demand). Firefox, Heroic, and ProtonPlus are bundled. Notices, privacy, support, and known limitations are accepted. GHCR package stays **private** until getarcalium.com ships a real download page and visibility is flipped intentionally.
 
 ## Arcalium OS
 
 - Project licence for Arcalium-authored files: Apache-2.0 (repository `LICENSE` from Universal Blue’s image-template; Arcalium additions follow the same terms unless a file says otherwise).
 - Product name: Arcalium OS / Arcalium OS NVIDIA Edition.
 - Package namespace: `io.arcalium`.
+- Website: https://getarcalium.com
 
 ### Branding assets (owner-supplied)
 
@@ -66,7 +67,7 @@ Third-party names are used only to describe compatibility. See also [`docs/NOTIC
 4. Firefox (MPL-2.0), Heroic, and ProtonPlus may ship bundled.
 5. Do not ship assets without redistribution rights (owner assets recorded above).
 6. Cosign private key must never be committed.
-7. Do not make the GHCR package public until notices, privacy, and support docs are accepted and you intentionally flip visibility.
+7. Do not make the GHCR package public until notices, privacy, and support docs are accepted **and** getarcalium.com publishes a real download page — then flip visibility intentionally.
 
 ## Related docs
 
