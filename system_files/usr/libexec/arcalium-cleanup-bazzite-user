@@ -1,0 +1,5 @@
+#!/usr/bin/bash
+# Remove leftover Bazzite Portal autostart copied into existing user homes
+# before Arcalium hid Portal from the image/skel.
+set -euo pipefail
+rm -f "${HOME}/.config/autostart/bazzite-portal.desktop"

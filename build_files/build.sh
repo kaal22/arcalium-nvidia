@@ -145,6 +145,7 @@ EOF
 # after rebasing. New installs already get DEFAULT_HOSTNAME=arcalium and
 # /etc/hostname from system_files.
 chmod 0755 /usr/libexec/arcalium-migrate-hostname
+chmod 0755 /usr/libexec/arcalium-cleanup-bazzite-user
 chmod 0755 /usr/bin/arcaliumctl
 chmod 0755 /usr/bin/arcalium-heroic
 chmod 0755 /usr/bin/arcalium-setup
@@ -163,6 +164,11 @@ chmod 0755 /usr/bin/bazzite-steam-bpm
 chmod 0755 /usr/lib/arcalium/ai/assistant-session.sh
 chmod 0755 /usr/lib/arcalium/ai/ensure-session.sh
 chmod 0755 /usr/lib/arcalium/ai/install-session.sh
+
+# Enable per-user cleanup of leftover Bazzite Portal autostart after rebase.
+mkdir -p /etc/systemd/user/default.target.wants
+ln -sfn /usr/lib/systemd/user/arcalium-cleanup-bazzite.service \
+    /etc/systemd/user/default.target.wants/arcalium-cleanup-bazzite.service
 chmod 0755 /usr/lib/arcalium/ai/assistant-agent.py
 chmod 0755 /usr/lib/arcalium/apps/install-session.sh
 chmod 0755 /usr/lib/arcalium/proton/install-session.sh
@@ -220,6 +226,43 @@ test -x /usr/bin/bazzite-steam-firstrun
 grep -q 'Arcalium override' /usr/bin/bazzite-steam-firstrun
 grep -q 'not shipped in the image' /usr/bin/bazzite-steam
 echo "Steam client removed from image (not redistributed)."
+
+# Hide inherited Bazzite marketing / maintenance launchers. Arcalium users update
+# via Control Centre (bootc) and should not see Portal / Bazzite docs / ujust update.
+echo "Removing Bazzite Portal / Documentation / System Update menu entries..."
+rm -f /etc/skel/.config/autostart/bazzite-portal.desktop
+rm -f /usr/share/applications/bazzite-documentation.desktop
+rm -f /usr/share/applications/system-update.desktop
+rm -f /usr/share/applications/discourse.desktop
+# Portal app id (yafti) — name can vary by base; wipe any matching launchers.
+find /usr/share/applications -maxdepth 1 -type f \( \
+    -iname '*yafti*' -o \
+    -iname '*bazzite-portal*' -o \
+    -iname 'bazzite-documentation.desktop' -o \
+    -iname 'system-update.desktop' \
+  \) -print -delete
+# Autostart for existing profiles is under ~/.config; skel covers new users.
+# Mark leftover user-copied Portal autostarts NoDisplay via a system drop-in name
+# would not help ~/.config — Control Centre docs note: delete
+# ~/.config/autostart/bazzite-portal.desktop after upgrade if it still appears.
+if [[ -e /etc/skel/.config/autostart/bazzite-portal.desktop ]]; then
+    echo "ERROR: skel bazzite-portal.desktop autostart still present" >&2
+    exit 1
+fi
+if [[ -e /usr/share/applications/bazzite-documentation.desktop ]]; then
+    echo "ERROR: bazzite-documentation.desktop still present" >&2
+    exit 1
+fi
+if [[ -e /usr/share/applications/system-update.desktop ]]; then
+    echo "ERROR: system-update.desktop still present" >&2
+    exit 1
+fi
+if compgen -G '/usr/share/applications/*yafti*' >/dev/null 2>&1; then
+    echo "ERROR: yafti/Portal launcher still present under /usr/share/applications" >&2
+    ls -la /usr/share/applications/*yafti* >&2 || true
+    exit 1
+fi
+echo "Bazzite Portal / Documentation / System Update menu entries removed."
 
 # An import-time error in any ctl module breaks every arcaliumctl command, and
 # therefore the whole Control Centre, so prove the CLI imports and that the

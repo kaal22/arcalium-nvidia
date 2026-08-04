@@ -1,0 +1,11 @@
+[Unit]
+Description=Remove leftover Bazzite Portal autostart from the user home
+Documentation=file:///usr/share/arcalium/README.txt
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/arcalium-cleanup-bazzite-user
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target
