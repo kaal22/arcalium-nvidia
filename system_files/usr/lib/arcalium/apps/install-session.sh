@@ -24,13 +24,13 @@ echo
 if "${FLATPAK_BIN}" install --user -y flathub "${FLATPAK_REF}"; then
   echo
   echo "Done. ${APP_NAME} is installed."
-  if [[ "${FLATPAK_REF}" == "com.valvesoftware.Steam" || "${APP_ID}" == "steam" ]]; then
-    echo
-    echo "Applying Arcalium NVIDIA / game-drive harden for Flatpak Steam…"
-    if [[ -x /usr/lib/arcalium/steam/harden-flatpak.sh ]]; then
-      ARCALIUM_FLATPAK_BIN="${FLATPAK_BIN}" /usr/lib/arcalium/steam/harden-flatpak.sh || \
-        echo "WARN: Steam harden reported an error — run: arcaliumctl steam harden"
-    fi
+  echo
+  echo "Applying Arcalium NVIDIA Flatpak harden (GL runtimes + GPU device access)…"
+  if [[ -x /usr/lib/arcalium/flatpak/harden-nvidia.sh ]]; then
+    ARCALIUM_FLATPAK_BIN="${FLATPAK_BIN}" /usr/lib/arcalium/flatpak/harden-nvidia.sh || \
+      echo "WARN: NVIDIA Flatpak harden reported an error — run: arcaliumctl steam harden"
+  elif [[ -x /usr/lib/arcalium/steam/harden-flatpak.sh ]]; then
+    ARCALIUM_FLATPAK_BIN="${FLATPAK_BIN}" /usr/lib/arcalium/steam/harden-flatpak.sh || true
   fi
   echo "You can close this window — Control Centre updates automatically."
   echo
@@ -47,13 +47,11 @@ if [[ -n "${APP_ID}" ]] && command -v arcaliumctl >/dev/null 2>&1; then
   if arcaliumctl apps install "${APP_ID}" --json; then
     echo
     echo "Done. ${APP_NAME} is installed."
-    if [[ "${FLATPAK_REF}" == "com.valvesoftware.Steam" || "${APP_ID}" == "steam" ]]; then
-      echo
-      echo "Applying Arcalium NVIDIA / game-drive harden for Flatpak Steam…"
-      if [[ -x /usr/lib/arcalium/steam/harden-flatpak.sh ]]; then
-        ARCALIUM_FLATPAK_BIN="${FLATPAK_BIN}" /usr/lib/arcalium/steam/harden-flatpak.sh || \
-          echo "WARN: Steam harden reported an error — run: arcaliumctl steam harden"
-      fi
+    echo
+    echo "Applying Arcalium NVIDIA Flatpak harden…"
+    if [[ -x /usr/lib/arcalium/flatpak/harden-nvidia.sh ]]; then
+      ARCALIUM_FLATPAK_BIN="${FLATPAK_BIN}" /usr/lib/arcalium/flatpak/harden-nvidia.sh || \
+        echo "WARN: NVIDIA Flatpak harden reported an error — run: arcaliumctl steam harden"
     fi
     echo
     read -r -p "Press Enter to close…" _

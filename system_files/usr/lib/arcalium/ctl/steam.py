@@ -24,7 +24,9 @@ OFFICIAL_DOWNLOAD_URL = "https://store.steampowered.com/about/"
 FLATPAK_ID = "com.valvesoftware.Steam"
 FLATPAK_DESKTOP = "com.valvesoftware.Steam.desktop"
 NATIVE_DESKTOP = "steam.desktop"
-HARDEN_SCRIPT = "/usr/lib/arcalium/steam/harden-flatpak.sh"
+HARDEN_SCRIPT = "/usr/lib/arcalium/flatpak/harden-nvidia.sh"
+# Kept for older docs / PATH expectations
+HARDEN_SCRIPT_LEGACY = "/usr/lib/arcalium/steam/harden-flatpak.sh"
 
 
 class SteamError(Exception):
@@ -152,20 +154,11 @@ def install(*, visible: bool = True) -> dict[str, Any]:
 
 
 def harden(*, visible: bool = False) -> dict[str, Any]:
-    """Apply NVIDIA GL runtimes + Flatpak overrides for GPU and library drives."""
-    st = status()
-    if not st.get("flatpakInstalled") and st.get("source") != "flatpak":
-        return {
-            "schema": "arcalium.steam.harden/v1",
-            "ok": False,
-            "action": "skipped",
-            "message": (
-                "Flatpak Steam is not installed. Install Steam from Control Centre "
-                "first (native RPM Steam is not shipped)."
-            ),
-        }
-
+    """Install NVIDIA Flatpak GL runtimes + overrides for Steam, Heroic, and other GPU apps."""
     script = Path(HARDEN_SCRIPT)
+    if not script.is_file():
+        legacy = Path(HARDEN_SCRIPT_LEGACY)
+        script = legacy if legacy.is_file() else script
     if not script.is_file():
         return {
             "schema": "arcalium.steam.harden/v1",
@@ -177,7 +170,6 @@ def harden(*, visible: bool = False) -> dict[str, Any]:
     flatpak_bin = resolve_binary("flatpak") or "/usr/bin/flatpak"
     env_extra = {
         "ARCALIUM_FLATPAK_BIN": flatpak_bin,
-        "ARCALIUM_STEAM_FLATPAK_ID": FLATPAK_ID,
     }
 
     if visible:
@@ -197,8 +189,8 @@ def harden(*, visible: bool = False) -> dict[str, Any]:
             "visible": True,
             "terminal": term,
             "message": (
-                f"Opened {term} to harden Flatpak Steam for NVIDIA. "
-                "Watch progress there, then fully quit and relaunch Steam."
+                f"Opened {term} to harden Flatpak gaming apps for NVIDIA. "
+                "Watch progress there, then fully quit and relaunch Heroic/Steam."
             ),
         }
 
@@ -228,7 +220,7 @@ def harden(*, visible: bool = False) -> dict[str, Any]:
         "exitCode": completed.returncode,
         "message": detail[-1200:]
         if detail
-        else ("Steam Flatpak hardened." if ok else "Steam harden failed."),
+        else ("Flatpak NVIDIA harden complete." if ok else "Flatpak NVIDIA harden failed."),
     }
 
 

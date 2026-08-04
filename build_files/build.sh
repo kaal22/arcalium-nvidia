@@ -166,6 +166,7 @@ chmod 0755 /usr/lib/arcalium/ai/ensure-session.sh
 chmod 0755 /usr/lib/arcalium/ai/install-session.sh
 chmod 0755 /usr/lib/arcalium/apps/install-session.sh
 chmod 0755 /usr/lib/arcalium/steam/harden-flatpak.sh
+chmod 0755 /usr/lib/arcalium/flatpak/harden-nvidia.sh
 
 # Enable per-user cleanup of leftover Bazzite Portal autostart after rebase.
 mkdir -p /etc/systemd/user/default.target.wants
