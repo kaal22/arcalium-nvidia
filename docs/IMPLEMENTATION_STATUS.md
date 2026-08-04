@@ -34,8 +34,8 @@
 
 | Artifact | Location | Notes |
 |---|---|---|
-| Live ISO — **current** | Desktop `Arcalium-Live-alpha-final.iso` (~7.3 GB) + WSL `~/arcalium-nvidia/output/Arcalium-Live.iso` | Built **2026-08-03** from `cf0008f` (public-friendly app descriptions). Does **not** yet include `2b77d67` AI Desktop shortcut — that needs another full ISO or bootc upgrade only for installed systems |
-| GHCR image — **current** | `ghcr.io/kaal22/arcalium-os-nvidia:dev` (private) | Through `2b77d67` (AI shortcut); 3060 uses `sudo bootc upgrade` |
+| Live ISO — **current** | Desktop `Arcalium-Live-0.2.0.iso` (~7.3 GB) + WSL `~/arcalium-nvidia/output/Arcalium-Live.iso` | Built **2026-08-04**; SHA-256 `ec70c4f69850170ffab3a7ab6cabc15da07de9d76a94b1c3b7f23bd0a90d8d98` |
+| GHCR image — **current** | `ghcr.io/kaal22/arcalium-os-nvidia:0.2.0` / `:stable` / `:dev` (private) | Digest `sha256:161e87aa…6fb9` (promoted from `:dev` @ `72b9773`) |
 | OCI image (WSL) | `localhost/arcalium-os-nvidia:dev` | Local build cache for ISO |
 | Payload image (WSL) | `localhost/arcalium-os-nvidia-payload:dev` | Live/installer layer |
 
@@ -48,10 +48,9 @@
 
 **Not finished — next**
 
-1. RC smoke on 3060 (`docs/RC_SMOKE_0.2.0.md`) after CI for min-spec image.
-2. Cut `Arcalium-Live-0.2.0.iso` (full `just build` first) — see `NEXT_ISO.md`.
-3. Promote `0.2.0` + `stable` (Promote stable workflow); GitHub Release with checksums.
-4. Ship real download on getarcalium.com → flip GHCR public.
+1. Owner RC smoke on 3060 (`docs/RC_SMOKE_0.2.0.md`) after `bootc upgrade` / switch to `:stable`.
+2. Ship real ISO download on getarcalium.com (checksum below) → flip GHCR public (`docs/GHCR_PUBLIC_FLIP.md`).
+3. Optional later: second-GPU matrix; Control Centre visual polish.
 
 **Resume commands**
 

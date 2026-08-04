@@ -16,6 +16,7 @@ Docs for **Arcalium OS NVIDIA Edition 0.2.0**. Public channel: `stable`. GHCR pa
 | [INSTALL.md](INSTALL.md) | End-user install (live ISO) |
 | [RELEASE_NOTES_0.2.0.md](RELEASE_NOTES_0.2.0.md) | 0.2.0 release notes |
 | [RC_SMOKE_0.2.0.md](RC_SMOKE_0.2.0.md) | Pre-promote smoke checklist |
+| [GHCR_PUBLIC_FLIP.md](GHCR_PUBLIC_FLIP.md) | Irreversible package-visibility flip (after download page) |
 | [RELEASE_NOTES_0.1.0-alpha.1.md](RELEASE_NOTES_0.1.0-alpha.1.md) | Historical alpha draft |
 | [PHASE2_VALIDATION.md](PHASE2_VALIDATION.md) | Hardware CLI validation runbook |
 

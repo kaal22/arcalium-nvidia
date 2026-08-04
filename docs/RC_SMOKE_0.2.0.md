@@ -2,6 +2,14 @@
 
 Run after CI published the candidate `:dev` image and before promoting to `0.2.0` / `:stable`.
 
+## Automated gates (maintainer / CI)
+
+| Check | Status |
+|---|---|
+| CI Build container image on candidate SHA | Required green before promote |
+| `build.sh` Steam RPM / `steam.desktop` absence asserts | Enforced in image build |
+| Local AI min-spec constants / UI + `ai status` hardware fields | Shipped on candidate |
+
 ## On the 3060 (bootc)
 
 ```bash
@@ -10,7 +18,7 @@ sudo bootc upgrade && sudo systemctl reboot
 bootc status
 ```
 
-## Checklist
+## Owner checklist
 
 | Check | Pass? |
 |---|---|

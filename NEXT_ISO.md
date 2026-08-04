@@ -1,12 +1,9 @@
 # Before next ISO
 
-Target public artifact: **`Arcalium-Live-0.2.0.iso`** (SHA-256 required for the GitHub Release / getarcalium.com).
+**Public 0.2.0 live ISO:** Desktop `Arcalium-Live-0.2.0.iso` (~7.3 GB)  
+SHA-256: `ec70c4f69850170ffab3a7ab6cabc15da07de9d76a94b1c3b7f23bd0a90d8d98`  
+Built **2026-08-04** from `origin/main` after Local AI min-spec + 0.2.0 prep (WSL `just build` + `just build-iso-live`).
 
-Last alpha live ISO: `Arcalium-Live-alpha-final.iso` on the Desktop  
-Built from `cf0008f` (public-friendly app descriptions).
+**Published tags:** `ghcr.io/kaal22/arcalium-os-nvidia:0.2.0` and `:stable` @ `sha256:161e87aa0690354fdb35bfc61932d87c9dfc987201270e6d71286890c6b66fb9` (package still private until getarcalium.com download page).
 
-**On GHCR / bootc since that ISO (needs full ISO to land on clean installs):**
-- Local AI Desktop shortcut + Space Invaders pixel icon (`2b77d67`)
-- Local AI min-spec UI 16 GiB RAM / 8 GiB VRAM (`335e611`+)
-
-Next rebuild: full `just build` then `just build-iso-live` via WSL Ubuntu (`tools/wsl-cleanup-and-rebuild.sh` if used). Copy/rename to `Arcalium-Live-0.2.0.iso` and record SHA-256.
+Next rebuild only when installer / Flatpak set / brand changes demand a clean-install artifact. Full `just build` before `just build-iso-live`.
