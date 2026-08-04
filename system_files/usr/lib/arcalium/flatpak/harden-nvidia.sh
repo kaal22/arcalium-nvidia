@@ -1,11 +1,15 @@
 #!/usr/bin/bash
-# Harden Flatpak gaming apps for NVIDIA on Arcalium.
+# Harden Flatpak apps for NVIDIA on Arcalium.
 # Flatpak apps do not see host nvidia-open without matching
 # org.freedesktop.Platform.GL.nvidia-* (+ GL32) and device overrides.
-# Without that: Heroic "no OpenGL" / Steam ~1 FPS / ~0% GPU util.
+# Without that: Heroic "no OpenGL" / Steam ~1 FPS / ~0% GPU util / soft browser video.
+#
+# Safe for systemd (non-interactive). Idempotent for GL downloads.
 set -u
 
 FLATPAK_BIN="${ARCALIUM_FLATPAK_BIN:-/usr/bin/flatpak}"
+TAG_HELPER="/usr/lib/arcalium/flatpak/nvidia-gl-tag.sh"
+APPLIED_STAMP="${ARCALIUM_FLATPAK_GL_APPLIED:-/var/lib/arcalium/flatpak-nvidia-gl.applied}"
 
 # Catalogue / common GPU apps. Overrides apply only if the app is installed.
 DEFAULT_APPS=(
@@ -17,6 +21,9 @@ DEFAULT_APPS=(
   dev.lizardbyte.app.Sunshine
   com.moonlight_stream.Moonlight
   com.discordapp.Discord
+  org.mozilla.firefox
+  com.brave.Browser
+  com.spotify.Client
 )
 
 if [[ -n "${ARCALIUM_FLATPAK_HARDEN_IDS:-}" ]]; then
@@ -35,48 +42,63 @@ fi
 echo "Arcalium — harden Flatpak apps for NVIDIA GPU + common game drives"
 echo
 
-# --- NVIDIA GL / GL32 runtimes matching the host driver (shared by all Flatpaks) ---
-DRIVER_VER=""
-if command -v nvidia-smi >/dev/null 2>&1; then
-  DRIVER_VER="$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -n1 | tr -d '[:space:]')"
+# --- Resolve Flatpak GL tag ---
+GL_TAG=""
+if [[ -x "${TAG_HELPER}" ]]; then
+  GL_TAG="$("${TAG_HELPER}" 2>/dev/null || true)"
+fi
+if [[ -z "${GL_TAG}" && -f /usr/share/arcalium/flatpak-nvidia-gl.tag ]]; then
+  GL_TAG="$(tr -d '[:space:]' </usr/share/arcalium/flatpak-nvidia-gl.tag || true)"
 fi
 
-if [[ -n "${DRIVER_VER}" ]]; then
-  GL_TAG="$(printf '%s' "${DRIVER_VER}" | tr '.' '-')"
-  echo "Host NVIDIA driver: ${DRIVER_VER} → Flatpak GL tag nvidia-${GL_TAG}"
+_install_gl_ext() {
+  local ext="$1"
+  # Prefer --system when root (ISO / multi-user); else --user.
+  if [[ "$(id -u)" -eq 0 ]]; then
+    if "${FLATPAK_BIN}" info --system "${ext}" >/dev/null 2>&1; then
+      echo "Already present (system): ${ext}"
+      return 0
+    fi
+    echo "Ensuring ${ext} (system)…"
+    if "${FLATPAK_BIN}" install --system -y flathub "${ext}"; then
+      return 0
+    fi
+    echo "WARN: system install failed for ${ext}; trying --user…"
+  fi
+  if "${FLATPAK_BIN}" info --user "${ext}" >/dev/null 2>&1; then
+    echo "Already present (user): ${ext}"
+    return 0
+  fi
+  echo "Ensuring ${ext} (user)…"
+  if "${FLATPAK_BIN}" install --user -y flathub "${ext}"; then
+    return 0
+  fi
+  echo "WARN: could not install ${ext} (Flathub may not publish this build yet)."
+  return 1
+}
+
+GL_OK=0
+if [[ -n "${GL_TAG}" ]]; then
+  echo "NVIDIA Flatpak GL tag: nvidia-${GL_TAG}"
+  GL_OK=1
   for EXT in \
     "org.freedesktop.Platform.GL.nvidia-${GL_TAG}" \
     "org.freedesktop.Platform.GL32.nvidia-${GL_TAG}"
   do
-    echo "Ensuring ${EXT}…"
-    # Prefer --user; fall back to system if that is how remotes are wired.
-    if ! "${FLATPAK_BIN}" install --user -y flathub "${EXT}"; then
-      if ! "${FLATPAK_BIN}" install --system -y flathub "${EXT}"; then
-        echo "WARN: could not install ${EXT} (Flathub may not publish this build yet)."
-      fi
-    fi
+    _install_gl_ext "${EXT}" || GL_OK=0
   done
 else
-  echo "WARN: nvidia-smi unavailable — skipping NVIDIA GL runtime install."
+  echo "WARN: could not resolve NVIDIA GL tag — skipping Flatpak GL install."
 fi
 
-echo
-HARDENED=0
-SKIPPED=0
-for APP_ID in "${APPS[@]}"; do
-  SCOPE=(--user)
-  if ! "${FLATPAK_BIN}" info "${SCOPE[@]}" "${APP_ID}" >/dev/null 2>&1; then
-    if "${FLATPAK_BIN}" info --system "${APP_ID}" >/dev/null 2>&1; then
-      SCOPE=(--system)
-    else
-      echo "Skip (not installed): ${APP_ID}"
-      SKIPPED=$((SKIPPED + 1))
-      continue
-    fi
-  fi
+_apply_overrides() {
+  local scope_flag="$1" # --user or --system
+  local app_id="$2"
+  shift 2
+  # Remaining: optional env prefix already set by caller via env
 
-  echo "Overrides → ${APP_ID} (${SCOPE[*]})"
-  if "${FLATPAK_BIN}" override "${SCOPE[@]}" \
+  echo "Overrides → ${app_id} (${scope_flag})"
+  if ! "${FLATPAK_BIN}" override "${scope_flag}" \
     --device=all \
     --device=dri \
     --share=network \
@@ -89,11 +111,10 @@ for APP_ID in "${APPS[@]}"; do
     --filesystem=/mnt \
     --filesystem=/var/mnt \
     --filesystem=/run/media \
-    "${APP_ID}"
+    "${app_id}"
   then
-    HARDENED=$((HARDENED + 1))
-  else
-    echo "WARN: override failed for ${APP_ID}"
+    echo "WARN: override failed for ${app_id} (${scope_flag})"
+    return 1
   fi
 
   if command -v findmnt >/dev/null 2>&1; then
@@ -103,15 +124,108 @@ for APP_ID in "${APPS[@]}"; do
         /boot*|/efi*|/sysroot*|/ostree*|/var/home|/home) continue ;;
       esac
       echo "  + filesystem ${mp}"
-      "${FLATPAK_BIN}" override "${SCOPE[@]}" --filesystem="${mp}" "${APP_ID}" || true
-    done < <(findmnt -rn -t ext4,xfs,btrfs,ntfs,fuseblk -o TARGET 2>/dev/null | grep -E '^/(mnt|var/mnt|run/media|media)/' || true)
+      "${FLATPAK_BIN}" override "${scope_flag}" --filesystem="${mp}" "${app_id}" || true
+    done < <(findmnt -rn -t ext4,xfs,btrfs,ntfs,fuseblk -o TARGET 2>/dev/null \
+      | grep -E '^/(mnt|var/mnt|run/media|media)/' || true)
+  fi
+  return 0
+}
+
+_app_installed() {
+  local scope_flag="$1"
+  local app_id="$2"
+  "${FLATPAK_BIN}" info "${scope_flag}" "${app_id}" >/dev/null 2>&1
+}
+
+echo
+HARDENED=0
+SKIPPED=0
+
+# --- Current user / system scope (non-root interactive + system apps as root) ---
+for APP_ID in "${APPS[@]}"; do
+  DID=0
+  if _app_installed --user "${APP_ID}"; then
+    if _apply_overrides --user "${APP_ID}"; then
+      HARDENED=$((HARDENED + 1))
+      DID=1
+    fi
+  fi
+  if _app_installed --system "${APP_ID}"; then
+    if _apply_overrides --system "${APP_ID}"; then
+      HARDENED=$((HARDENED + 1))
+      DID=1
+    fi
+  fi
+  if [[ "${DID}" -eq 0 ]]; then
+    echo "Skip (not installed): ${APP_ID}"
+    SKIPPED=$((SKIPPED + 1))
   fi
 done
 
-echo
-echo "Hardened ${HARDENED} app(s); skipped ${SKIPPED} not installed."
-echo "Fully quit Heroic / Steam / affected apps and relaunch them."
-if [[ "${HARDENED}" -eq 0 ]]; then
-  exit 1
+# --- As root: also harden other users' --user Flatpak installs (e.g. Steam) ---
+if [[ "$(id -u)" -eq 0 ]]; then
+  for home in /home/* /var/home/*; do
+    [[ -d "${home}" ]] || continue
+    user_fp="${home}/.local/share/flatpak"
+    [[ -d "${user_fp}" ]] || continue
+    base="$(basename "${home}")"
+    [[ "${base}" == "lost+found" ]] && continue
+
+    echo
+    echo "User Flatpak store: ${home}"
+    for APP_ID in "${APPS[@]}"; do
+      if HOME="${home}" FLATPAK_USER_DIR="${user_fp}" \
+        "${FLATPAK_BIN}" info --user "${APP_ID}" >/dev/null 2>&1
+      then
+        echo "Overrides → ${APP_ID} (--user @ ${base})"
+        if HOME="${home}" FLATPAK_USER_DIR="${user_fp}" \
+          "${FLATPAK_BIN}" override --user \
+            --device=all \
+            --device=dri \
+            --share=network \
+            --share=ipc \
+            --socket=wayland \
+            --socket=fallback-x11 \
+            --socket=pulseaudio \
+            --socket=session-bus \
+            --filesystem=xdg-run/pipewire-0:ro \
+            --filesystem=/mnt \
+            --filesystem=/var/mnt \
+            --filesystem=/run/media \
+            "${APP_ID}"
+        then
+          HARDENED=$((HARDENED + 1))
+          if command -v findmnt >/dev/null 2>&1; then
+            while IFS= read -r mp; do
+              [[ -z "${mp}" || "${mp}" == / ]] && continue
+              case "${mp}" in
+                /boot*|/efi*|/sysroot*|/ostree*|/var/home|/home) continue ;;
+              esac
+              HOME="${home}" FLATPAK_USER_DIR="${user_fp}" \
+                "${FLATPAK_BIN}" override --user --filesystem="${mp}" "${APP_ID}" || true
+            done < <(findmnt -rn -t ext4,xfs,btrfs,ntfs,fuseblk -o TARGET 2>/dev/null \
+              | grep -E '^/(mnt|var/mnt|run/media|media)/' || true)
+          fi
+        else
+          echo "WARN: override failed for ${APP_ID} (user ${base})"
+        fi
+      fi
+    done
+  done
 fi
-exit 0
+
+if [[ -n "${GL_TAG}" && "$(id -u)" -eq 0 ]]; then
+  mkdir -p "$(dirname "${APPLIED_STAMP}")"
+  printf '%s\n' "${GL_TAG}" >"${APPLIED_STAMP}"
+fi
+
+echo
+echo "Hardened ${HARDENED} install(s); skipped ${SKIPPED} catalogue apps not present."
+echo "Fully quit Heroic / Steam / browsers / Discord / OBS and relaunch them."
+
+# Success if we installed GL or applied at least one override.
+# Fresh boot with only ISO-bundled GL and no catalogue apps yet still succeeds.
+if [[ "${GL_OK}" -eq 1 || "${HARDENED}" -gt 0 ]]; then
+  exit 0
+fi
+exit 1

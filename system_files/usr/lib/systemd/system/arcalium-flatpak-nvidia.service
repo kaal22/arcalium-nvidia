@@ -1,0 +1,15 @@
+[Unit]
+Description=Arcalium Flatpak NVIDIA GL harden (runtimes + GPU overrides)
+Documentation=file:///usr/share/arcalium/README.txt
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/arcalium/flatpak/harden-nvidia.sh
+# Do not fail the boot target if Flathub is briefly unreachable.
+SuccessExitStatus=0 1
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

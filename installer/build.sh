@@ -36,6 +36,25 @@ curl --retry 3 -Lo /etc/flatpak/remotes.d/flathub.flatpakrepo \
     https://dl.flathub.org/repo/flathub.flatpakrepo
 xargs -r flatpak install -y --noninteractive <"$SCRIPT_DIR/flatpaks"
 
+# Matching NVIDIA Flatpak GL runtimes (version-locked to the image driver).
+# Without these, bundled Heroic / Firefox and later Steam installs hit
+# "no OpenGL" / ~1 FPS. Tag comes from the payload image stamp, else RPM/`nvidia-smi`.
+GL_TAG=""
+if [[ -f /usr/share/arcalium/flatpak-nvidia-gl.tag ]]; then
+    GL_TAG="$(tr -d '[:space:]' </usr/share/arcalium/flatpak-nvidia-gl.tag || true)"
+fi
+if [[ -z "${GL_TAG}" && -x /usr/lib/arcalium/flatpak/nvidia-gl-tag.sh ]]; then
+    GL_TAG="$(/usr/lib/arcalium/flatpak/nvidia-gl-tag.sh)"
+fi
+if [[ -z "${GL_TAG}" ]]; then
+    echo "ERROR: could not resolve Flatpak NVIDIA GL tag for ISO bundle." >&2
+    exit 1
+fi
+echo "Installing Flatpak NVIDIA GL extensions for tag nvidia-${GL_TAG}"
+flatpak install -y --noninteractive flathub \
+    "org.freedesktop.Platform.GL.nvidia-${GL_TAG}" \
+    "org.freedesktop.Platform.GL32.nvidia-${GL_TAG}"
+
 ### The image Anaconda writes to disk
 # Carried inside the ISO's own container store so installs need no network.
 if mountpoint -q /usr/lib/containers/storage; then

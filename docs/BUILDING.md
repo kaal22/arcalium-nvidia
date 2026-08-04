@@ -208,6 +208,8 @@ app/com.vysp3r.ProtonPlus/x86_64/stable
 app/com.heroicgameslauncher.hgl/x86_64/stable
 ```
 
+The payload build also installs version-matched `org.freedesktop.Platform.GL.nvidia-*` and `GL32` (tag from `/usr/share/arcalium/flatpak-nvidia-gl.tag`, stamped at image build from NVIDIA RPMs). Those are not listed in `installer/flatpaks` — they are resolved dynamically so a driver re-pin cannot leave a stale hardcoded ref.
+
 The payload build adds the Flathub remote and installs the list into the live image's `/var/lib/flatpak`. That store only reaches the installed system because `arcalium-install-flatpaks.ks` rsyncs it across in a `%post --nochroot` — `ostreecontainer` deploys the container image and nothing else. Omitting that post-script silently produced installs with none of the bundled apps.
 
 Two things about that script are easy to get wrong:
@@ -217,7 +219,7 @@ Two things about that script are easy to get wrong:
 
 The copy target deserves a note, because the documentation is contradictory. The [ostree deployment docs](https://ostreedev.github.io/ostree/deployment/) say each stateroot has one shared `/var` at `/ostree/deploy/$stateroot/var`, which implies writing to `deploy/$checksum.0/var/lib` can never surface as `/var/lib`. The [`ostree-prepare-root(1)`](https://man.archlinux.org/man/ostree-prepare-root.1.en) man page says the opposite: *"For /var, by default a bind mount is created from the deployment root to /sysroot/var."* Hardware wins the argument — an install using the deployment path came up with all bundled Flatpaks present at `/var/lib/flatpak`. Keep the deployment path and do not switch to the stateroot path on the strength of the deployment doc alone. This is the same mechanism Bazzite uses for its defaults, and omitting it is why builds before this shipped with **no browser at all** — Firefox in the live session is an `anaconda-webui` dependency and never reaches the installed system.
 
-Two consequences worth knowing. Each entry pulls its runtimes as well, so the first browser added roughly a gigabyte to the ISO. And changes only reach machines that are installed from a **rebuilt ISO**: existing installs need `flatpak install` by hand, since `bootc upgrade` does not touch Flatpaks.
+Two consequences worth knowing. Each entry pulls its runtimes as well, so the first browser added roughly a gigabyte to the ISO (NVIDIA GL/GL32 extensions add more). App-list changes only reach machines installed from a **rebuilt ISO**. Matching GL after a `bootc upgrade` driver change is handled by `arcalium-flatpak-nvidia.service` (network), not by the ostree image itself.
 
 Verify any new ID on Flathub before committing it — PRODUCT_SPEC principle 4 forbids inventing Flatpak IDs, and `docs/LICENSING.md` tracks redistribution for anything bundled.
 
@@ -358,7 +360,7 @@ JSON schemas ship in `/usr/share/arcalium/schemas/` from `config/schemas/` (Cont
 
 ### Steam (Flathub on demand, not shipped)
 
-Arcalium does **not** redistribute Steam in the image. `build.sh` removes the Bazzite `steam` RPM and asserts `steam.desktop` is gone. It also removes `/etc/skel/.config/autostart/steam.desktop` (Bazzite’s silent Steam autostart) and overrides `bazzite-steam` / `bazzite-steam-firstrun` so first boot does not show a “downloading Steam” dialog with nothing to install. Control Centre / Setup / `arcaliumctl steam install --visible` pulls Valve’s Flatpak from Flathub in a terminal (progress visible). After install, `/usr/lib/arcalium/flatpak/harden-nvidia.sh` (also `arcaliumctl steam harden`) installs matching `org.freedesktop.Platform.GL.nvidia-*` / GL32 runtimes and Flatpak overrides for Steam, **Heroic**, Bottles, Prism, and other GPU Flatpaks (`--device=all`, `/mnt`, `/var/mnt`, `/run/media`, discovered library mounts). Without this, Flatpak games can report missing OpenGL or sit at ~0% GPU util. Steam shows Valve’s Subscriber Agreement on first launch. `arcaliumctl steam status` detects native or Flatpak installs. `steam open-download` remains an alias for the same Flatpak pull (Atomic cannot use Valve’s `.deb`).
+Arcalium does **not** redistribute Steam in the image. `build.sh` removes the Bazzite `steam` RPM and asserts `steam.desktop` is gone. It also removes `/etc/skel/.config/autostart/steam.desktop` (Bazzite’s silent Steam autostart) and overrides `bazzite-steam` / `bazzite-steam-firstrun` so first boot does not show a “downloading Steam” dialog with nothing to install. Control Centre / Setup / `arcaliumctl steam install --visible` pulls Valve’s Flatpak from Flathub in a terminal (progress visible). Matching `org.freedesktop.Platform.GL.nvidia-*` / GL32 runtimes ship on the ISO with the bundled Flatpak store; on installed systems `arcalium-flatpak-nvidia.service` (also `arcaliumctl steam harden` / `/usr/lib/arcalium/flatpak/harden-nvidia.sh`) ensures those runtimes and device/mount overrides for Steam, Heroic, Firefox, Brave, Spotify, Discord, OBS, and other catalogue Flatpaks. Without that, Flatpak games can report missing OpenGL or sit at ~0% GPU util. Steam shows Valve’s Subscriber Agreement on first launch. `arcaliumctl steam status` detects native or Flatpak installs. `steam open-download` remains an alias for the same Flatpak pull (Atomic cannot use Valve’s `.deb`).
 
 ### Local AI Assistant (§9.14)
 

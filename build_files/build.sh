@@ -167,6 +167,16 @@ chmod 0755 /usr/lib/arcalium/ai/install-session.sh
 chmod 0755 /usr/lib/arcalium/apps/install-session.sh
 chmod 0755 /usr/lib/arcalium/steam/harden-flatpak.sh
 chmod 0755 /usr/lib/arcalium/flatpak/harden-nvidia.sh
+chmod 0755 /usr/lib/arcalium/flatpak/nvidia-gl-tag.sh
+
+# Stamp expected Flatpak GL.nvidia tag from the image's NVIDIA RPMs (no GPU needed).
+# ISO payload build and runtime harden both consume this.
+install -d /usr/share/arcalium
+if ! /usr/lib/arcalium/flatpak/nvidia-gl-tag.sh >/usr/share/arcalium/flatpak-nvidia-gl.tag; then
+    echo "ERROR: could not resolve Flatpak NVIDIA GL tag for this image." >&2
+    exit 1
+fi
+echo "Flatpak NVIDIA GL tag: $(tr -d '[:space:]' </usr/share/arcalium/flatpak-nvidia-gl.tag)"
 
 # Enable per-user cleanup of leftover Bazzite Portal autostart after rebase.
 mkdir -p /etc/systemd/user/default.target.wants
@@ -177,6 +187,7 @@ chmod 0755 /usr/lib/arcalium/apps/install-session.sh
 chmod 0755 /usr/lib/arcalium/proton/install-session.sh
 chmod 0755 /usr/lib/arcalium/updates/session.sh
 systemctl enable arcalium-migrate-hostname.service
+systemctl enable arcalium-flatpak-nvidia.service
 
 # Phase 2 diagnostics JSON schemas (PRODUCT_SPEC §10.2).
 install -d /usr/share/arcalium/schemas

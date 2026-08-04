@@ -94,7 +94,7 @@ nvidia-smi
 # quick game or Vulkan path via Control Centre
 ```
 
-Checklist minimum: boots, `nvidia-smi` OK, Plasma Wayland, Control Centre opens, optional Drivers check still coherent.
+Checklist minimum: boots, `nvidia-smi` OK, Plasma Wayland, Control Centre opens, optional Drivers check still coherent. Also confirm Flatpak GL matched the new driver (`flatpak list | grep GL.nvidia` and/or wait for `arcalium-flatpak-nvidia.service` — it auto-pulls matching GL on first boot with network).
 
 ### B5. Promote (only if asked)
 
@@ -103,6 +103,8 @@ After smoke passes, use **Promote stable** (`promote-stable.yml`) for version/`s
 ### B6. ISO (only if asked / milestone)
 
 Full `just build` then `just build-iso-live` in WSL — base re-pin does **not** require an ISO for installed testers; ISO for clean installs / getarcalium.com.
+
+**Flatpak NVIDIA GL:** each image build stamps `/usr/share/arcalium/flatpak-nvidia-gl.tag` from the NVIDIA RPMs. ISO builds install matching `GL.nvidia-*` / `GL32` into the bundled `/var/lib/flatpak` store (offline Heroic/Firefox). Existing installs get the new tag via `bootc upgrade` + `arcalium-flatpak-nvidia.service` (network). Rebuild the ISO when you want offline GL for that driver on fresh media — `bootc upgrade` alone does not refresh the Flatpak store from the ISO bundle.
 
 ---
 
@@ -124,6 +126,6 @@ Full `just build` then `just build-iso-live` in WSL — base re-pin does **not**
 [ ] Update Last checked if check-only and user wants it
 [ ] If re-pin: edit Containerfile + BUILDING (+ IMPLEMENTATION_STATUS)
 [ ] Commit/push only if asked
-[ ] Wait CI / tell user bootc upgrade + nvidia-smi smoke
-[ ] Promote/ISO only if asked
+[ ] Wait CI / tell user bootc upgrade + nvidia-smi smoke (+ Flatpak GL via auto harden)
+[ ] Promote/ISO only if asked (ISO carries matching GL.nvidia for offline installs)
 ```
