@@ -94,20 +94,17 @@ fi
 _apply_overrides() {
   local scope_flag="$1" # --user or --system
   local app_id="$2"
-  shift 2
-  # Remaining: optional env prefix already set by caller via env
 
+  # Minimal NVIDIA / library-drive overrides only.
+  # Do NOT force sockets/shares/xdg-run here — Steam Flatpak's stock
+  # permissions are correct, and overriding fallback-x11 / session-bus /
+  # xdg-run/pipewire broke the D-Bus DISPLAY activation check (steam.sh
+  # "correctly-configured desktop session" error). Device + mount access
+  # is what Flatpak gaming actually lacks after leaving host RPMs.
   echo "Overrides → ${app_id} (${scope_flag})"
   if ! "${FLATPAK_BIN}" override "${scope_flag}" \
     --device=all \
     --device=dri \
-    --share=network \
-    --share=ipc \
-    --socket=wayland \
-    --socket=fallback-x11 \
-    --socket=pulseaudio \
-    --socket=session-bus \
-    --filesystem=xdg-run/pipewire-0:ro \
     --filesystem=/mnt \
     --filesystem=/var/mnt \
     --filesystem=/run/media \
@@ -177,35 +174,10 @@ if [[ "$(id -u)" -eq 0 ]]; then
       if HOME="${home}" FLATPAK_USER_DIR="${user_fp}" \
         "${FLATPAK_BIN}" info --user "${APP_ID}" >/dev/null 2>&1
       then
-        echo "Overrides → ${APP_ID} (--user @ ${base})"
         if HOME="${home}" FLATPAK_USER_DIR="${user_fp}" \
-          "${FLATPAK_BIN}" override --user \
-            --device=all \
-            --device=dri \
-            --share=network \
-            --share=ipc \
-            --socket=wayland \
-            --socket=fallback-x11 \
-            --socket=pulseaudio \
-            --socket=session-bus \
-            --filesystem=xdg-run/pipewire-0:ro \
-            --filesystem=/mnt \
-            --filesystem=/var/mnt \
-            --filesystem=/run/media \
-            "${APP_ID}"
+          _apply_overrides --user "${APP_ID}"
         then
           HARDENED=$((HARDENED + 1))
-          if command -v findmnt >/dev/null 2>&1; then
-            while IFS= read -r mp; do
-              [[ -z "${mp}" || "${mp}" == / ]] && continue
-              case "${mp}" in
-                /boot*|/efi*|/sysroot*|/ostree*|/var/home|/home) continue ;;
-              esac
-              HOME="${home}" FLATPAK_USER_DIR="${user_fp}" \
-                "${FLATPAK_BIN}" override --user --filesystem="${mp}" "${APP_ID}" || true
-            done < <(findmnt -rn -t ext4,xfs,btrfs,ntfs,fuseblk -o TARGET 2>/dev/null \
-              | grep -E '^/(mnt|var/mnt|run/media|media)/' || true)
-          fi
         else
           echo "WARN: override failed for ${APP_ID} (user ${base})"
         fi
