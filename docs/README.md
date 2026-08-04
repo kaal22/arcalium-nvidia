@@ -7,6 +7,7 @@ Docs for **Arcalium OS NVIDIA Edition 0.2.0**. Public channel: `stable`. GHCR pa
 | [PRODUCT_SPEC.md](PRODUCT_SPEC.md) | Product requirements (canonical) |
 | [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) | What is done / next |
 | [BUILDING.md](BUILDING.md) | Maintainer build / ISO / bootc |
+| [REPIN_BASE.md](REPIN_BASE.md) | Agent/maintainer runbook: check & re-pin Bazzite digest |
 | [LICENSING.md](LICENSING.md) | Licence inventory and release gates |
 | [NOTICES.md](NOTICES.md) | Third-party notices |
 | [PRIVACY.md](PRIVACY.md) | Privacy policy |
@@ -15,6 +16,7 @@ Docs for **Arcalium OS NVIDIA Edition 0.2.0**. Public channel: `stable`. GHCR pa
 | [RECOVERY.md](RECOVERY.md) | Rollback and recovery |
 | [INSTALL.md](INSTALL.md) | End-user install (live ISO) |
 | [RELEASE_NOTES_0.2.0.md](RELEASE_NOTES_0.2.0.md) | 0.2.0 release notes |
+| [WEBSITE_FEATURES.md](WEBSITE_FEATURES.md) | Feature inventory for getarcalium.com copy |
 | [RC_SMOKE_0.2.0.md](RC_SMOKE_0.2.0.md) | Pre-promote smoke checklist |
 | [GHCR_PUBLIC_FLIP.md](GHCR_PUBLIC_FLIP.md) | Irreversible package-visibility flip (after download page) |
 | [RELEASE_NOTES_0.1.0-alpha.1.md](RELEASE_NOTES_0.1.0-alpha.1.md) | Historical alpha draft |

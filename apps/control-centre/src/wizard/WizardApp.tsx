@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { arcaliumctl, openDesktop, JsonValue } from "../api";
 import { AppActions, AppRow } from "../components/AppActions";
 import { AiMinSpec } from "../components/AiMinSpec";
+import { GpuDriverUpdates } from "../components/GpuDriverUpdates";
 import { copyText, pick, str } from "../lib/json";
 import { WIZARD_STEPS, WizardStepId } from "./steps";
 
@@ -317,6 +318,11 @@ export function WizardApp() {
                 Generate support bundle
               </button>
             </div>
+            <h3 style={{ marginTop: "1rem" }}>Driver updates</h3>
+            <GpuDriverUpdates
+              driverVersion={str(pick(gpuVal, "gpu.driverVersion"), "")}
+              disabled={busy}
+            />
           </article>
         )}
 

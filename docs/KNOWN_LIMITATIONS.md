@@ -16,6 +16,7 @@ For Arcalium OS NVIDIA Edition **0.2.0**:
 - Steam is optional Flathub install — not shipped in the image.
 - Live installer graphics on NVIDIA may need **Basic Graphics Mode** (`nomodeset`); the installed system uses nvidia-open.
 - Local AI needs about **16 GiB system RAM** and **8 GiB GPU VRAM**; Setup and Control Centre warn when the PC is below that.
+- NVIDIA drivers are **nvidia-open** from the OS image; use Control Centre → GPU → Drivers (or Updates) to check/apply an Arcalium image update — do not install GeForce / `.run` drivers on top of bootc.
 - Bazzite Portal, Bazzite Documentation, and the Bazzite “System Update” (`ujust update`) menu entries are removed from Arcalium images — use Control Centre → Updates instead.
 - Arcalium is an independent Bazzite-derived project, not an official Valve, NVIDIA, or Bazzite product.
 

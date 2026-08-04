@@ -38,6 +38,8 @@ The `Containerfile` pins the base by digest, so the `:stable` tag in the `FROM` 
 
 ### Taking a Bazzite update
 
+**Agent / maintainer runbook:** [`docs/REPIN_BASE.md`](REPIN_BASE.md) — use that when checking digests or re-pinning.
+
 Resolve what `:stable` currently points at (no pull needed; `skopeo` is not installed in WSL, so use the registry API):
 
 ```bash
@@ -51,7 +53,9 @@ curl -sI -H "Authorization: Bearer $TOKEN" \
 
 If it differs from the digest in the `Containerfile`, update the `FROM` line and the date comment above it, then push. CI rebuilds Arcalium on the new base, signs it, and testers pick it up with `bootc upgrade`. Re-pinning the kernel and NVIDIA stack is exactly the kind of change that deserves a bare-metal check on the 3060 before it goes further.
 
-Last checked 2026-07-30: `:stable` is still `sha256:83c6084f…`, matching the current pin.
+Control Centre → **GPU and Display** → **Drivers** (and Setup’s NVIDIA step) expose the current `nvidia-smi` driver version and reuse **Updates** check/apply (`bootc`) so users do not chase GeForce/.run installers. Newer drivers only appear after a re-pin + published Arcalium image.
+
+Last checked **2026-08-04**: Containerfile pin matches upstream `:stable` at `sha256:6df8151a75c4020e6d5eb273b3ce9ce3cbe185d77cced11fc650749a4a14da7d`. Smoke on the 3060 after CI (`bootc upgrade`, `nvidia-smi`).
 
 ## Standard ISO build workflow
 
@@ -399,7 +403,7 @@ Source: [`apps/control-centre/`](../apps/control-centre/). Tauri 2 + React; app 
 - `build_files/build.sh` installs it to `/usr/bin/arcalium-control-centre`, ensures `webkit2gtk4.1` is present, and installs the hicolor icon.
 - The UI invokes only allowlisted `arcaliumctl` argv sequences (see `apps/control-centre/src-tauri/src/ctl.rs`). All §9.2 pages are live, including **Local AI Assistant**. App catalogue: `config/catalogue/apps.v1.json` → `/usr/share/arcalium/catalogue/` (each app has a **public-friendly description**; cards must not lead with Flatpak IDs). `apps install|uninstall` are user Flatpak only (ID allowlisted in Rust + catalogue).
 - **Progress feedback:** any backend call sets `body[data-busy]` so the pointer shows `cursor: progress`, and launches hold it briefly because spawning a `.desktop` returns before the window appears. Long downloads run visibly instead: `apps install <id> --visible` and `ai install-ollama|ensure --visible` open a terminal (`/usr/lib/arcalium/apps/install-session.sh`, `/usr/lib/arcalium/ai/{install,ensure}-session.sh`) via the shared `ctl/terminal.py` launcher, and the page polls status until the work lands. Without `--visible` the same commands stay silent for scripting.
-- **Updates and Recovery:** `updates check|apply|rollback|reboot` open `/usr/lib/arcalium/updates/session.sh` in a terminal so `sudo bootc …` can prompt for a password and show progress (Control Centre never runs privileged bootc silently). Apply/rollback require typing `yes` in the terminal before continuing. Diagnostics can write a redacted bundle under `~/.local/state/arcalium/`. Local AI launches a safe-agent terminal session (does not keep the model warm after close). Quick actions launch allowlisted `.desktop` files via `gio launch` (fallback `gtk-launch` / `kioclient exec`) — never `xdg-open` on the path.
+- **Updates and Recovery:** `updates check|apply|rollback|reboot` open `/usr/lib/arcalium/updates/session.sh` in a terminal so `sudo bootc …` can prompt for a password and show progress (Control Centre never runs privileged bootc silently). Apply/rollback require typing `yes` in the terminal before continuing. **GPU Drivers** UI calls the same check/apply path (drivers ship in the image). Diagnostics can write a redacted bundle under `~/.local/state/arcalium/`. Local AI launches a safe-agent terminal session (does not keep the model warm after close). Quick actions launch allowlisted `.desktop` files via `gio launch` (fallback `gtk-launch` / `kioclient exec`) — never `xdg-open` on the path.
 - Local iteration: `just build-control-centre` (WSL + Podman) extracts artifacts to `output/control-centre/`.
 - Desktop entry: `io.arcalium.ControlCentre.desktop` → `arcalium-control-centre-launch` (Setup until finished); skel Desktop icon for new users; in Kickoff favorites, deliberately not pinned to the panel (its icon is the Arcalium mark and would duplicate the launcher button).
 - **Window icon:** we build with `--no-bundle`, so `bundle.icon` in `tauri.conf.json` is only consumed by bundlers and never reaches the running window — the window showed the toolkit's default mark instead. Two fixes are needed because the two display servers source the icon differently:

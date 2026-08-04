@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { arcaliumctl, openDesktop, JsonValue } from "../api";
+import { GpuDriverUpdates } from "../components/GpuDriverUpdates";
 import { copyText, pick, str } from "../lib/json";
 
 type LoadState = "loading" | "ready" | "error";
@@ -166,6 +167,11 @@ export function GpuPage() {
               </p>
             </article>
           </div>
+
+          <article className="card">
+            <h2>Drivers</h2>
+            <GpuDriverUpdates driverVersion={str(pick(gpu, "driverVersion"), "")} />
+          </article>
 
           <article className="card">
             <h2>Actions</h2>

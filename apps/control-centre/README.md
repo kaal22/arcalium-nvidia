@@ -17,7 +17,7 @@ Resume / restart: Kickoff → **Arcalium Setup**, or Settings → Setup wizard.
 | Overview | `system` / `gpu` / `vulkan` / `steam status` + Install Steam (Flathub) / Launch |
 | Gaming | `apps list` / Steam via `steam install --visible` / Flatpak install (terminal) / uninstall + launch |
 | Compatibility | `proton list` / `install-recommended`, ProtonPlus, Protontricks |
-| GPU and Display | `gpu status` / `validate`, `vulkan test` |
+| GPU and Display | `gpu status` / `validate`, `vulkan test`; Drivers → `updates check` / `apply` |
 | Applications | catalogue-driven `apps` ops |
 | Storage | `storage scan` (read-only); Open disk utility → KDE Partition Manager |
 | Network and VPN | `network status` + Proton VPN Flatpak |
