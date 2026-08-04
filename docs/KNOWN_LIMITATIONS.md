@@ -14,7 +14,7 @@ For Arcalium OS NVIDIA Edition **0.2.0**:
 - Community Flatpaks (e.g. Spotify on Flathub) may not be supported by the original vendor.
 - Brave and Spotify are optional Flathub installs — they are not preinstalled.
 - Steam is optional Flathub install — not shipped in the image.
-- Flatpak Steam needs NVIDIA GL Flatpak runtimes + device/mount overrides (`arcaliumctl steam harden`); native bundled Steam did not.
+- Flatpak Steam **and Heroic** (and other GPU Flatpaks) need NVIDIA GL Flatpak runtimes + device/mount overrides (`arcaliumctl steam harden` / `/usr/lib/arcalium/flatpak/harden-nvidia.sh`). Without them: Heroic “no OpenGL” / Steam ~0% GPU util. Native bundled Steam did not need this.
 - Local AI needs about **16 GiB system RAM** and **8 GiB GPU VRAM**; Setup and Control Centre warn when the PC is below that.
 - NVIDIA drivers are **nvidia-open** from the OS image; use Control Centre → GPU → Drivers (or Updates) to check/apply an Arcalium image update — do not install GeForce / `.run` drivers on top of bootc.
 - Bazzite Portal, Bazzite Documentation, and the Bazzite “System Update” (`ujust update`) menu entries are removed from Arcalium images — use Control Centre → Updates instead.
