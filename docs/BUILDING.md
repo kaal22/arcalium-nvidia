@@ -360,6 +360,7 @@ Arcalium does **not** redistribute Steam in the image. `build.sh` removes the Ba
 
 Offline maintenance helper via **Ollama**, base **`gemma4:e4b-it-qat`**, session model **`arcalium-assistant`** (Modelfile + `/usr/lib/arcalium/ai/system-prompt.txt` for Arcalium OS / bash context).
 
+- **Minimum hardware (soft gate):** 16 GiB system RAM and 8 GiB GPU VRAM — shown in Setup and Control Centre with This-PC measurement; warn when below, do not hard-block Skip.
 - Control Centre → **Local AI Assistant**: Install Ollama, Pull and configure model, Launch assistant, Refresh agent prompt, Unload model.
 - UI **Install** / **Pull** use `--visible`: open Konsole (or Ptyxis/kgx) running `/usr/lib/arcalium/ai/install-session.sh` / `ensure-session.sh` so brew / `ollama pull` progress is visible; the page polls status until ready.
 - `arcaliumctl ai install-ollama` (no `--visible`) runs a non-interactive user-level `brew install ollama`, then starts the local server — for scripts. No sudo or copy/paste flow. **Success = `ollama` binary present**, even if brew exits non-zero (link/caveat noise).
