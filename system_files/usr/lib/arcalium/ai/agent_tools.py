@@ -147,6 +147,13 @@ TOOLS: dict[str, ToolSpec] = {
         _no_args(["steam", "install", "--visible", "--json"]),
         120,
     ),
+    "steam_harden": ToolSpec(
+        "steam_harden",
+        True,
+        "Harden Flatpak Steam for NVIDIA GPU + secondary game drives",
+        _no_args(["steam", "harden", "--visible", "--json"]),
+        120,
+    ),
     "apps_install": ToolSpec(
         "apps_install",
         True,

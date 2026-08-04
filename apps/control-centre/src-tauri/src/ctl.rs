@@ -84,6 +84,8 @@ const ALLOWED_EXACT: &[&[&str]] = &[
     &["steam", "open-download", "--json"],
     &["steam", "install", "--json"],
     &["steam", "install", "--visible", "--json"],
+    &["steam", "harden", "--json"],
+    &["steam", "harden", "--visible", "--json"],
     &["setup", "status", "--json"],
     &["setup", "complete", "--json"],
     &["setup", "reset", "--json"],

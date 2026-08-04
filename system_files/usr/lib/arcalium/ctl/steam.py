@@ -3,21 +3,28 @@
 Arcalium does not ship the Steam client in the image. Control Centre installs
 Valve's Flathub Flatpak on demand (visible terminal). Steam's own Subscriber
 Agreement appears when the user first launches Steam — not a .deb download.
+
+After install, Flatpak Steam is hardened for NVIDIA (matching GL runtime +
+device/mount overrides) so secondary game drives and GPU access work like the
+old native client.
 """
 
 from __future__ import annotations
 
 import os
+import subprocess
 from pathlib import Path
 from typing import Any
 
 from .errors import ARC_APPS_001, ArcError
-from .jsonutil import run_allowlisted
+from .jsonutil import resolve_binary, run_allowlisted
+from . import terminal as terminal_mod
 
 OFFICIAL_DOWNLOAD_URL = "https://store.steampowered.com/about/"
 FLATPAK_ID = "com.valvesoftware.Steam"
 FLATPAK_DESKTOP = "com.valvesoftware.Steam.desktop"
 NATIVE_DESKTOP = "steam.desktop"
+HARDEN_SCRIPT = "/usr/lib/arcalium/steam/harden-flatpak.sh"
 
 
 class SteamError(Exception):
@@ -114,6 +121,8 @@ def install(*, visible: bool = True) -> dict[str, Any]:
 
     st = status()
     if st.get("installed"):
+        # Re-run harden so existing Flatpak installs pick up NVIDIA/drive fixes.
+        hard = harden(visible=False)
         return {
             "schema": "arcalium.steam.install/v1",
             "ok": True,
@@ -123,6 +132,7 @@ def install(*, visible: bool = True) -> dict[str, Any]:
             "flatpakId": FLATPAK_ID,
             "message": "Steam is already installed.",
             "guidance": _guidance(True),
+            "harden": hard,
         }
     # Reuse catalogue Flatpak install (visible terminal + Flathub repair).
     data = apps.install_app("steam", visible=visible)
@@ -134,7 +144,92 @@ def install(*, visible: bool = True) -> dict[str, Any]:
             "Installing Steam from Flathub in a terminal — watch progress there. "
             "Steam's agreement appears when you first launch it."
         )
+    # Visible session runs harden inside install-session.sh after install.
+    # Silent path needs an explicit harden call here.
+    if not visible and data.get("ok") and data.get("action") == "installed":
+        data["harden"] = harden(visible=False)
     return data
+
+
+def harden(*, visible: bool = False) -> dict[str, Any]:
+    """Apply NVIDIA GL runtimes + Flatpak overrides for GPU and library drives."""
+    st = status()
+    if not st.get("flatpakInstalled") and st.get("source") != "flatpak":
+        return {
+            "schema": "arcalium.steam.harden/v1",
+            "ok": False,
+            "action": "skipped",
+            "message": (
+                "Flatpak Steam is not installed. Install Steam from Control Centre "
+                "first (native RPM Steam is not shipped)."
+            ),
+        }
+
+    script = Path(HARDEN_SCRIPT)
+    if not script.is_file():
+        return {
+            "schema": "arcalium.steam.harden/v1",
+            "ok": False,
+            "action": "missing_script",
+            "message": f"Missing {HARDEN_SCRIPT}",
+        }
+
+    flatpak_bin = resolve_binary("flatpak") or "/usr/bin/flatpak"
+    env_extra = {
+        "ARCALIUM_FLATPAK_BIN": flatpak_bin,
+        "ARCALIUM_STEAM_FLATPAK_ID": FLATPAK_ID,
+    }
+
+    if visible:
+        try:
+            term = terminal_mod.open_script(str(script), env_extra=env_extra)
+        except terminal_mod.TerminalError as exc:
+            return {
+                "schema": "arcalium.steam.harden/v1",
+                "ok": False,
+                "action": "terminal_failed",
+                "message": str(exc),
+            }
+        return {
+            "schema": "arcalium.steam.harden/v1",
+            "ok": True,
+            "action": "terminal",
+            "visible": True,
+            "terminal": term,
+            "message": (
+                f"Opened {term} to harden Flatpak Steam for NVIDIA. "
+                "Watch progress there, then fully quit and relaunch Steam."
+            ),
+        }
+
+    try:
+        completed = subprocess.run(
+            ["/usr/bin/bash", str(script)],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=600,
+            env={**os.environ, **env_extra},
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            "schema": "arcalium.steam.harden/v1",
+            "ok": False,
+            "action": "timeout",
+            "message": "Steam harden timed out after 600s.",
+        }
+
+    ok = completed.returncode == 0
+    detail = (completed.stdout or completed.stderr or "").strip()
+    return {
+        "schema": "arcalium.steam.harden/v1",
+        "ok": ok,
+        "action": "hardened" if ok else "failed",
+        "exitCode": completed.returncode,
+        "message": detail[-1200:]
+        if detail
+        else ("Steam Flatpak hardened." if ok else "Steam harden failed."),
+    }
 
 
 def human_status(data: dict[str, Any]) -> list[str]:
@@ -162,4 +257,17 @@ def human_install(data: dict[str, Any]) -> list[str]:
         lines.append(str(data["message"]))
     if data.get("guidance"):
         lines.append(str(data["guidance"]))
+    hard = data.get("harden")
+    if isinstance(hard, dict) and hard.get("message"):
+        lines.append(f"Harden: {hard.get('message')}")
+    return lines
+
+
+def human_harden(data: dict[str, Any]) -> list[str]:
+    lines = [
+        f"Action: {data.get('action')}",
+        f"OK:     {data.get('ok')}",
+    ]
+    if data.get("message"):
+        lines.append(str(data["message"]))
     return lines

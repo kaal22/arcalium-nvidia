@@ -162,6 +162,15 @@ def _build_parser() -> argparse.ArgumentParser:
         "open-download",
         help="Alias for install --visible (Atomic cannot use Valve's .deb)",
     )
+    steam_harden = steam_sub.add_parser(
+        "harden",
+        help="NVIDIA GL runtime + Flatpak overrides for GPU and secondary game drives",
+    )
+    steam_harden.add_argument(
+        "--visible",
+        action="store_true",
+        help="Open a terminal so Flatpak GL download progress is visible",
+    )
 
     return parser
 
@@ -466,6 +475,11 @@ def main(argv: list[str] | None = None) -> int:
             )
             return exc.error.exit_code
         emit(data, as_json=as_json, human_lines=steam.human_install(data))
+        return 0 if data.get("ok") else 1
+
+    if command == "steam" and action == "harden":
+        data = steam.harden(visible=bool(getattr(args, "visible", False)))
+        emit(data, as_json=as_json, human_lines=steam.human_harden(data))
         return 0 if data.get("ok") else 1
 
     payload: dict[str, Any] = {
