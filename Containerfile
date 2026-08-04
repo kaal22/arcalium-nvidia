@@ -22,8 +22,8 @@ COPY --from=control-centre /out /control-centre
 # Base Image — Arcalium OS NVIDIA Edition
 # Source of truth: docs/PRODUCT_SPEC.md
 # Verified tag exists: ghcr.io/ublue-os/bazzite-nvidia-open (stable, testing, unstable, …)
-# Digest resolved 2026-07-29 for :stable — re-pin when promoting builds.
-FROM ghcr.io/ublue-os/bazzite-nvidia-open:stable@sha256:83c6084f9713abda10b966dce3631f4c9b4430e419f06c9a76dad10bfc43cbe9
+# Digest resolved 2026-08-04 for :stable — re-pin when promoting builds.
+FROM ghcr.io/ublue-os/bazzite-nvidia-open:stable@sha256:6df8151a75c4020e6d5eb273b3ce9ce3cbe185d77cced11fc650749a4a14da7d
 ## Edition notes:
 # - bazzite-nvidia-open: Turing-and-newer (GTX 16 / all RTX), incl. RTX 2060 + RTX 3090
 # - Legacy Pascal/Maxwell/Volta is out of scope for version 1 (see PRODUCT_SPEC)
