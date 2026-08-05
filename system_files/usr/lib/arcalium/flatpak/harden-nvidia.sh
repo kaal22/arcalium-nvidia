@@ -4,12 +4,17 @@
 # org.freedesktop.Platform.GL.nvidia-* (+ GL32) and device overrides.
 # Without that: Heroic "no OpenGL" / Steam ~1 FPS / ~0% GPU util / soft browser video.
 #
-# Safe for systemd (non-interactive). Idempotent for GL downloads.
+# Safe for systemd and Setup (non-interactive). Idempotent for GL downloads.
+# Run as the desktop user during Setup: use --user overrides only (they apply to
+# system-installed apps too). Never attempt --system overrides without root —
+# that produces Permission denied noise while the user installs apps one-by-one.
 set -u
 
 FLATPAK_BIN="${ARCALIUM_FLATPAK_BIN:-/usr/bin/flatpak}"
 TAG_HELPER="/usr/lib/arcalium/flatpak/nvidia-gl-tag.sh"
 APPLIED_STAMP="${ARCALIUM_FLATPAK_GL_APPLIED:-/var/lib/arcalium/flatpak-nvidia-gl.applied}"
+IS_ROOT=0
+[[ "$(id -u)" -eq 0 ]] && IS_ROOT=1
 
 # Catalogue / common GPU apps. Overrides apply only if the app is installed.
 DEFAULT_APPS=(
@@ -54,7 +59,7 @@ fi
 _install_gl_ext() {
   local ext="$1"
   # Prefer --system when root (ISO / multi-user); else --user.
-  if [[ "$(id -u)" -eq 0 ]]; then
+  if [[ "${IS_ROOT}" -eq 1 ]]; then
     if "${FLATPAK_BIN}" info --system "${ext}" >/dev/null 2>&1; then
       echo "Already present (system): ${ext}"
       return 0
@@ -98,9 +103,7 @@ _apply_overrides() {
   # Minimal NVIDIA / library-drive overrides only.
   # Do NOT force sockets/shares/xdg-run here — Steam Flatpak's stock
   # permissions are correct, and overriding fallback-x11 / session-bus /
-  # xdg-run/pipewire broke the D-Bus DISPLAY activation check (steam.sh
-  # "correctly-configured desktop session" error). Device + mount access
-  # is what Flatpak gaming actually lacks after leaving host RPMs.
+  # xdg-run/pipewire broke the D-Bus DISPLAY activation check.
   echo "Overrides → ${app_id} (${scope_flag})"
   if ! "${FLATPAK_BIN}" override "${scope_flag}" \
     --device=all \
@@ -134,33 +137,46 @@ _app_installed() {
   "${FLATPAK_BIN}" info "${scope_flag}" "${app_id}" >/dev/null 2>&1
 }
 
+_app_present() {
+  local app_id="$1"
+  _app_installed --user "${app_id}" || _app_installed --system "${app_id}"
+}
+
 echo
 HARDENED=0
 SKIPPED=0
 
-# --- Current user / system scope (non-root interactive + system apps as root) ---
+# Desktop / Setup path: only --user overrides.
+# User overrides apply to system-installed apps (Heroic/Firefox from the ISO)
+# for this user without writing /var/lib/flatpak/overrides (needs root).
 for APP_ID in "${APPS[@]}"; do
-  DID=0
-  if _app_installed --user "${APP_ID}"; then
-    if _apply_overrides --user "${APP_ID}"; then
-      HARDENED=$((HARDENED + 1))
-      DID=1
-    fi
+  if ! _app_present "${APP_ID}"; then
+    SKIPPED=$((SKIPPED + 1))
+    continue
   fi
-  if _app_installed --system "${APP_ID}"; then
+
+  DID=0
+  # Always harden via --user when possible (covers user + system installs).
+  if _apply_overrides --user "${APP_ID}"; then
+    HARDENED=$((HARDENED + 1))
+    DID=1
+  fi
+
+  # System-wide override only as root (boot oneshot / admin).
+  if [[ "${IS_ROOT}" -eq 1 ]] && _app_installed --system "${APP_ID}"; then
     if _apply_overrides --system "${APP_ID}"; then
       HARDENED=$((HARDENED + 1))
       DID=1
     fi
   fi
+
   if [[ "${DID}" -eq 0 ]]; then
-    echo "Skip (not installed): ${APP_ID}"
-    SKIPPED=$((SKIPPED + 1))
+    echo "WARN: could not apply overrides for ${APP_ID}"
   fi
 done
 
 # --- As root: also harden other users' --user Flatpak installs (e.g. Steam) ---
-if [[ "$(id -u)" -eq 0 ]]; then
+if [[ "${IS_ROOT}" -eq 1 ]]; then
   for home in /home/* /var/home/*; do
     [[ -d "${home}" ]] || continue
     user_fp="${home}/.local/share/flatpak"
@@ -186,18 +202,25 @@ if [[ "$(id -u)" -eq 0 ]]; then
   done
 fi
 
-if [[ -n "${GL_TAG}" && "$(id -u)" -eq 0 ]]; then
+if [[ -n "${GL_TAG}" && "${IS_ROOT}" -eq 1 ]]; then
   mkdir -p "$(dirname "${APPLIED_STAMP}")"
   printf '%s\n' "${GL_TAG}" >"${APPLIED_STAMP}"
 fi
 
 echo
-echo "Hardened ${HARDENED} install(s); skipped ${SKIPPED} catalogue apps not present."
-echo "Fully quit Heroic / Steam / browsers / Discord / OBS and relaunch them."
+echo "Hardened ${HARDENED} install(s)."
+if [[ "${SKIPPED}" -gt 0 ]]; then
+  echo "Skipped ${SKIPPED} catalogue app(s) not installed yet (normal during Setup)."
+fi
+echo "Fully quit affected apps and relaunch them after new installs."
 
-# Success if we installed GL or applied at least one override.
-# Fresh boot with only ISO-bundled GL and no catalogue apps yet still succeeds.
+# Success if GL is present or at least one override applied.
+# Also succeed when only skips remain (mid-Setup with GL already installed).
 if [[ "${GL_OK}" -eq 1 || "${HARDENED}" -gt 0 ]]; then
+  exit 0
+fi
+# Mid-Setup with nothing to do yet: not an error for the install session.
+if [[ "${SKIPPED}" -gt 0 ]]; then
   exit 0
 fi
 exit 1
