@@ -205,11 +205,17 @@ export function OverviewPage({ onNavigate }: Props) {
   const power = num(pick(gpu, "powerDrawW"));
   const memUsed = num(pick(gpu, "memoryUsed"));
   const memTotal = num(pick(gpu, "memoryTotal"));
+  const homeFree = num(pick(storage, "home.freeGiB"));
+  const homeTotal = num(pick(storage, "home.totalGiB"));
   const rootFree = num(pick(storage, "root.freeGiB"));
   const rootTotal = num(pick(storage, "root.totalGiB"));
-  const rootUsedPct =
-    rootFree !== null && rootTotal !== null && rootTotal > 0
-      ? clampPct(((rootTotal - rootFree) / rootTotal) * 100)
+  // bootc: / is a tiny ostree root; Home is the usable user volume.
+  const storageFree = homeFree ?? rootFree;
+  const storageTotal = homeTotal ?? rootTotal;
+  const storageLabel = homeFree !== null && homeTotal !== null ? "Home" : "Root (/)";
+  const storageUsedPct =
+    storageFree !== null && storageTotal !== null && storageTotal > 0
+      ? clampPct(((storageTotal - storageFree) / storageTotal) * 100)
       : null;
   const vramPct =
     memUsed !== null && memTotal !== null && memTotal > 0
@@ -285,14 +291,14 @@ export function OverviewPage({ onNavigate }: Props) {
         <article className="stat-tile">
           <p className="stat-label">Storage</p>
           <p className="stat-value">
-            {rootFree !== null && rootTotal !== null
-              ? `${rootFree.toFixed(0)} / ${rootTotal.toFixed(0)} GiB free`
+            {storageFree !== null && storageTotal !== null
+              ? `${storageFree.toFixed(0)} / ${storageTotal.toFixed(0)} GiB free`
               : "—"}
           </p>
-          <p className="stat-meta">Root filesystem</p>
-          {rootUsedPct !== null && (
+          <p className="stat-meta">{storageLabel}</p>
+          {storageUsedPct !== null && (
             <div className="metric-bar" aria-hidden>
-              <span style={{ width: state === "ready" ? `${rootUsedPct}%` : "0%" }} />
+              <span style={{ width: state === "ready" ? `${storageUsedPct}%` : "0%" }} />
             </div>
           )}
         </article>

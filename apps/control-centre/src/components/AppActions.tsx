@@ -155,7 +155,7 @@ export function AppActions({
   };
 
   return (
-    <div>
+    <div className="app-actions">
       {app.description ? <p className="muted small">{app.description}</p> : null}
       <div className="btn-row">
         {app.launchable && desktop ? (

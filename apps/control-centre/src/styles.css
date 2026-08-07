@@ -258,6 +258,48 @@ button {
   font-size: 0.85rem;
 }
 
+/* Keep action buttons clear of preceding copy / lists */
+.muted + .btn-row,
+.muted + .action-row,
+.muted + .quick-chip-row,
+.muted + .btn,
+p + .btn-row,
+p + .action-row,
+p + .quick-chip-row,
+p + .btn,
+.kv + .btn-row,
+.kv + .action-row,
+.kv + .btn,
+.plain-list + .btn-row,
+.plain-list + .action-row,
+.badge + .btn-row,
+h2 + .btn-row,
+h2 + .action-row,
+h2 + .quick-chip-row {
+  margin-top: 0.9rem;
+}
+
+/* Help text under a control row */
+.btn-row + .muted,
+.action-row + .muted,
+.quick-chip-row + .muted,
+.btn + .muted,
+.btn-row + p,
+.action-row + p {
+  margin-top: 0.75rem;
+}
+
+.app-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.app-actions .btn-row {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 .btn {
   background: var(--panel-2);
   color: var(--text);
@@ -488,7 +530,8 @@ body[data-busy="true"] .nav-item {
 }
 
 .action-row,
-.btn-row {
+.btn-row,
+.quick-chip-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
@@ -737,7 +780,7 @@ a {
   align-items: center;
   text-align: center;
   justify-content: center;
-  gap: 0.85rem;
+  gap: 1rem;
   padding: 1.25rem 1rem;
 }
 
@@ -846,7 +889,7 @@ a {
 .ai-teaser {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .ai-teaser .ai-head {
@@ -865,12 +908,6 @@ a {
   flex: 0 0 auto;
 }
 
-.quick-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-  margin-top: 0.25rem;
-}
 
 @media (max-width: 1100px) {
   .stat-strip {

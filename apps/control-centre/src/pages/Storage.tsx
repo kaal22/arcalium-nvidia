@@ -55,18 +55,22 @@ export function StoragePage() {
               <h2>System free space</h2>
               <dl className="kv">
                 <div>
-                  <dt>Root (/)</dt>
-                  <dd>
-                    {str(pick(data, "root.freeGiB"))} / {str(pick(data, "root.totalGiB"))} GiB free
-                  </dd>
-                </div>
-                <div>
                   <dt>Home</dt>
                   <dd>
                     {str(pick(data, "home.freeGiB"))} / {str(pick(data, "home.totalGiB"))} GiB free
                   </dd>
                 </div>
+                <div>
+                  <dt>Root (/)</dt>
+                  <dd>
+                    {str(pick(data, "root.freeGiB"))} / {str(pick(data, "root.totalGiB"))} GiB free
+                  </dd>
+                </div>
               </dl>
+              <p className="muted small">
+                On Arcalium, Home is the usable disk for games and files. Root (/) is the small
+                read-only OS image and often looks nearly empty.
+              </p>
             </article>
             <article className="card">
               <h2>Actions</h2>

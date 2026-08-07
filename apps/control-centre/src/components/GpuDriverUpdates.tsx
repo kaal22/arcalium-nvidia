@@ -50,7 +50,7 @@ export function GpuDriverUpdates({
         image may include a newer driver; Apply opens a terminal (type yes, then
         sudo).
       </p>
-      <div className="btn-row" style={{ marginTop: "0.5rem" }}>
+      <div className="btn-row">
         <button
           type="button"
           className="btn"
