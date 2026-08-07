@@ -51,9 +51,27 @@ if [[ -z "${GL_TAG}" ]]; then
     exit 1
 fi
 echo "Installing Flatpak NVIDIA GL extensions for tag nvidia-${GL_TAG}"
-flatpak install -y --noninteractive flathub \
+# Flathub pulls occasionally hit transient TLS errors inside the payload build;
+# retry each extension rather than failing the whole ISO.
+for EXT in \
     "org.freedesktop.Platform.GL.nvidia-${GL_TAG}" \
     "org.freedesktop.Platform.GL32.nvidia-${GL_TAG}"
+do
+    ok=0
+    for attempt in 1 2 3 4 5; do
+        echo "Ensuring ${EXT} (attempt ${attempt}/5)…"
+        if flatpak install -y --noninteractive flathub "${EXT}"; then
+            ok=1
+            break
+        fi
+        echo "WARN: ${EXT} install failed — retrying in $((attempt * 5))s…"
+        sleep $((attempt * 5))
+    done
+    if [[ "${ok}" -ne 1 ]]; then
+        echo "ERROR: could not install ${EXT} after retries." >&2
+        exit 1
+    fi
+done
 
 ### The image Anaconda writes to disk
 # Carried inside the ISO's own container store so installs need no network.
