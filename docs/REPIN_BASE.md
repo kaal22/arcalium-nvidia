@@ -94,7 +94,7 @@ nvidia-smi
 # quick game or Vulkan path via Control Centre
 ```
 
-Checklist minimum: boots, `nvidia-smi` OK, Plasma Wayland, Control Centre opens, optional Drivers check still coherent. Also confirm Flatpak GL matched the new driver (`flatpak list | grep GL.nvidia` and/or wait for `arcalium-flatpak-nvidia.service` — it auto-pulls matching GL on first boot with network).
+Checklist minimum: boots, `nvidia-smi` OK, Plasma Wayland, Control Centre opens, optional Drivers check still coherent. Also confirm Flatpak GL matched the new driver (`flatpak list | grep GL.nvidia` and/or wait for `arcalium-flatpak-nvidia.service` — it auto-pulls matching GL on first boot with network). Smoke: Heroic launches a game without an OpenGL error; optional Firefox `about:support` GPU line; escape hatch `arcaliumctl steam harden`.
 
 ### B5. Promote (only if asked)
 

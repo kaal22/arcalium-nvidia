@@ -3,6 +3,8 @@ Description=Arcalium Flatpak NVIDIA GL harden (runtimes + GPU overrides)
 Documentation=file:///usr/share/arcalium/README.txt
 After=network-online.target
 Wants=network-online.target
+# NVIDIA Edition always ships the stack; skip on odd images without nvidia-smi.
+ConditionPathExists=/usr/bin/nvidia-smi
 
 [Service]
 Type=oneshot

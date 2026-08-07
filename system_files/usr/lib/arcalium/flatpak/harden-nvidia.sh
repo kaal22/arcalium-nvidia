@@ -56,6 +56,14 @@ if [[ -z "${GL_TAG}" && -f /usr/share/arcalium/flatpak-nvidia-gl.tag ]]; then
   GL_TAG="$(tr -d '[:space:]' </usr/share/arcalium/flatpak-nvidia-gl.tag || true)"
 fi
 
+_gl_ext_present() {
+  local ext="$1"
+  if [[ "${IS_ROOT}" -eq 1 ]]; then
+    "${FLATPAK_BIN}" info --system "${ext}" >/dev/null 2>&1 && return 0
+  fi
+  "${FLATPAK_BIN}" info --user "${ext}" >/dev/null 2>&1
+}
+
 _install_gl_ext() {
   local ext="$1"
   # Prefer --system when root (ISO / multi-user); else --user.
@@ -65,7 +73,7 @@ _install_gl_ext() {
       return 0
     fi
     echo "Ensuring ${ext} (system)…"
-    if "${FLATPAK_BIN}" install --system -y flathub "${ext}"; then
+    if "${FLATPAK_BIN}" install --system -y --noninteractive flathub "${ext}"; then
       return 0
     fi
     echo "WARN: system install failed for ${ext}; trying --user…"
@@ -75,7 +83,7 @@ _install_gl_ext() {
     return 0
   fi
   echo "Ensuring ${ext} (user)…"
-  if "${FLATPAK_BIN}" install --user -y flathub "${ext}"; then
+  if "${FLATPAK_BIN}" install --user -y --noninteractive flathub "${ext}"; then
     return 0
   fi
   echo "WARN: could not install ${ext} (Flathub may not publish this build yet)."
@@ -83,15 +91,31 @@ _install_gl_ext() {
 }
 
 GL_OK=0
+GL_EXT_GL=""
+GL_EXT_GL32=""
 if [[ -n "${GL_TAG}" ]]; then
+  GL_EXT_GL="org.freedesktop.Platform.GL.nvidia-${GL_TAG}"
+  GL_EXT_GL32="org.freedesktop.Platform.GL32.nvidia-${GL_TAG}"
   echo "NVIDIA Flatpak GL tag: nvidia-${GL_TAG}"
-  GL_OK=1
-  for EXT in \
-    "org.freedesktop.Platform.GL.nvidia-${GL_TAG}" \
-    "org.freedesktop.Platform.GL32.nvidia-${GL_TAG}"
-  do
-    _install_gl_ext "${EXT}" || GL_OK=0
-  done
+
+  # Skip Flatpak *downloads* when stamp matches and both extensions exist;
+  # still walk overrides below so newly installed catalogue apps get covered.
+  PREV_TAG=""
+  if [[ -f "${APPLIED_STAMP}" ]]; then
+    PREV_TAG="$(tr -d '[:space:]' <"${APPLIED_STAMP}" || true)"
+  fi
+  if [[ "${PREV_TAG}" == "${GL_TAG}" ]] \
+    && _gl_ext_present "${GL_EXT_GL}" \
+    && _gl_ext_present "${GL_EXT_GL32}"
+  then
+    echo "Flatpak NVIDIA GL already applied for nvidia-${GL_TAG} — skipping download."
+    GL_OK=1
+  else
+    GL_OK=1
+    for EXT in "${GL_EXT_GL}" "${GL_EXT_GL32}"; do
+      _install_gl_ext "${EXT}" || GL_OK=0
+    done
+  fi
 else
   echo "WARN: could not resolve NVIDIA GL tag — skipping Flatpak GL install."
 fi
