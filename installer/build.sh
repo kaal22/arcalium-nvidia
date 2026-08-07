@@ -32,9 +32,25 @@ dnf -qy versionlock clear || :
 # network during the install. Omitting this step is why early builds shipped with no
 # browser at all: Bazzite's own default apps arrive through exactly this mechanism.
 mkdir -p /etc/flatpak/remotes.d
-curl --retry 3 -Lo /etc/flatpak/remotes.d/flathub.flatpakrepo \
+curl --retry 5 --retry-delay 3 -Lo /etc/flatpak/remotes.d/flathub.flatpakrepo \
     https://dl.flathub.org/repo/flathub.flatpakrepo
-xargs -r flatpak install -y --noninteractive <"$SCRIPT_DIR/flatpaks"
+
+# Flathub downloads inside the payload build fail intermittently (TLS / peer reset).
+# Retry the whole app set before giving up so public ISO cuts are not flaky.
+apps_ok=0
+for attempt in 1 2 3 4 5; do
+    echo "Installing bundled Flatpaks from installer/flatpaks (attempt ${attempt}/5)…"
+    if xargs -r flatpak install -y --noninteractive <"$SCRIPT_DIR/flatpaks"; then
+        apps_ok=1
+        break
+    fi
+    echo "WARN: bundled Flatpak install failed — retrying in $((attempt * 10))s…"
+    sleep $((attempt * 10))
+done
+if [[ "${apps_ok}" -ne 1 ]]; then
+    echo "ERROR: could not install bundled Flatpaks after retries." >&2
+    exit 1
+fi
 
 # Matching NVIDIA Flatpak GL runtimes (version-locked to the image driver).
 # Without these, bundled Heroic / Firefox and later Steam installs hit
