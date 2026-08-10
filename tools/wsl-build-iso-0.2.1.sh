@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# Build public 0.2.1 live ISO: refresh rootful CI :dev, build-iso-live, publish to Desktop.
+set -euo pipefail
+export PATH="/usr/local/bin:/usr/bin:/bin"
+trap '' HUP
+
+if [[ "$(id -u)" -ne 0 ]]; then
+  echo "Run as root: wsl -d Ubuntu -u root -- bash $0"
+  exit 1
+fi
+
+VERSION="0.2.1"
+cd /home/kaal/arcalium-nvidia
+git fetch origin
+git reset --hard origin/main
+mkdir -p output
+LOG=output/iso-build.log
+REMOTE="ghcr.io/kaal22/arcalium-os-nvidia:dev"
+LOCAL="localhost/arcalium-os-nvidia:dev"
+OUT="/mnt/c/Users/Kaal/Desktop/Arcalium-Live-${VERSION}.iso"
+SHA_OUT="/mnt/c/Users/Kaal/Desktop/Arcalium-Live-${VERSION}.iso.sha256"
+
+TOKEN="${GITHUB_TOKEN:-}"
+if [[ -z "${TOKEN}" ]]; then
+  for ghbin in \
+    "/mnt/c/Program Files/GitHub CLI/gh.exe" \
+    "/mnt/c/Users/Kaal/AppData/Local/Programs/GitHub CLI/gh.exe"
+  do
+    if [[ -x "${ghbin}" ]]; then
+      TOKEN="$("${ghbin}" auth token 2>/dev/null || true)"
+      break
+    fi
+  done
+fi
+if [[ -z "${TOKEN}" ]]; then
+  echo "ERROR: no GITHUB_TOKEN for GHCR pull"
+  exit 1
+fi
+
+pkill -f 'sleep 86400' 2>/dev/null || true
+setsid nohup sleep 86400 >/dev/null 2>&1 &
+
+{
+  echo "==== START ${VERSION} $(date -Is) ===="
+  echo "HEAD=$(git rev-parse --short HEAD) $(git log -1 --pretty=%s)"
+
+  echo "==== root podman pull ${REMOTE} ===="
+  echo "${TOKEN}" | podman login ghcr.io -u kaal22 --password-stdin
+  podman pull "${REMOTE}"
+  podman tag "${REMOTE}" "${LOCAL}"
+  podman images "${LOCAL}"
+
+  echo "==== just build-iso-live ===="
+  just build-iso-live
+  echo "==== DONE $(date -Is) ===="
+  ls -lah output/*.iso
+
+  PARTIAL="${OUT}.partial"
+  rm -f "${PARTIAL}" "${OUT}"
+  cp -f output/Arcalium-Live.iso "${PARTIAL}"
+  mv -f "${PARTIAL}" "${OUT}"
+  ls -lah "${OUT}"
+  cmp -s output/Arcalium-Live.iso "${OUT}"
+  sha256sum output/Arcalium-Live.iso "${OUT}" | tee "output/Arcalium-Live-${VERSION}.iso.sha256"
+  cp -f "output/Arcalium-Live-${VERSION}.iso.sha256" "${SHA_OUT}"
+  chown -R kaal:kaal output || true
+  echo "PUBLIC_ISO_READY ${OUT}"
+} 2>&1 | tee "${LOG}"

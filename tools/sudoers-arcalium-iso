@@ -1,0 +1,10 @@
+# Arcalium live ISO builds in WSL — limited passwordless sudo.
+# Installed by tools/wsl-setup-iso-nopasswd.sh
+Defaults:kaal !requiretty
+Defaults:kaal env_keep += "TITANOBOA_CTR_IMAGE TITANOBOA_OUTPUT_DIR GITHUB_TOKEN HOME PATH"
+
+# Rootful podman (payload + titanoboa image work)
+kaal ALL=(root) NOPASSWD: /usr/bin/podman, /usr/bin/podman *
+
+# titanoboa wrapper (just build-iso-live runs: sudo -E bash .../main.sh)
+kaal ALL=(root) NOPASSWD:SETENV: /usr/bin/bash /home/kaal/arcalium-nvidia/.cache/titanoboa/main.sh

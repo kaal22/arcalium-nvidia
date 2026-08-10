@@ -1,9 +1,9 @@
 # Before next ISO
 
-**Public 0.2.0 live ISO:** Desktop `Arcalium-Live-0.2.0.iso` (~7.3 GB)  
-SHA-256: `ec70c4f69850170ffab3a7ab6cabc15da07de9d76a94b1c3b7f23bd0a90d8d98`  
-Built **2026-08-04** from `origin/main` after Local AI min-spec + 0.2.0 prep (WSL `just build` + `just build-iso-live`).
+**Public 0.2.0 live ISO:** Desktop `Arcalium-Live-0.2.0.iso` (~7.2 GB)  
+SHA-256: `d5bf497b7398ae69a098b7f07cd7ab146c933296e500ff2dd4877ecd3e16258a`  
+Built **2026-08-05** from `origin/main` @ `c5f816f` (Flatpak NVIDIA GL on ISO + minimal harden overrides). WSL root: pull CI `:dev` (`6867947ad624`) → `just build-iso-live`.
 
-**Published tags:** `ghcr.io/kaal22/arcalium-os-nvidia:0.2.0` and `:stable` @ `sha256:161e87aa0690354fdb35bfc61932d87c9dfc987201270e6d71286890c6b66fb9` (package still private until getarcalium.com download page).
+**Published tags:** `ghcr.io/kaal22/arcalium-os-nvidia:0.2.0` and `:stable` may still point at the earlier promote digest until you re-promote; `:dev` matches this ISO’s base image. Package still private until getarcalium.com download page.
 
-Next rebuild only when installer / Flatpak set / brand changes demand a clean-install artifact. Full `just build` before `just build-iso-live`.
+Next rebuild only when installer / Flatpak set / brand changes demand a clean-install artifact. Prefer `wsl -d Ubuntu -u root` for ISO builds (see `docs/BUILDING.md`).

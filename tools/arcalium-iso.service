@@ -1,0 +1,17 @@
+[Unit]
+Description=Arcalium live ISO build (just build-iso-live)
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/kaal/arcalium-nvidia
+ExecStart=/home/kaal/arcalium-nvidia/output/wsl-build-iso.sh
+TimeoutStartSec=infinity
+TimeoutStopSec=2h
+KillMode=mixed
+Restart=no
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

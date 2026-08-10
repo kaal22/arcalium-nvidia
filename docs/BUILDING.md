@@ -17,6 +17,8 @@ The trap worth remembering: **Flatpaks do not travel with `bootc upgrade`.** Any
 
 Milestones that justify an ISO: installer behaviour changed, bundled app set changed, or a tester needs a clean bare-metal install. Otherwise push, let CI publish the image, and `bootc upgrade` on the test machine.
 
+**Release channel discipline:** always smoke on `:dev` (RTX 3060) before **Promote stable**. See [`PROMOTE_STABLE.md`](PROMOTE_STABLE.md). GHCR “public” is a later, separate step ([`GHCR_PUBLIC_FLIP.md`](GHCR_PUBLIC_FLIP.md)).
+
 ### What CI does automatically
 
 - **`build.yml`** — builds, signs and pushes the container image on every push to `main`, and on PRs. This is the cheap path and the one to rely on. No nightly schedule: `:dev` moves only when we push, so a tester's `bootc upgrade` never pulls an unreviewed base change. Take Bazzite updates deliberately by re-pinning the digest in the `Containerfile`, or run the workflow by hand.

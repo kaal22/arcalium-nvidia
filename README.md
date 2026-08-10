@@ -30,11 +30,14 @@ sudo systemctl reboot
 
 ## Maintainers
 
+**Channel loop (do not skip):** push → CI `:dev` → 3060 smoke → **Promote stable** → optional ISO → GHCR public only when the site is ready. Full runbook: [`docs/PROMOTE_STABLE.md`](docs/PROMOTE_STABLE.md).
+
 1. Set GitHub Actions secret `SIGNING_SECRET` from your local `cosign.key` (never commit the key).
 2. Confirm `REPO_ORGANIZATION` in `image-template.env`.
 3. Push to `main` → **Build container image** publishes `ghcr.io/<owner>/arcalium-os-nvidia:dev`.
-4. After hardware validation, run **Promote stable** (`promote-stable.yml`) to tag `0.2.0` and `stable`.
-5. Build disk images locally — see [`docs/BUILDING.md`](docs/BUILDING.md).
+4. After hardware validation on the RTX 3060, run **Promote stable** (`promote-stable.yml`) to tag `0.x.y` and `stable`.
+5. Build disk images / Live ISO locally when needed — see [`docs/BUILDING.md`](docs/BUILDING.md).
+6. Do **not** flip GHCR public until [`docs/GHCR_PUBLIC_FLIP.md`](docs/GHCR_PUBLIC_FLIP.md).
 
 ```bash
 cd /home/kaal/arcalium-nvidia && git pull && just build && just build-iso-live

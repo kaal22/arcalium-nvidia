@@ -7,6 +7,7 @@ Docs for **Arcalium OS NVIDIA Edition 0.2.0**. Public channel: `stable`. GHCR pa
 | [PRODUCT_SPEC.md](PRODUCT_SPEC.md) | Product requirements (canonical) |
 | [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) | What is done / next |
 | [BUILDING.md](BUILDING.md) | Maintainer build / ISO / bootc |
+| [PROMOTE_STABLE.md](PROMOTE_STABLE.md) | **Test `:dev` → 3060 smoke → Promote `:stable` → optional ISO** (do not skip) |
 | [REPIN_BASE.md](REPIN_BASE.md) | Agent/maintainer runbook: check & re-pin Bazzite digest |
 | [LICENSING.md](LICENSING.md) | Licence inventory and release gates |
 | [NOTICES.md](NOTICES.md) | Third-party notices |
