@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build public 0.2.2 live ISO from promoted :0.2.2/:stable (not floating :dev).
+# Build public 0.2.2 live ISO from promoted :0.2.2 digest with TARGET_IMAGE_REF=:stable.
 set -euo pipefail
 export PATH="/usr/local/bin:/usr/bin:/bin"
 trap '' HUP
@@ -10,13 +10,14 @@ if [[ "$(id -u)" -ne 0 ]]; then
 fi
 
 VERSION="0.2.2"
+CHANNEL_TAG="stable"
 cd /home/kaal/arcalium-nvidia
 git fetch origin
 git reset --hard origin/main
 mkdir -p output
 LOG=output/iso-build.log
 REMOTE="ghcr.io/kaal22/arcalium-os-nvidia:${VERSION}"
-LOCAL="localhost/arcalium-os-nvidia:dev"
+LOCAL_BASE="localhost/arcalium-os-nvidia"
 OUT="/mnt/c/Users/Kaal/Desktop/Arcalium-Live-${VERSION}.iso"
 SHA_OUT="/mnt/c/Users/Kaal/Desktop/Arcalium-Live-${VERSION}.iso.sha256"
 
@@ -41,7 +42,7 @@ pkill -f 'sleep 86400' 2>/dev/null || true
 setsid nohup sleep 86400 >/dev/null 2>&1 &
 
 {
-  echo "==== START ${VERSION} $(date -Is) ===="
+  echo "==== START ${VERSION} (TARGET=${CHANNEL_TAG}) $(date -Is) ===="
   echo "HEAD=$(git rev-parse --short HEAD) $(git log -1 --pretty=%s)"
 
   echo "==== root podman pull ${REMOTE} ===="
@@ -49,11 +50,13 @@ setsid nohup sleep 86400 >/dev/null 2>&1 &
   podman pull "${REMOTE}"
   DIGEST="$(podman image inspect --format '{{.Digest}}' "${REMOTE}" 2>/dev/null || true)"
   echo "pulled_digest=${DIGEST}"
-  podman tag "${REMOTE}" "${LOCAL}"
-  podman images "${LOCAL}"
+  # Local tags: :stable drives TARGET_IMAGE_REF in just build-iso-live; :dev kept for recipes that hardcode it.
+  podman tag "${REMOTE}" "${LOCAL_BASE}:${CHANNEL_TAG}"
+  podman tag "${REMOTE}" "${LOCAL_BASE}:dev"
+  podman images "${LOCAL_BASE}"
 
-  echo "==== just build-iso-live ===="
-  just build-iso-live
+  echo "==== just build-iso-live ${LOCAL_BASE} ${CHANNEL_TAG} ===="
+  just build-iso-live "${LOCAL_BASE}" "${CHANNEL_TAG}"
   echo "==== DONE $(date -Is) ===="
   ls -lah output/*.iso
 
