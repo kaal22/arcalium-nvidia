@@ -41,8 +41,9 @@ GHCR package visibility is **public**.
 
 ## ISO
 
-- File: `Arcalium-Live-0.2.2.iso` — host on [getarcalium.com](https://getarcalium.com)
-- SHA-256: published with GitHub Release asset `Arcalium-Live-0.2.2.iso.sha256` after the live cut finishes
+- File: `Arcalium-Live-0.2.2.iso` (~7.2 GB) — host on [getarcalium.com](https://getarcalium.com)
+- SHA-256: `92cf880003359ad13dab7c6e5f120e7c01e1453c0e3ebd468ae05bfe1d2ce54c`
+- Installs track `ghcr.io/kaal22/arcalium-os-nvidia:stable`
 
 ## Known limitations
 
