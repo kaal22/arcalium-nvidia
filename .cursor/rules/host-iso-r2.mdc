@@ -1,0 +1,13 @@
+---
+description: When publishing or uploading the live ISO / checksum to Cloudflare R2 for getarcalium.com
+alwaysApply: false
+---
+
+# R2 ISO upload (local note)
+
+If the user asks to upload/host the ISO or checksum on R2 / Cloudflare downloads:
+
+1. Read the local personal runbook if it exists: [`docs/HOST_ISO_R2.md`](docs/HOST_ISO_R2.md) (gitignored — stays on this workstation only).
+2. Do **not** use the R2 dashboard or `wrangler r2 object put` for the ~7 GB ISO (300 MB limit).
+3. Uploads happen in the user’s PowerShell with AWS CLI + R2 S3 endpoint and `AWS_REQUEST_CHECKSUM_CALCULATION=WHEN_REQUIRED` (see that note).
+4. Never commit Access Key ID / Secret Access Key.
