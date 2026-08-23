@@ -678,12 +678,25 @@ def _hardware_requirements() -> dict[str, Any]:
     ram_gib: float | None = None
     vram_gib: float | None = None
     try:
-        summary = system_mod.summary()
+        # system.summarize() — not .summary(); AttributeError was swallowed and
+        # left Control Centre Local AI showing "RAM unknown" for months.
+        summary = system_mod.summarize()
         raw_ram = summary.get("memoryGiB")
         if isinstance(raw_ram, (int, float)):
             ram_gib = float(raw_ram)
     except Exception:
-        pass
+        ram_gib = None
+    if ram_gib is None:
+        # Direct /proc/meminfo if summarize() fails for unrelated reasons.
+        try:
+            for line in read_text("/proc/meminfo").splitlines():
+                if line.startswith("MemTotal:"):
+                    parts = line.split()
+                    if len(parts) >= 2 and parts[1].isdigit():
+                        ram_gib = int(parts[1]) * 1024 / (1024**3)
+                        break
+        except Exception:
+            pass
     try:
         gpu_status = gpu_mod.status()
         vram_gib = _parse_vram_gib(gpu_status.get("memoryTotal"))

@@ -234,6 +234,10 @@ def summarize() -> dict[str, Any]:
     }
 
 
+# Alias used by callers that expect summary(); keep in sync with summarize().
+summary = summarize
+
+
 def human_lines(data: dict[str, Any]) -> list[str]:
     lines = [
         f"Product:     {data.get('product')} ({data.get('edition')})",
