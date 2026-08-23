@@ -277,7 +277,12 @@ if [[ -d /usr/etc/profile.d ]]; then
     install -Dm0644 /etc/profile.d/user-motd.sh /usr/etc/profile.d/user-motd.sh
     install -Dm0644 /etc/profile.d/bazzite-neofetch.sh /usr/etc/profile.d/bazzite-neofetch.sh
     install -Dm0644 /etc/profile.d/zz-arcalium-fastfetch.sh /usr/etc/profile.d/zz-arcalium-fastfetch.sh
+    install -Dm0644 /etc/profile.d/zz-arcalium-motd.sh /usr/etc/profile.d/zz-arcalium-motd.sh
 fi
+grep -q '\*i\*)' /etc/profile.d/user-motd.sh ||
+    { echo "ERROR: user-motd.sh interactive guard must use *i*) not bare i)" >&2; exit 1; }
+[[ -f /etc/profile.d/zz-arcalium-motd.sh ]] ||
+    { echo "ERROR: missing zz-arcalium-motd.sh safety-net MOTD" >&2; exit 1; }
 [[ -f /usr/share/fish/vendor_conf.d/bazzite-neofetch.fish ]] ||
     { echo "ERROR: missing fish fastfetch alias override" >&2; exit 1; }
 grep -q '/usr/share/arcalium/fastfetch.jsonc' /usr/share/fish/vendor_conf.d/bazzite-neofetch.fish ||

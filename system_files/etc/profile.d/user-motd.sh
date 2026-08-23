@@ -5,6 +5,7 @@
 # (ujust toggle-user-motd still works — it manages that same file.)
 
 # Interactive shells only (skip scp/sftp/scripts).
+# NOTE: pattern must be *i*) — bare i) never matches real $- values like himBHs.
 case $- in
   *i*) ;;
   *) return 0 ;;
@@ -16,8 +17,17 @@ if [ -z "${USERMOTDSOURCED:-}" ]; then
   if [ -d "${HOME:-}" ] && [ ! -e "${HOME}/.config/no-show-user-motd" ]; then
     if [ -x /usr/libexec/arcalium-motd ]; then
       /usr/libexec/arcalium-motd
+      ARCALIUM_MOTD_DONE=1
+      export ARCALIUM_MOTD_DONE
     elif [ -x /usr/bin/fastfetch ] && [ -f /usr/share/arcalium/fastfetch.jsonc ]; then
       /usr/bin/fastfetch -c /usr/share/arcalium/fastfetch.jsonc
+      if [ -f /usr/share/arcalium/motd-tips.txt ]; then
+        printf '\n'
+        cat /usr/share/arcalium/motd-tips.txt
+        printf '\n'
+      fi
+      ARCALIUM_MOTD_DONE=1
+      export ARCALIUM_MOTD_DONE
     fi
   fi
 fi
