@@ -158,6 +158,59 @@ sed -i \
     /usr/lib/os-release
 # /etc/os-release is a symlink to ../usr/lib/os-release on this base.
 grep -E '^(NAME|PRETTY_NAME|ID|ID_LIKE|VARIANT)=' /usr/lib/os-release
+grep -qx 'NAME="Arcalium OS"' /usr/lib/os-release ||
+    { echo "ERROR: /usr/lib/os-release NAME was not rewritten to Arcalium OS" >&2; exit 1; }
+grep -qx 'PRETTY_NAME="Arcalium OS NVIDIA Edition"' /usr/lib/os-release ||
+    { echo "ERROR: /usr/lib/os-release PRETTY_NAME was not rewritten" >&2; exit 1; }
+
+# Konsole / shell banner: Bazzite dropped profile.d/user-motd.sh and points
+# fastfetch aliases + ublue-motd at /usr/share/ublue-os/bazzite/*. Overwrite those
+# targets so stock hooks cannot show Bazzite tips/logo after a re-pin.
+[[ -f /etc/profile.d/user-motd.sh ]] ||
+    { echo "ERROR: missing /etc/profile.d/user-motd.sh" >&2; exit 1; }
+grep -q '/usr/share/arcalium/fastfetch.jsonc' /etc/profile.d/user-motd.sh ||
+    { echo "ERROR: user-motd.sh does not invoke Arcalium fastfetch" >&2; exit 1; }
+[[ -f /etc/profile.d/bazzite-neofetch.sh ]] ||
+    { echo "ERROR: missing /etc/profile.d/bazzite-neofetch.sh" >&2; exit 1; }
+grep -q '/usr/share/arcalium/fastfetch.jsonc' /etc/profile.d/bazzite-neofetch.sh ||
+    { echo "ERROR: bazzite-neofetch.sh aliases do not point at Arcalium fastfetch" >&2; exit 1; }
+[[ -f /usr/share/arcalium/fastfetch.jsonc && -f /usr/share/arcalium/logo.txt ]] ||
+    { echo "ERROR: missing /usr/share/arcalium/fastfetch.jsonc or logo.txt" >&2; exit 1; }
+
+if [[ -d /usr/share/ublue-os/bazzite ]]; then
+    install -Dm0644 /usr/share/arcalium/fastfetch.jsonc \
+        /usr/share/ublue-os/bazzite/fastfetch.jsonc
+    install -Dm0644 /usr/share/arcalium/logo.txt \
+        /usr/share/ublue-os/bazzite/logo.txt
+fi
+if [[ -x /usr/libexec/bazzite-fetch-image || -e /usr/libexec/bazzite-fetch-image ]]; then
+    cat >/usr/libexec/bazzite-fetch-image <<'EOF'
+#!/usr/bin/bash
+# Arcalium: stock Bazzite image-line helper → live Arcalium image label.
+exec /usr/libexec/arcalium-image-label
+EOF
+    chmod 0755 /usr/libexec/bazzite-fetch-image
+fi
+if [[ -x /usr/libexec/ublue-motd || -e /usr/libexec/ublue-motd ]]; then
+    cat >/usr/libexec/ublue-motd <<'EOF'
+#!/usr/bin/bash
+# Arcalium: replace Bazzite tip/glow MOTD with our Konsole fastfetch banner.
+if [[ -e "${HOME:-}/.config/no-show-user-motd" ]]; then
+    exit 0
+fi
+exec /usr/bin/fastfetch -c /usr/share/arcalium/fastfetch.jsonc
+EOF
+    chmod 0755 /usr/libexec/ublue-motd
+fi
+# Keep /usr/etc in sync when present (some rebases seed /etc from here).
+if [[ -d /usr/etc/profile.d ]]; then
+    install -Dm0644 /etc/profile.d/user-motd.sh /usr/etc/profile.d/user-motd.sh
+    install -Dm0644 /etc/profile.d/bazzite-neofetch.sh /usr/etc/profile.d/bazzite-neofetch.sh
+fi
+[[ -f /usr/share/fish/vendor_conf.d/bazzite-neofetch.fish ]] ||
+    { echo "ERROR: missing fish fastfetch alias override" >&2; exit 1; }
+grep -q '/usr/share/arcalium/fastfetch.jsonc' /usr/share/fish/vendor_conf.d/bazzite-neofetch.fish ||
+    { echo "ERROR: fish fastfetch aliases do not point at Arcalium" >&2; exit 1; }
 
 # Channel baked at image build time (CI DEFAULT_TAG=dev). Promote :stable retags the
 # same digest and does not rewrite this file — fastfetch / Control Centre prefer the

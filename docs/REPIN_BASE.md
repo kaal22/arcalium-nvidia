@@ -96,11 +96,19 @@ nvidia-smi
 
 Checklist minimum: boots, `nvidia-smi` OK, Plasma Wayland, Control Centre opens, optional Drivers check still coherent. Also confirm Flatpak GL matched the new driver (`flatpak list | grep GL.nvidia` and/or wait for `arcalium-flatpak-nvidia.service` — it auto-pulls matching GL on first boot with network). Smoke: Heroic launches a game without an OpenGL error; optional Firefox `about:support` GPU line; escape hatch `arcaliumctl steam harden`.
 
-**Branding (re-pin sensitive):** Plasma splash shows Arcalium wordmark (not Bazzite); login greeter uses Arcalium wallpaper. If login looks stock after upgrade, check host override:
+**Branding (re-pin sensitive):** Plasma splash shows Arcalium wordmark (not Bazzite); login greeter uses Arcalium wallpaper; Konsole opens with Arcalium `fastfetch` (ASCII mark + `Arcalium OS NVIDIA Edition`), not Bazzite tips/logo. If login looks stock after upgrade, check host override:
 
 ```bash
 sudo grep -n Image /etc/plasmalogin.conf /etc/plasmalogin.conf.d/* 2>/dev/null || true
 # If Image= points at default.jxl / convergence / backgrounds/, clear or fix, then restart greeter / reboot.
+```
+
+Quick Konsole check after upgrade:
+
+```bash
+grep -E '^(NAME|PRETTY_NAME)=' /etc/os-release
+head -n5 /etc/profile.d/user-motd.sh
+fastfetch -c /usr/share/arcalium/fastfetch.jsonc | head
 ```
 
 ### B5. Promote (only if asked)
