@@ -218,7 +218,7 @@ bash -n /usr/libexec/arcalium-motd
     { echo "ERROR: missing /etc/profile.d/user-motd.sh" >&2; exit 1; }
 grep -q 'arcalium-motd' /etc/profile.d/user-motd.sh ||
     { echo "ERROR: user-motd.sh does not call arcalium-motd" >&2; exit 1; }
-grep -q 'case $-' /etc/profile.d/user-motd.sh ||
+grep -qE '\[\[ \$- =~ i \]\]|case \$-' /etc/profile.d/user-motd.sh ||
     { echo "ERROR: user-motd.sh must guard for interactive shells" >&2; exit 1; }
 [[ -f /etc/profile.d/bazzite-neofetch.sh ]] ||
     { echo "ERROR: missing /etc/profile.d/bazzite-neofetch.sh" >&2; exit 1; }
@@ -279,8 +279,10 @@ if [[ -d /usr/etc/profile.d ]]; then
     install -Dm0644 /etc/profile.d/zz-arcalium-fastfetch.sh /usr/etc/profile.d/zz-arcalium-fastfetch.sh
     install -Dm0644 /etc/profile.d/zz-arcalium-motd.sh /usr/etc/profile.d/zz-arcalium-motd.sh
 fi
-grep -q '\*i\*)' /etc/profile.d/user-motd.sh ||
-    { echo "ERROR: user-motd.sh interactive guard must use *i*) not bare i)" >&2; exit 1; }
+grep -qE '\[\[ \$- =~ i \]\]' /etc/profile.d/user-motd.sh ||
+    { echo "ERROR: user-motd.sh interactive guard must use [[ \$- =~ i ]] (not bare case i))" >&2; exit 1; }
+grep -qE '\[\[ \$- =~ i \]\]' /etc/profile.d/zz-arcalium-motd.sh ||
+    { echo "ERROR: zz-arcalium-motd.sh interactive guard must use [[ \$- =~ i ]]" >&2; exit 1; }
 [[ -f /etc/profile.d/zz-arcalium-motd.sh ]] ||
     { echo "ERROR: missing zz-arcalium-motd.sh safety-net MOTD" >&2; exit 1; }
 [[ -f /usr/share/fish/vendor_conf.d/bazzite-neofetch.fish ]] ||
