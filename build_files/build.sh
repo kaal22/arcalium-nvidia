@@ -84,7 +84,16 @@ if command -v magick >/dev/null 2>&1; then
         [[ -f "${theme_dir}index.theme" ]] || continue
         gtk-update-icon-cache -f "${theme_dir}" 2>/dev/null || true
     done
+    # Absolute Kickoff button art (cyan so it stays visible on dark panels).
+    # Panel applets that still use theme names often go blank after re-pins;
+    # layout.js + user cleanup point at this file:// path instead.
+    magick -background none /usr/share/arcalium/logo-mark.svg \
+        -resize 256x256 \
+        -fill '#67e8f9' -colorize 100 \
+        PNG32:/usr/share/arcalium/kickoff-icon.png
 fi
+[[ -f /usr/share/arcalium/kickoff-icon.png ]] ||
+    { echo "ERROR: missing /usr/share/arcalium/kickoff-icon.png for Kickoff button" >&2; exit 1; }
 
 # Taskbar pins come from the panel layout template, not from an update script.
 python3 /ctx/patch_panel_pins.py
@@ -343,6 +352,7 @@ EOF
 # /etc/hostname from system_files.
 chmod 0755 /usr/libexec/arcalium-migrate-hostname
 chmod 0755 /usr/libexec/arcalium-cleanup-bazzite-user
+chmod 0755 /usr/libexec/arcalium-fix-kickoff-icon.py
 chmod 0755 /usr/libexec/arcalium-image-label
 chmod 0755 /usr/libexec/arcalium-motd
 chmod 0755 /usr/libexec/arcalium-konsole-shell

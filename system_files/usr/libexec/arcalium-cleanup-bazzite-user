@@ -59,3 +59,8 @@ fi
 
 # Drop stale icon caches so Kickoff picks up Arcalium start-here marks.
 rm -f "${HOME}/.cache/icon-cache.kcache" 2>/dev/null || true
+
+# Force Kickoff button to absolute Arcalium PNG (theme-name lookup often stays blank).
+if [[ -x /usr/libexec/arcalium-fix-kickoff-icon.py ]]; then
+  /usr/bin/python3 /usr/libexec/arcalium-fix-kickoff-icon.py || true
+fi
