@@ -5,11 +5,8 @@
 # (ujust toggle-user-motd still works — it manages that same file.)
 
 # Interactive shells only (skip scp/sftp/scripts).
-# NOTE: pattern must be *i*) — bare i) never matches real $- values like himBHs.
-case $- in
-  *i*) ;;
-  *) return 0 ;;
-esac
+# Use =~ i (not case *i*) — chat/markdown often strips the asterisks from *i*).
+[[ $- =~ i ]] || return 0
 
 if [ -z "${USERMOTDSOURCED:-}" ]; then
   USERMOTDSOURCED="Y"

@@ -1,9 +1,7 @@
 # Safety net: always try Arcalium MOTD last if nothing else showed it.
 # Filename zz-* sorts after bazzite-neofetch / user-motd.
-case $- in
-  *i*) ;;
-  *) return 0 ;;
-esac
+# Use =~ i (not case *i*) — chat/markdown often strips the asterisks from *i*).
+[[ $- =~ i ]] || return 0
 
 if [ -n "${ARCALIUM_MOTD_DONE:-}" ]; then
   return 0
