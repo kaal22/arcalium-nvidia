@@ -323,6 +323,7 @@ chmod 0755 /usr/libexec/arcalium-migrate-hostname
 chmod 0755 /usr/libexec/arcalium-cleanup-bazzite-user
 chmod 0755 /usr/libexec/arcalium-image-label
 chmod 0755 /usr/libexec/arcalium-motd
+chmod 0755 /usr/libexec/arcalium-konsole-shell
 chmod 0755 /usr/bin/neofetch
 chmod 0755 /usr/bin/neowofetch
 chmod 0755 /usr/bin/arcaliumctl
@@ -331,6 +332,10 @@ grep -q 'arcalium/fastfetch.jsonc' /usr/bin/neofetch ||
     { echo "ERROR: /usr/bin/neofetch is not the Arcalium fastfetch wrapper" >&2; exit 1; }
 grep -q 'arcalium/fastfetch.jsonc' /usr/bin/neowofetch ||
     { echo "ERROR: /usr/bin/neowofetch is not the Arcalium fastfetch wrapper" >&2; exit 1; }
+grep -q 'arcalium-motd' /usr/libexec/arcalium-konsole-shell ||
+    { echo "ERROR: arcalium-konsole-shell must invoke arcalium-motd" >&2; exit 1; }
+grep -q 'arcalium-konsole-shell' /usr/share/konsole/Arcalium.profile ||
+    { echo "ERROR: Konsole Arcalium.profile must use arcalium-konsole-shell" >&2; exit 1; }
 # Kickoff mark must exist in hicolor (install_logos also mirrors into Breeze).
 [[ -f /usr/share/icons/hicolor/scalable/places/start-here-kde.svg ]] ||
     { echo "ERROR: missing Kickoff start-here-kde.svg" >&2; exit 1; }
