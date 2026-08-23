@@ -1,0 +1,71 @@
+#!/usr/bin/bash
+# Print "imageName:channel" for fastfetch / MOTD.
+# Prefer the *live* bootc/rpm-ostree image tag (what updates track). Promote
+# retags the same digest, so baked /etc/arcalium/image-info.json stays "dev".
+set -u
+
+INFO="/etc/arcalium/image-info.json"
+NAME="arcalium-os-nvidia"
+CHANNEL="dev"
+
+if [[ -r "${INFO}" ]] && command -v jq >/dev/null 2>&1; then
+  NAME="$(jq -r '.imageName // "arcalium-os-nvidia"' "${INFO}" 2>/dev/null || echo arcalium-os-nvidia)"
+  CHANNEL="$(jq -r '.channel // "dev"' "${INFO}" 2>/dev/null || echo dev)"
+fi
+
+_tag_from_ref() {
+  local ref="$1"
+  [[ -z "${ref}" || "${ref}" == "null" ]] && return 1
+  # Strip common ostree/bootc transport prefixes.
+  ref="${ref#ostree-image-signed:docker://}"
+  ref="${ref#ostree-unverified-image:docker://}"
+  ref="${ref#ostree-unverified-registry:}"
+  ref="${ref#ostree-remote-image:}"
+  ref="${ref#docker://}"
+  ref="${ref#remote-image:}"
+  # Take last path segment: ghcr.io/owner/name:tag
+  local leaf="${ref##*/}"
+  if [[ "${leaf}" == *:* ]]; then
+    local tag="${leaf##*:}"
+    tag="${tag%%@*}"
+    [[ -n "${tag}" ]] && { printf '%s\n' "${tag}"; return 0; }
+  fi
+  return 1
+}
+
+_live_tag() {
+  local json="" tag=""
+  if command -v rpm-ostree >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+    json="$(rpm-ostree status --json 2>/dev/null || true)"
+    if [[ -n "${json}" ]]; then
+      tag="$(printf '%s' "${json}" | jq -r '
+        (.deployments // [])[]
+        | select(.booted == true)
+        | (."container-image-reference" // .["container-image-reference"] // empty)
+      ' 2>/dev/null | head -n1)"
+      tag="$(_tag_from_ref "${tag}" || true)"
+      [[ -n "${tag}" ]] && { printf '%s\n' "${tag}"; return 0; }
+    fi
+  fi
+  if command -v bootc >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+    json="$(bootc status --json --booted 2>/dev/null || bootc status --format=json 2>/dev/null || true)"
+    if [[ -n "${json}" ]]; then
+      tag="$(printf '%s' "${json}" | jq -r '
+        ( .status.booted // .booted // empty ) as $b
+        | if ($b|type) == "object" then $b
+          else ((.status.deployments // .deployments // [])[] | select(.booted == true)) end
+        | (.image.image // ."container-image-reference" // .image // empty)
+        | if type == "object" then (.image // .reference // empty) else . end
+      ' 2>/dev/null | head -n1)"
+      tag="$(_tag_from_ref "${tag}" || true)"
+      [[ -n "${tag}" ]] && { printf '%s\n' "${tag}"; return 0; }
+    fi
+  fi
+  return 1
+}
+
+if live="$(_live_tag)"; then
+  CHANNEL="${live}"
+fi
+
+printf '%s:%s\n' "${NAME}" "${CHANNEL}"

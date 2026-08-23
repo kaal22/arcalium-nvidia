@@ -136,6 +136,72 @@ def _hostname() -> str:
     return platform.node() or "unknown"
 
 
+def _channel_from_image_ref(ref: Any) -> str | None:
+    """Extract registry tag from a bootc/ostree image reference."""
+    if not isinstance(ref, str) or not ref.strip():
+        return None
+    s = ref.strip()
+    for prefix in (
+        "ostree-image-signed:docker://",
+        "ostree-unverified-image:docker://",
+        "ostree-unverified-registry:",
+        "ostree-remote-image:",
+        "docker://",
+        "remote-image:",
+    ):
+        if s.startswith(prefix):
+            s = s[len(prefix) :]
+            break
+    leaf = s.rsplit("/", 1)[-1]
+    if ":" not in leaf:
+        return None
+    tag = leaf.rsplit(":", 1)[-1]
+    tag = tag.split("@", 1)[0].strip()
+    return tag or None
+
+
+def _live_update_channel(bootc: dict[str, Any], baked: str | None) -> str | None:
+    """Prefer the booted image tag (stable/dev/0.x.y) over baked image-info channel.
+
+    Promote retags the same digest; baked channel in image-info.json stays \"dev\".
+    """
+    status_obj = bootc.get("status") if isinstance(bootc, dict) else None
+    if isinstance(status_obj, dict):
+        # Normalized shape from updates._parse_bootc / rpm-ostree adapter
+        deployments = status_obj.get("deployments")
+        if isinstance(deployments, list):
+            for dep in deployments:
+                if not isinstance(dep, dict):
+                    continue
+                if dep.get("booted") or dep.get("Booted"):
+                    # rpm-ostree adapter nests image.image; raw may use container-image-reference
+                    image = dep.get("image")
+                    if isinstance(image, dict):
+                        tag = _channel_from_image_ref(image.get("image"))
+                        if tag:
+                            return tag
+                    tag = _channel_from_image_ref(
+                        dep.get("container-image-reference") or dep.get("origin")
+                    )
+                    if tag:
+                        return tag
+        booted = status_obj.get("booted") or status_obj.get("Booted")
+        if isinstance(booted, dict):
+            image = booted.get("image") or booted.get("Image")
+            if isinstance(image, dict):
+                tag = _channel_from_image_ref(
+                    image.get("image") or image.get("Image") or image.get("reference")
+                )
+                if tag:
+                    return tag
+            tag = _channel_from_image_ref(
+                booted.get("container-image-reference") or booted.get("origin")
+            )
+            if tag:
+                return tag
+    return baked
+
+
 def summarize() -> dict[str, Any]:
     os_release = parse_os_release(read_text("/usr/lib/os-release"))
     image_info = read_json_file("/etc/arcalium/image-info.json") or {}
@@ -143,12 +209,15 @@ def summarize() -> dict[str, Any]:
     kernel = uname.stdout.strip() if uname.ok else platform.release()
 
     mem = _mem_total_bytes()
+    bootc = _bootc_status()
+    baked_channel = image_info.get("channel")
+    channel = _live_update_channel(bootc, baked_channel if isinstance(baked_channel, str) else None)
     return {
         "schema": "arcalium.system.summary/v1",
         "product": image_info.get("product") or os_release.get("NAME", "Arcalium OS"),
         "edition": image_info.get("edition") or os_release.get("VARIANT"),
         "imageName": image_info.get("imageName"),
-        "channel": image_info.get("channel"),
+        "channel": channel,
         "prettyName": os_release.get("PRETTY_NAME"),
         "osId": os_release.get("ID"),
         "hostname": _hostname(),
@@ -159,7 +228,7 @@ def summarize() -> dict[str, Any]:
         "sessionType": _session_type(),
         "waylandDisplay": bool(os.environ.get("WAYLAND_DISPLAY")),
         "architecture": platform.machine(),
-        "bootc": _bootc_status(),
+        "bootc": bootc,
         "imageInfoPath": "/etc/arcalium/image-info.json",
         "imageInfoPresent": Path("/etc/arcalium/image-info.json").is_file(),
     }

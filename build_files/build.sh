@@ -118,23 +118,28 @@ sed -i \
 # /etc/os-release is a symlink to ../usr/lib/os-release on this base.
 grep -E '^(NAME|PRETTY_NAME|ID|ID_LIKE|VARIANT)=' /usr/lib/os-release
 
-cat >/usr/share/arcalium/os-release.snippet <<'EOF'
+# Channel baked at image build time (CI DEFAULT_TAG=dev). Promote :stable retags the
+# same digest and does not rewrite this file — fastfetch / Control Centre prefer the
+# live bootc image tag via /usr/libexec/arcalium-image-label and system.summarize().
+ARCALIUM_CHANNEL="${ARCALIUM_CHANNEL:-dev}"
+
+cat >/usr/share/arcalium/os-release.snippet <<EOF
 NAME="Arcalium OS"
 PRETTY_NAME="Arcalium OS NVIDIA Edition"
 ID_LIKE="fedora bazzite"
 VARIANT="NVIDIA Edition"
 VARIANT_ID="nvidia"
 ARCALIUM_EDITION="nvidia"
-ARCALIUM_CHANNEL="dev"
+ARCALIUM_CHANNEL="${ARCALIUM_CHANNEL}"
 EOF
 
-cat >/etc/arcalium/image-info.json <<'EOF'
+cat >/etc/arcalium/image-info.json <<EOF
 {
   "schemaVersion": 1,
   "product": "Arcalium OS",
   "edition": "NVIDIA Edition",
   "imageName": "arcalium-os-nvidia",
-  "channel": "dev",
+  "channel": "${ARCALIUM_CHANNEL}",
   "website": "https://getarcalium.com",
   "baseImage": "ghcr.io/ublue-os/bazzite-nvidia-open:stable",
   "independentProjectNotice": "Arcalium OS is an independent project built on Bazzite and is not affiliated with or endorsed by Valve, NVIDIA, Spotify, Proton AG, Fedora, Universal Blue or the Bazzite project."
@@ -146,6 +151,7 @@ EOF
 # /etc/hostname from system_files.
 chmod 0755 /usr/libexec/arcalium-migrate-hostname
 chmod 0755 /usr/libexec/arcalium-cleanup-bazzite-user
+chmod 0755 /usr/libexec/arcalium-image-label
 chmod 0755 /usr/bin/arcaliumctl
 chmod 0755 /usr/bin/arcalium-heroic
 chmod 0755 /usr/bin/arcalium-setup

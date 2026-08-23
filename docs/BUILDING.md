@@ -315,7 +315,7 @@ The shell prompt’s `@bazzite` half is the machine hostname, not the OS name. D
 - `/etc/hostname` → `arcalium`
 - `arcalium-migrate-hostname.service` renames a stock `bazzite` / `localhost` hostname once after rebase; custom hostnames are left alone
 
-Konsole’s banner is the interactive MOTD (`/etc/profile.d/user-motd.sh`). We replaced Bazzite’s tip markdown with `fastfetch` using `/usr/share/arcalium/fastfetch.jsonc` and the ASCII mark in `/usr/share/arcalium/logo.txt`. `fastfetch` / `neofetch` aliases point at the same config. Per-user opt-out is unchanged: `touch ~/.config/no-show-user-motd` (or `ujust toggle-user-motd`).
+Konsole’s banner is the interactive MOTD (`/etc/profile.d/user-motd.sh`). We replaced Bazzite’s tip markdown with `fastfetch` using `/usr/share/arcalium/fastfetch.jsonc` and the ASCII mark in `/usr/share/arcalium/logo.txt`. `fastfetch` / `neofetch` aliases point at the same config. The image line is `/usr/libexec/arcalium-image-label`, which prefers the **booted** `bootc` / `rpm-ostree` image tag (`:stable`, `:dev`, `:0.x.y`) over baked `/etc/arcalium/image-info.json` — promote retags the same digest, so the JSON channel stays `dev` unless a rebuild sets `ARCALIUM_CHANNEL`. Per-user opt-out is unchanged: `touch ~/.config/no-show-user-motd` (or `ujust toggle-user-motd`).
 
 #### The Konsole ASCII mark
 
