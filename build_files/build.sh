@@ -189,6 +189,31 @@ grep -qx 'PRETTY_NAME="Arcalium OS NVIDIA Edition"' /usr/lib/os-release ||
 # Konsole / shell banner: Bazzite dropped profile.d/user-motd.sh and points
 # fastfetch aliases + ublue-motd at /usr/share/ublue-os/bazzite/*. Overwrite those
 # targets so stock hooks cannot show Bazzite tips/logo after a re-pin.
+#
+# IMPORTANT: force-rewrite via heredoc (do not trust a prior /etc merge of the
+# stock Bazzite file). Truncated stock aliases cause:
+#   unexpected EOF while looking for matching `''
+_arcalium_neofetch_profile='# Arcalium: fastfetch aliases (filename kept so we replace Bazzite stock).
+# Real /usr/bin/neofetch + neowofetch wrappers also exist for non-alias callers.
+alias neofetch='\''/usr/bin/fastfetch -c /usr/share/arcalium/fastfetch.jsonc'\''
+alias neowofetch='\''/usr/bin/fastfetch -c /usr/share/arcalium/fastfetch.jsonc'\''
+alias fastfetch='\''/usr/bin/fastfetch -c /usr/share/arcalium/fastfetch.jsonc'\''
+'
+printf '%s\n' "${_arcalium_neofetch_profile}" >/etc/profile.d/bazzite-neofetch.sh
+printf '%s\n' "${_arcalium_neofetch_profile}" >/etc/profile.d/zz-arcalium-fastfetch.sh
+bash -n /etc/profile.d/bazzite-neofetch.sh
+bash -n /etc/profile.d/zz-arcalium-fastfetch.sh
+
+# Always replace ublue-motd with a tiny wrapper (stock script uses } / glow tips).
+cat >/usr/libexec/ublue-motd <<'EOF'
+#!/usr/bin/bash
+# Arcalium: replace Bazzite tip/glow MOTD with our Konsole banner.
+exec /usr/libexec/arcalium-motd
+EOF
+chmod 0755 /usr/libexec/ublue-motd
+bash -n /usr/libexec/ublue-motd
+bash -n /usr/libexec/arcalium-motd
+
 [[ -f /etc/profile.d/user-motd.sh ]] ||
     { echo "ERROR: missing /etc/profile.d/user-motd.sh" >&2; exit 1; }
 grep -q 'arcalium-motd' /etc/profile.d/user-motd.sh ||
@@ -199,6 +224,8 @@ grep -q 'case $-' /etc/profile.d/user-motd.sh ||
     { echo "ERROR: missing /etc/profile.d/bazzite-neofetch.sh" >&2; exit 1; }
 grep -q '/usr/share/arcalium/fastfetch.jsonc' /etc/profile.d/bazzite-neofetch.sh ||
     { echo "ERROR: bazzite-neofetch.sh aliases do not point at Arcalium fastfetch" >&2; exit 1; }
+grep -q 'bazzite-bling-fastfetch' /etc/profile.d/bazzite-neofetch.sh &&
+    { echo "ERROR: bazzite-neofetch.sh still references Bazzite bling helper" >&2; exit 1; }
 [[ -f /usr/share/arcalium/fastfetch.jsonc && -f /usr/share/arcalium/logo.txt ]] ||
     { echo "ERROR: missing /usr/share/arcalium/fastfetch.jsonc or logo.txt" >&2; exit 1; }
 [[ -f /usr/share/arcalium/motd-tips.txt ]] ||
@@ -210,6 +237,8 @@ grep -q 'arcaliumctl updates' /usr/share/arcalium/motd-tips.txt ||
 [[ -x /usr/libexec/arcalium-motd ]] || chmod 0755 /usr/libexec/arcalium-motd
 grep -q 'motd-tips.txt' /usr/libexec/arcalium-motd ||
     { echo "ERROR: arcalium-motd does not print motd-tips.txt" >&2; exit 1; }
+grep -q 'exec /usr/libexec/arcalium-motd' /usr/libexec/ublue-motd ||
+    { echo "ERROR: ublue-motd is not the Arcalium wrapper" >&2; exit 1; }
 [[ -f /usr/share/fish/vendor_conf.d/arcalium-motd.fish ]] ||
     { echo "ERROR: missing fish arcalium-motd.fish" >&2; exit 1; }
 [[ -f /usr/share/konsole/Arcalium.profile ]] ||
@@ -247,6 +276,7 @@ fi
 if [[ -d /usr/etc/profile.d ]]; then
     install -Dm0644 /etc/profile.d/user-motd.sh /usr/etc/profile.d/user-motd.sh
     install -Dm0644 /etc/profile.d/bazzite-neofetch.sh /usr/etc/profile.d/bazzite-neofetch.sh
+    install -Dm0644 /etc/profile.d/zz-arcalium-fastfetch.sh /usr/etc/profile.d/zz-arcalium-fastfetch.sh
 fi
 [[ -f /usr/share/fish/vendor_conf.d/bazzite-neofetch.fish ]] ||
     { echo "ERROR: missing fish fastfetch alias override" >&2; exit 1; }
