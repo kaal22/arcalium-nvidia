@@ -407,35 +407,65 @@ if rpm -q bazzite-updater >/dev/null 2>&1; then
     echo "ERROR: bazzite-updater RPM still present after removal" >&2
     exit 1
 fi
+# Portal / yafti may be an RPM; remove if present so it cannot reappear.
+for pkg in yafti yafti-gtk python3-yafti; do
+    if rpm -q "${pkg}" >/dev/null 2>&1; then
+        dnf5 -y remove "${pkg}" || dnf -y remove "${pkg}" || true
+    fi
+done
+
+# Skel + system autostart (Portal / announcements copy into ~/.config on first login).
 rm -f /etc/skel/.config/autostart/bazzite-portal.desktop
+rm -f /etc/skel/.config/autostart/bazzite-*.desktop
+rm -f /etc/xdg/autostart/bazzite-portal.desktop
+rm -f /etc/xdg/autostart/bazzite-announcement.desktop
+rm -f /etc/xdg/autostart/bazzite-*.desktop
+find /etc/skel/.config/autostart /etc/xdg/autostart -maxdepth 1 -type f \( \
+    -iname '*bazzite*' -o -iname '*yafti*' \
+  \) -print -delete 2>/dev/null || true
+
 rm -f /usr/share/applications/bazzite-documentation.desktop
 rm -f /usr/share/applications/system-update.desktop
 rm -f /usr/share/applications/discourse.desktop
 rm -f /usr/share/applications/bbrew.desktop
 rm -f /usr/share/applications/io.github.rfrench3.bazzite-updater.desktop
 rm -f /usr/share/applications/bazzite-updater.desktop
-# Portal / updater / CLI launcher ids vary by base; wipe by filename pattern.
-find /usr/share/applications /usr/local/share/applications -maxdepth 1 -type f \( \
+rm -f /usr/share/applications/io.github.ublue_os.yafti_gtk.desktop
+rm -f /usr/share/applications/yafti_gtk.desktop
+rm -f /usr/share/applications/yafti.desktop
+
+# Portal / updater / CLI / docs / forums — wipe by filename under applications trees.
+find /usr/share/applications /usr/local/share/applications -type f \( \
     -iname '*yafti*' -o \
     -iname '*bazzite-portal*' -o \
+    -iname '*bazzite*portal*' -o \
     -iname 'bazzite-documentation.desktop' -o \
     -iname 'system-update.desktop' -o \
     -iname '*bazzite-updater*' -o \
     -iname '*bazzite*cli*' -o \
-    -iname 'bbrew.desktop' \
+    -iname 'bbrew.desktop' -o \
+    -iname 'discourse.desktop' -o \
+    -iname '*ublue*yafti*' \
   \) -print -delete 2>/dev/null || true
-# Also catch renamed launchers by visible Name= (Kickoff label).
+
+# Catch renamed launchers by Name= / Comment= / Exec= (Kickoff label).
 while IFS= read -r -d '' desktop; do
-    if grep -E '^(Name|Name\[en(_[A-Z]+)?\])=' "${desktop}" 2>/dev/null \
-        | grep -qiE 'Bazzite Updater|Bazzite CLI|Bold Brew|Bazzite Portal|Bazzite Documentation'; then
-        echo "Removing launcher by Name: ${desktop}"
+    if grep -E '^(Name|Name\[en(_[A-Z]+)?\]|Comment|Comment\[en(_[A-Z]+)?\]|Exec)=' "${desktop}" 2>/dev/null \
+        | grep -qiE 'Bazzite Updater|Bazzite CLI|Bold Brew|Bazzite Portal|Bazzite Documentation|Bazzite Announcements|yafti|ujust update|Universal Blue Forums|^Name=Discourse$|^Name=Documentation$'; then
+        echo "Removing launcher by metadata: ${desktop}"
         rm -f "${desktop}"
     fi
-done < <(find /usr/share/applications /usr/local/share/applications -maxdepth 1 -type f -name '*.desktop' -print0 2>/dev/null)
+done < <(find /usr/share/applications /usr/local/share/applications -type f -name '*.desktop' -print0 2>/dev/null)
+
 # Autostart for existing profiles is under ~/.config; skel covers new users.
 # User unit arcalium-cleanup-bazzite also clears ~/.local leftovers after upgrade.
 if [[ -e /etc/skel/.config/autostart/bazzite-portal.desktop ]]; then
     echo "ERROR: skel bazzite-portal.desktop autostart still present" >&2
+    exit 1
+fi
+if compgen -G '/etc/xdg/autostart/*bazzite*' >/dev/null 2>&1; then
+    echo "ERROR: Bazzite autostart still present under /etc/xdg/autostart" >&2
+    ls -la /etc/xdg/autostart/*bazzite* >&2 || true
     exit 1
 fi
 if [[ -e /usr/share/applications/bazzite-documentation.desktop ]]; then
@@ -444,6 +474,10 @@ if [[ -e /usr/share/applications/bazzite-documentation.desktop ]]; then
 fi
 if [[ -e /usr/share/applications/system-update.desktop ]]; then
     echo "ERROR: system-update.desktop still present" >&2
+    exit 1
+fi
+if [[ -e /usr/share/applications/discourse.desktop ]]; then
+    echo "ERROR: discourse.desktop still present" >&2
     exit 1
 fi
 if compgen -G '/usr/share/applications/*bazzite-updater*' >/dev/null 2>&1; then
@@ -458,6 +492,15 @@ if compgen -G '/usr/share/applications/*yafti*' >/dev/null 2>&1; then
 fi
 if [[ -e /usr/share/applications/bbrew.desktop ]]; then
     echo "ERROR: bbrew.desktop (Bold Brew / Bazzite CLI UI) still present" >&2
+    exit 1
+fi
+# Fail if any remaining app menu entry is clearly Bazzite Portal/Updater branded.
+if find /usr/share/applications -type f -name '*.desktop' -print0 2>/dev/null \
+    | xargs -0 grep -l -E '^Name=.*Bazzite (Portal|Updater|CLI|Announcements)' 2>/dev/null \
+    | grep -q .; then
+    echo "ERROR: Bazzite-branded Kickoff entries still present:" >&2
+    find /usr/share/applications -type f -name '*.desktop' -print0 2>/dev/null \
+        | xargs -0 grep -l -E '^Name=.*Bazzite (Portal|Updater|CLI|Announcements)' >&2 || true
     exit 1
 fi
 echo "Bazzite Portal / Documentation / Updater / CLI menu entries removed."

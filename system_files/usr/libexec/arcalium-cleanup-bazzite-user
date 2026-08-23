@@ -1,9 +1,18 @@
 #!/usr/bin/bash
-# Clear leftover Bazzite Portal / Updater / CLI launchers copied into existing
-# user homes before Arcalium hid them from the image/skel.
+# Clear leftover Bazzite Portal / Updater / CLI / docs launchers copied into
+# existing user homes before Arcalium hid them from the image/skel.
 set -euo pipefail
 
-rm -f "${HOME}/.config/autostart/bazzite-portal.desktop"
+autostart="${HOME}/.config/autostart"
+if [[ -d "${autostart}" ]]; then
+  shopt -s nullglob
+  rm -f \
+    "${autostart}"/bazzite-portal.desktop \
+    "${autostart}"/bazzite-announcement.desktop \
+    "${autostart}"/bazzite-*.desktop \
+    "${autostart}"/*yafti*
+  shopt -u nullglob
+fi
 
 app_dir="${HOME}/.local/share/applications"
 if [[ -d "${app_dir}" ]]; then
@@ -11,19 +20,22 @@ if [[ -d "${app_dir}" ]]; then
   for f in \
     "${app_dir}"/*bazzite-updater* \
     "${app_dir}"/*bazzite*cli* \
+    "${app_dir}"/*bazzite*portal* \
     "${app_dir}"/bbrew.desktop \
     "${app_dir}"/system-update.desktop \
     "${app_dir}"/bazzite-documentation.desktop \
+    "${app_dir}"/discourse.desktop \
     "${app_dir}"/*yafti* \
-    "${app_dir}"/*bazzite-portal*
+    "${app_dir}"/*ublue*yafti* \
+    "${app_dir}"/bazzite-*.desktop
   do
     rm -f "${f}"
   done
   shopt -u nullglob
 
   while IFS= read -r -d '' desktop; do
-    if grep -E '^(Name|Name\[en(_[A-Z]+)?\])=' "${desktop}" 2>/dev/null \
-      | grep -qiE 'Bazzite Updater|Bazzite CLI|Bold Brew|Bazzite Portal|Bazzite Documentation'; then
+    if grep -E '^(Name|Name\[en(_[A-Z]+)?\]|Comment|Comment\[en(_[A-Z]+)?\]|Exec)=' "${desktop}" 2>/dev/null \
+      | grep -qiE 'Bazzite Updater|Bazzite CLI|Bold Brew|Bazzite Portal|Bazzite Documentation|Bazzite Announcements|yafti|Universal Blue Forums|^Name=Discourse$|^Name=Documentation$'; then
       rm -f "${desktop}"
     fi
   done < <(find "${app_dir}" -maxdepth 1 -type f -name '*.desktop' -print0 2>/dev/null)
