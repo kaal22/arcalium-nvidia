@@ -21,6 +21,7 @@ BASE_MODEL = "gemma4:e4b-it-qat"
 # Local Ollama model with Arcalium system prompt baked in via Modelfile.
 ASSISTANT_MODEL = "arcalium-assistant"
 SYSTEM_PROMPT_PATH = "/usr/lib/arcalium/ai/system-prompt.txt"
+OS_COMMAND_SKILLS_PATH = "/usr/lib/arcalium/ai/os-command-skills.txt"
 SESSION_SCRIPT = "/usr/lib/arcalium/ai/assistant-session.sh"
 ENSURE_SESSION_SCRIPT = "/usr/lib/arcalium/ai/ensure-session.sh"
 INSTALL_SESSION_SCRIPT = "/usr/lib/arcalium/ai/install-session.sh"
@@ -821,9 +822,13 @@ def _build_system_prompt() -> str:
         f"- ID: {os_release.get('ID') or 'unknown'}; VARIANT_ID: {os_release.get('VARIANT_ID') or 'unknown'}",
         f"- Default shell for examples: bash",
         f"- Package/update model: bootc / ostree image; Flatpak for apps; arcaliumctl for Arcalium workflows",
+        f"- Update source: Arcalium GHCR (ghcr.io/kaal22/arcalium-os-nvidia) — never Bazzite rebase",
     ]
     if image:
         extras.append(f"- Arcalium image-info.json present: yes")
+    skills = read_text(OS_COMMAND_SKILLS_PATH, default="").strip()
+    if skills:
+        extras.extend(["", "Built-in OS command skills:", skills])
     return base + "\n" + "\n".join(extras) + "\n"
 
 

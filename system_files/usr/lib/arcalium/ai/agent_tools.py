@@ -9,9 +9,11 @@ import json
 import re
 import subprocess
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable
 
 ARCALIUMCTL = "/usr/bin/arcaliumctl"
+OS_COMMAND_SKILLS_PATH = "/usr/lib/arcalium/ai/os-command-skills.txt"
 
 # Must stay aligned with Control Centre allowlists + catalogue Flatpaks.
 ALLOWED_APP_IDS: frozenset[str] = frozenset(
@@ -292,6 +294,27 @@ def tool_catalog_for_prompt() -> str:
         ]
     )
     return "\n".join(lines)
+
+
+def skills_for_prompt(path: str | None = None) -> str:
+    """Load suggest-only OS command skills (not executable by the wrapper)."""
+    skills_path = path or OS_COMMAND_SKILLS_PATH
+    try:
+        text = Path(skills_path).read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+    if not text:
+        return ""
+    return "Built-in OS command skills (append):\n\n" + text
+
+
+def prompt_appendix_for_agent() -> str:
+    """Tool catalog plus OS skills for agent /help and system message."""
+    parts = [tool_catalog_for_prompt()]
+    skills = skills_for_prompt()
+    if skills:
+        parts.append(skills)
+    return "\n\n".join(parts)
 
 
 def resolve_tool(name: str, args: dict[str, Any] | None) -> tuple[ToolSpec, list[str]]:

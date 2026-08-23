@@ -7,6 +7,7 @@ BASE_MODEL="${ARCALIUM_AI_BASE_MODEL:-gemma4:e4b-it-qat}"
 ASSISTANT_MODEL="${ARCALIUM_AI_MODEL:-arcalium-assistant}"
 OLLAMA_BIN="${ARCALIUM_OLLAMA_BIN:-}"
 SYSTEM_PROMPT="${ARCALIUM_AI_SYSTEM_PROMPT:-/usr/lib/arcalium/ai/system-prompt.txt}"
+OS_SKILLS="${ARCALIUM_AI_OS_SKILLS:-/usr/lib/arcalium/ai/os-command-skills.txt}"
 
 if [[ -z "${OLLAMA_BIN}" ]]; then
   for candidate in \
@@ -63,6 +64,13 @@ else
     prompt="$(cat "${SYSTEM_PROMPT}")"
   else
     prompt="You are the Arcalium Local AI assistant on Arcalium OS NVIDIA Edition. Give Linux bash commands only."
+  fi
+  if [[ -f "${OS_SKILLS}" ]]; then
+    prompt="${prompt}
+
+Built-in OS command skills:
+
+$(cat "${OS_SKILLS}")"
   fi
   {
     echo "FROM ${BASE_MODEL}"

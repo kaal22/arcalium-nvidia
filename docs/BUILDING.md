@@ -366,14 +366,14 @@ Arcalium does **not** redistribute Steam in the image. `build.sh` removes the Ba
 
 ### Local AI Assistant (§9.14)
 
-Offline maintenance helper via **Ollama**, base **`gemma4:e4b-it-qat`**, session model **`arcalium-assistant`** (Modelfile + `/usr/lib/arcalium/ai/system-prompt.txt` for Arcalium OS / bash context).
+Offline maintenance helper via **Ollama**, base **`gemma4:e4b-it-qat`**, session model **`arcalium-assistant`** (Modelfile + `/usr/lib/arcalium/ai/system-prompt.txt` for Arcalium OS / bash context, plus `/usr/lib/arcalium/ai/os-command-skills.txt` suggest-only command cookbook).
 
 - **Minimum hardware (soft gate):** 16 GiB system RAM and 8 GiB GPU VRAM — shown in Setup and Control Centre with This-PC measurement; warn when below, do not hard-block Skip.
 - Control Centre → **Local AI Assistant**: Install Ollama, Pull and configure model, Launch assistant, Refresh agent prompt, Unload model.
 - UI **Install** / **Pull** use `--visible`: open Konsole (or Ptyxis/kgx) running `/usr/lib/arcalium/ai/install-session.sh` / `ensure-session.sh` so brew / `ollama pull` progress is visible; the page polls status until ready.
 - `arcaliumctl ai install-ollama` (no `--visible`) runs a non-interactive user-level `brew install ollama`, then starts the local server — for scripts. No sudo or copy/paste flow. **Success = `ollama` binary present**, even if brew exits non-zero (link/caveat noise).
-- `arcaliumctl ai ensure` (no `--visible`) pulls the base tag and creates/refreshes `arcalium-assistant` silently (also used by **Refresh agent prompt** after prompt/tool-catalog changes). On success it installs a trusted Desktop shortcut.
-- `arcaliumctl ai launch` / `/usr/bin/arcalium-assistant` opens Konsole/Ptyxis/kgx running `/usr/lib/arcalium/ai/assistant-session.sh`, which starts the safe agent `/usr/lib/arcalium/ai/assistant-agent.py` with allowlisted tools from `agent_tools.py`. The model requests tools with `ARCALIUM_TOOL <name> {}`; read-only tools auto-run; mutating ones require typing `yes`. Closing the terminal runs `ollama stop` so VRAM is freed for gaming.
+- `arcaliumctl ai ensure` (no `--visible`) pulls the base tag and creates/refreshes `arcalium-assistant` silently (also used by **Refresh agent prompt** after prompt / tool-catalog / **OS skills** changes). On success it installs a trusted Desktop shortcut.
+- `arcaliumctl ai launch` / `/usr/bin/arcalium-assistant` opens Konsole/Ptyxis/kgx running `/usr/lib/arcalium/ai/assistant-session.sh`, which starts the safe agent `/usr/lib/arcalium/ai/assistant-agent.py` with allowlisted tools from `agent_tools.py` and the OS skills file. The model requests tools with `ARCALIUM_TOOL <name> {}`; read-only tools auto-run; mutating ones require typing `yes`. `/help` prints tools plus skills. Skills are **suggest-only** (user-typed shell); they do not expand what the wrapper can execute. Closing the terminal runs `ollama stop` so VRAM is freed for gaming.
 - Menu entry: `io.arcalium.Assistant.desktop` (Space Invaders-style pixel icon under `io.arcalium.Assistant`). Desktop: `~/Desktop/arcalium-assistant.desktop` after the first successful ensure (executable so Plasma trusts it).
 - Ollama is **not** layered into the image (atomic desktop); the UI installs it into the user's Homebrew environment on demand. The model pull is separate (~10 GB).
 - The local server keeps weights warm during an active chat; the terminal session traps EXIT/HUP and explicitly unloads both assistant and base models.

@@ -95,7 +95,7 @@ def _load_system_prompt() -> str:
             "You are the Arcalium Local AI assistant on Arcalium OS NVIDIA Edition. "
             "Use allowlisted ARCALIUM_TOOL lines to act. Prefer Linux bash context."
         )
-    return base + "\n\n" + agent_tools.tool_catalog_for_prompt()
+    return base + "\n\n" + agent_tools.prompt_appendix_for_agent()
 
 
 def _to_plain_terminal(text: str) -> str:
@@ -315,7 +315,7 @@ def main() -> int:
     _print(f"Arcalium Local AI agent — {MODEL}")
     _print("Safe agent — allowlisted actions only; mutating steps ask for yes.")
     _print("Close this window when finished to unload the model and free the GPU.")
-    _print("Type /help for tools, /exit to quit.")
+    _print("Type /help for tools and OS skills, /exit to quit.")
     _print()
 
     messages: list[dict[str, str]] = [
@@ -345,7 +345,7 @@ def main() -> int:
             break
         if lower in {"/help", "help"}:
             _print()
-            _print(agent_tools.tool_catalog_for_prompt())
+            _print(agent_tools.prompt_appendix_for_agent())
             _print()
             continue
         _handle_turn(messages, line)
