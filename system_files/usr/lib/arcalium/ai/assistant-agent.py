@@ -45,19 +45,6 @@ _TOOL_LINE = re.compile(
 
 _SPINNER_FRAMES = ("⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏")
 
-_THINK_LABELS = (
-    "Consulting the warp core",
-    "Reticulating Proton",
-    "Checking the bootc crystal",
-    "Warming the NVIDIA coils",
-    "Asking the immutable filesystem",
-    "Polishing the Konsole glyphs",
-    "Counting free VRAM",
-    "Whispering to ollama",
-    "Aligning Flatpak runtimes",
-    "Calibrating the Space Invaders",
-)
-
 _FALLBACK_TIPS = (
     "Type /help for tools and OS skills — mutating actions still ask for yes.",
     "Close this window when you are done so GPU memory goes back to games.",
@@ -193,13 +180,10 @@ def _print_welcome_beat() -> None:
 
 
 class _Spinner:
-    """Terminal activity indicator; cycles cheeky labels while waiting."""
+    """Simple braille wheel while the model (or a tool) is working."""
 
-    def __init__(self, label: str | None = None, *, theatre: bool = False) -> None:
-        self.label = label or random.choice(_THINK_LABELS)
-        self.theatre = theatre
-        self._labels = list(_THINK_LABELS)
-        random.shuffle(self._labels)
+    def __init__(self, label: str = "Thinking") -> None:
+        self.label = label
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._tty = sys.stdout.isatty()
@@ -217,17 +201,10 @@ class _Spinner:
 
     def _run(self) -> None:
         i = 0
-        label_i = 0
-        label = self.label
         while not self._stop.wait(0.08):
-            if self.theatre and i > 0 and i % 25 == 0:
-                label_i = (label_i + 1) % len(self._labels)
-                label = self._labels[label_i]
             frame = _SPINNER_FRAMES[i % len(_SPINNER_FRAMES)]
             prefix = _paint(_CYAN, "◆")
-            line = f"\r{prefix} {label}… {frame}  "
-            # Pad so shorter labels do not leave garbage.
-            sys.stdout.write(line + " " * 8)
+            sys.stdout.write(f"\r{prefix} {self.label}… {frame}   ")
             sys.stdout.flush()
             i += 1
 
@@ -237,7 +214,7 @@ class _Spinner:
             self._thread.join(timeout=1.0)
             self._thread = None
         if self._tty:
-            sys.stdout.write("\r" + (" " * 72) + "\r")
+            sys.stdout.write("\r" + (" " * 48) + "\r")
             sys.stdout.flush()
 
 
@@ -300,7 +277,7 @@ def _ollama_chat(messages: list[dict[str, str]]) -> str:
     )
 
     parts: list[str] = []
-    with _Spinner(theatre=True):
+    with _Spinner("Thinking"):
         try:
             resp = urllib.request.urlopen(req, timeout=CHAT_TIMEOUT)
         except urllib.error.HTTPError as exc:

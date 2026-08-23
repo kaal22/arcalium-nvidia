@@ -61,7 +61,7 @@ python3 /ctx/install_logos.py /ctx/assets
 
 # Raster Kickoff marks (some Plasma/icon themes resolve PNG before SVG).
 if command -v magick >/dev/null 2>&1; then
-    for size in 48 64 128 256; do
+    for size in 16 22 24 32 48 64 128 256; do
         install -d "/usr/share/icons/hicolor/${size}x${size}/places"
         magick -background none /usr/share/arcalium/logo-mark.svg \
             -resize "${size}x${size}" \
@@ -70,71 +70,91 @@ if command -v magick >/dev/null 2>&1; then
             "/usr/share/icons/hicolor/${size}x${size}/places/distributor-logo.png"
         cp -f "/usr/share/icons/hicolor/${size}x${size}/places/start-here-kde.png" \
             "/usr/share/icons/hicolor/${size}x${size}/places/start-here.png"
+        # Mirror into every installed theme (Breeze wins over hicolor for Kickoff).
+        while IFS= read -r -d '' places_dir; do
+            install -d "${places_dir}"
+            for name in start-here-kde.png start-here.png distributor-logo.png \
+                distributor-logo-white.png start-here-symbolic.png; do
+                cp -f "/usr/share/icons/hicolor/${size}x${size}/places/start-here-kde.png" \
+                    "${places_dir}/${name}"
+            done
+        done < <(find /usr/share/icons -type d -path "*/${size}x${size}/places" -print0 2>/dev/null)
+    done
+    for theme_dir in /usr/share/icons/*/; do
+        [[ -f "${theme_dir}index.theme" ]] || continue
+        gtk-update-icon-cache -f "${theme_dir}" 2>/dev/null || true
     done
 fi
 
 # Taskbar pins come from the panel layout template, not from an update script.
 python3 /ctx/patch_panel_pins.py
 
-# Plasma splash loads images/*_logo.svgz from the active look-and-feel package.
-# Replace Bazzite/Valve logos in place and point Splash.qml at arcalium_logo.svgz so
-# upstream renames cannot silently leave a stock mark. Fail the build if nothing is patched.
+# Plasma splash (login→desktop) and logout art come from look-and-feel Splash.qml.
+# Stock org.kde.breeze.desktop shows the KDE logo; vapor/vgui ship bazzite_logo.svgz.
+# Brand every Splash.qml, overwrite common logo filenames, default LookAndFeel to vapor.
 #
-# Splash.qml often pins both sourceSize.width and sourceSize.height (to `size` or a
-# literal). That suits a square mark but squashes our ~2.1:1 wordmark. Qt derives the
-# missing dimension from the source aspect ratio, so dropping the height line is enough.
+# Splash.qml often pins sourceSize.height; that squashes our ~2.1:1 wordmark — drop it.
 splash_patched=0
 wordmark_sum="$(sha256sum /usr/share/arcalium/logo-wordmark.svg | awk '{print $1}')"
-mapfile -d '' -t splash_logos < <(
-    find /usr/share/plasma/look-and-feel -type f \( \
-        -name 'bazzite_logo.svgz' -o -name 'deck_logo.svgz' -o -name 'steamdeck_logo.svgz' \
-    \) -print0 2>/dev/null || true
-)
-if [[ "${#splash_logos[@]}" -eq 0 ]]; then
-    echo "ERROR: no Plasma splash logo (bazzite_logo/deck_logo) under look-and-feel — branding would silently revert." >&2
-    find /usr/share/plasma/look-and-feel -type f -name '*logo*' 2>/dev/null | head -n 40 >&2 || true
-    exit 1
-fi
-for splash_logo in "${splash_logos[@]}"; do
-    [[ -n "${splash_logo}" ]] || continue
-    splash_dir="$(dirname "${splash_logo}")"
-    arcalium_logo="${splash_dir}/arcalium_logo.svgz"
-    gzip -nc /usr/share/arcalium/logo-wordmark.svg >"${arcalium_logo}"
-    # Keep upstream filename as a copy too (Splash.qml may still reference it until patched).
-    cp -f "${arcalium_logo}" "${splash_logo}"
 
+_arcalium_patch_splash_qml() {
+    local splash_qml="$1"
+    local splash_dir images_dir arcalium_logo name replaced_sum
+    splash_dir="$(dirname "${splash_qml}")"
+    images_dir="${splash_dir}/images"
+    mkdir -p "${images_dir}"
+    arcalium_logo="${images_dir}/arcalium_logo.svgz"
+    gzip -nc /usr/share/arcalium/logo-wordmark.svg >"${arcalium_logo}"
     replaced_sum="$(gzip -dc "${arcalium_logo}" | sha256sum | awk '{print $1}')"
     [[ "${replaced_sum}" == "${wordmark_sum}" ]] ||
-        { echo "ERROR: ${arcalium_logo} does not match Arcalium wordmark" >&2; exit 1; }
+        { echo "ERROR: ${arcalium_logo} does not match Arcalium wordmark" >&2; return 1; }
 
-    splash_qml="$(dirname "${splash_logo}")/../Splash.qml"
-    [[ -f "${splash_qml}" ]] || continue
+    for name in bazzite_logo.svgz deck_logo.svgz steamdeck_logo.svgz plasma.svgz kde.svgz logo.svgz; do
+        cp -f "${arcalium_logo}" "${images_dir}/${name}"
+    done
 
-    # Point QML at our stable filename regardless of upstream logo name.
-    sed -i -E 's#(source:[[:space:]]*")images/[^"]+_logo\.svgz(")#\1images/arcalium_logo.svgz\2#g' "${splash_qml}"
-    grep -q 'images/arcalium_logo.svgz' "${splash_qml}" ||
-        { echo "ERROR: ${splash_qml} was not patched to arcalium_logo.svgz" >&2; exit 1; }
+    sed -i -E \
+        -e 's#(source:[[:space:]]*")images/[^"]*_logo\.svgz(")#\1images/arcalium_logo.svgz\2#gi' \
+        -e 's#(source:[[:space:]]*")images/(plasma|kde|logo)\.svgz(")#\1images/arcalium_logo.svgz\3#gi' \
+        "${splash_qml}"
 
-    # Wordmark is wide: keep width, drop fixed height, force aspect-fit so the
-    # logo cannot collapse to an empty/zero-height Image after re-pins.
     sed -i -E '/^[[:space:]]*sourceSize\.height:/d' "${splash_qml}"
     if ! grep -q 'fillMode:[[:space:]]*Image.PreserveAspectFit' "${splash_qml}"; then
-        sed -i -E '/images\/arcalium_logo\.svgz/a\        fillMode: Image.PreserveAspectFit' "${splash_qml}"
+        if grep -q 'images/arcalium_logo.svgz' "${splash_qml}"; then
+            sed -i -E '/images\/arcalium_logo\.svgz/a\        fillMode: Image.PreserveAspectFit' "${splash_qml}"
+        fi
     fi
-    # Prefer a wider slot than a square `size` when upstream used sourceSize.width: size.
     sed -i -E 's#(sourceSize\.width:[[:space:]]*)size\b#\1Math.round(size * 2.2)#g' "${splash_qml}"
 
-    grep -qE 'sourceSize\.width:[[:space:]]*(Math\.round\(size \* 2\.2\)|size|[0-9]+)' "${splash_qml}" ||
-        { echo "ERROR: ${splash_qml} no longer sets sourceSize.width" >&2; exit 1; }
     if grep -nE 'sourceSize\.height' "${splash_qml}"; then
         echo "ERROR: ${splash_qml} still forces a fixed height on the logo" >&2
-        exit 1
+        return 1
     fi
+    return 0
+}
+
+mapfile -d '' -t splash_qml_files < <(
+    find /usr/share/plasma/look-and-feel -type f -name 'Splash.qml' -print0 2>/dev/null || true
+)
+[[ "${#splash_qml_files[@]}" -ge 1 ]] ||
+    { echo "ERROR: no Splash.qml under look-and-feel — KDE splash would stay stock" >&2; exit 1; }
+
+for splash_qml in "${splash_qml_files[@]}"; do
+    [[ -n "${splash_qml}" ]] || continue
+    _arcalium_patch_splash_qml "${splash_qml}" || exit 1
     splash_patched=$((splash_patched + 1))
 done
 [[ "${splash_patched}" -ge 1 ]] ||
-    { echo "ERROR: Plasma splash logos found but no Splash.qml was patched" >&2; exit 1; }
-echo "Plasma splash: patched ${splash_patched} look-and-feel logo(s)"
+    { echo "ERROR: no Splash.qml was patched" >&2; exit 1; }
+echo "Plasma splash: patched ${splash_patched} Splash.qml file(s)"
+
+# Prefer vapor (branded) over stock breeze for new sessions.
+[[ -f /etc/xdg/kdeglobals ]] ||
+    { echo "ERROR: missing /etc/xdg/kdeglobals (LookAndFeelPackage)" >&2; exit 1; }
+grep -q 'LookAndFeelPackage=com.valve.vapor.desktop' /etc/xdg/kdeglobals ||
+    { echo "ERROR: /etc/xdg/kdeglobals must set LookAndFeelPackage=com.valve.vapor.desktop" >&2; exit 1; }
+[[ -d /usr/share/plasma/look-and-feel/com.valve.vapor.desktop ]] ||
+    { echo "ERROR: com.valve.vapor.desktop look-and-feel missing from base" >&2; exit 1; }
 
 # Login greeter wallpaper — assert Arcalium defaults survived the base image.
 [[ -f /usr/share/wallpapers/arcalium-wallpaper.png ]] ||
@@ -491,13 +511,31 @@ find /usr/share/applications /usr/local/share/applications -type f \( \
   \) -print -delete 2>/dev/null || true
 
 # Catch renamed launchers by Name= / Comment= / Exec= (Kickoff label).
+_BAZZITE_LAUNCHER_RE='Bazzite Updater|Bazzite CLI|Bold Brew|Bazzite Portal|Bazzite Documentation|Bazzite Announcements|Update your system|Update Your System|System Update|yafti|ujust update|Universal Blue Forums|^Name=Discourse$|^Name=Documentation$'
 while IFS= read -r -d '' desktop; do
-    if grep -E '^(Name|Name\[en(_[A-Z]+)?\]|Comment|Comment\[en(_[A-Z]+)?\]|Exec)=' "${desktop}" 2>/dev/null \
-        | grep -qiE 'Bazzite Updater|Bazzite CLI|Bold Brew|Bazzite Portal|Bazzite Documentation|Bazzite Announcements|yafti|ujust update|Universal Blue Forums|^Name=Discourse$|^Name=Documentation$'; then
+    if grep -E '^(Name|Name\[en(_[A-Z]+)?\]|GenericName|Comment|Comment\[en(_[A-Z]+)?\]|Exec|Keywords)=' "${desktop}" 2>/dev/null \
+        | grep -qiE "${_BAZZITE_LAUNCHER_RE}"; then
         echo "Removing launcher by metadata: ${desktop}"
         rm -f "${desktop}"
     fi
-done < <(find /usr/share/applications /usr/local/share/applications -type f -name '*.desktop' -print0 2>/dev/null)
+done < <(find /usr/share/applications /usr/local/share/applications /usr/share/kglobalaccel \
+    -type f \( -name '*.desktop' -o -name '*.desktop.desktop' \) -print0 2>/dev/null)
+
+# Also hide any leftover by writing NoDisplay shadows (same basename) if a path
+# outside applications/ still exposes them — keep Kickoff clean after re-pins.
+for shadow in \
+    system-update.desktop \
+    bbrew.desktop \
+    discourse.desktop \
+    bazzite-documentation.desktop \
+    bazzite-portal.desktop \
+    io.github.rfrench3.bazzite-updater.desktop
+do
+    if [[ -e "/usr/share/applications/${shadow}" ]]; then
+        echo "ERROR: ${shadow} still present after scrub" >&2
+        exit 1
+    fi
+done
 
 # Autostart for existing profiles is under ~/.config; skel covers new users.
 # User unit arcalium-cleanup-bazzite also clears ~/.local leftovers after upgrade.
@@ -538,11 +576,15 @@ if [[ -e /usr/share/applications/bbrew.desktop ]]; then
 fi
 # Fail if any remaining app menu entry is clearly Bazzite Portal/Updater branded.
 if find /usr/share/applications -type f -name '*.desktop' -print0 2>/dev/null \
-    | xargs -0 grep -l -E '^Name=.*Bazzite (Portal|Updater|CLI|Announcements)' 2>/dev/null \
+    | xargs -0 grep -l -Ei \
+        '^Name=.*(Bazzite (Portal|Updater|CLI|Announcements)|Update your system|System Update)' \
+        2>/dev/null \
     | grep -q .; then
     echo "ERROR: Bazzite-branded Kickoff entries still present:" >&2
     find /usr/share/applications -type f -name '*.desktop' -print0 2>/dev/null \
-        | xargs -0 grep -l -E '^Name=.*Bazzite (Portal|Updater|CLI|Announcements)' >&2 || true
+        | xargs -0 grep -l -Ei \
+            '^Name=.*(Bazzite (Portal|Updater|CLI|Announcements)|Update your system|System Update)' \
+            >&2 || true
     exit 1
 fi
 echo "Bazzite Portal / Documentation / Updater / CLI menu entries removed."

@@ -67,7 +67,8 @@ def main() -> int:
     write_svg(wordmark, apps / "arcalium-wordmark.svg", "arcalium-wordmark")
 
     # Breeze ships its own start-here-kde; Kickoff prefers the active icon theme
-    # over hicolor. Overwrite scalable place icons in every theme.
+    # over hicolor. Overwrite scalable place icons in every theme. Raster PNGs are
+    # mirrored from hicolor in build.sh after ImageMagick renders them.
     replaced = 0
     if icons_root.is_dir():
         for places_dir in icons_root.rglob("places"):
@@ -78,13 +79,12 @@ def main() -> int:
             for name in PLACE_NAMES:
                 write_svg(mark, places_dir / name, "arcalium-mark")
                 replaced += 1
-    print(f"icon theme place overrides: {replaced} files")
+    print(f"icon theme place overrides: {replaced} SVG files")
 
     if shutil.which("gtk-update-icon-cache"):
         Path("/usr/share/icons/hicolor/index.theme").touch(exist_ok=True)
-        for theme in ("hicolor", "breeze", "breeze-dark"):
-            theme_dir = icons_root / theme
-            if (theme_dir / "index.theme").is_file():
+        for theme_dir in sorted(icons_root.iterdir()):
+            if theme_dir.is_dir() and (theme_dir / "index.theme").is_file():
                 subprocess.run(
                     ["gtk-update-icon-cache", "-f", str(theme_dir)],
                     check=False,

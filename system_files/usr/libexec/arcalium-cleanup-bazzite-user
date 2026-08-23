@@ -1,6 +1,7 @@
 #!/usr/bin/bash
 # Clear leftover Bazzite Portal / Updater / CLI / docs launchers copied into
 # existing user homes before Arcalium hid them from the image/skel.
+# Also nudge Plasma off stock Breeze look-and-feel (KDE splash) onto vapor.
 set -euo pipefail
 
 autostart="${HOME}/.config/autostart"
@@ -15,6 +16,7 @@ if [[ -d "${autostart}" ]]; then
 fi
 
 app_dir="${HOME}/.local/share/applications"
+_BAZZITE_LAUNCHER_RE='Bazzite Updater|Bazzite CLI|Bold Brew|Bazzite Portal|Bazzite Documentation|Bazzite Announcements|Update your system|Update Your System|System Update|yafti|ujust update|Universal Blue Forums|^Name=Discourse$|^Name=Documentation$'
 if [[ -d "${app_dir}" ]]; then
   shopt -s nullglob
   for f in \
@@ -34,9 +36,26 @@ if [[ -d "${app_dir}" ]]; then
   shopt -u nullglob
 
   while IFS= read -r -d '' desktop; do
-    if grep -E '^(Name|Name\[en(_[A-Z]+)?\]|Comment|Comment\[en(_[A-Z]+)?\]|Exec)=' "${desktop}" 2>/dev/null \
-      | grep -qiE 'Bazzite Updater|Bazzite CLI|Bold Brew|Bazzite Portal|Bazzite Documentation|Bazzite Announcements|yafti|Universal Blue Forums|^Name=Discourse$|^Name=Documentation$'; then
+    if grep -E '^(Name|Name\[en(_[A-Z]+)?\]|GenericName|Comment|Comment\[en(_[A-Z]+)?\]|Exec|Keywords)=' "${desktop}" 2>/dev/null \
+      | grep -qiE "${_BAZZITE_LAUNCHER_RE}"; then
       rm -f "${desktop}"
     fi
   done < <(find "${app_dir}" -maxdepth 1 -type f -name '*.desktop' -print0 2>/dev/null)
 fi
+
+# Existing profiles often keep LookAndFeelPackage=org.kde.breeze.desktop from first
+# login — that is the KDE loading splash between greeter and desktop / on logout.
+kdeglobals="${HOME}/.config/kdeglobals"
+if [[ -f "${kdeglobals}" ]]; then
+  if grep -qE '^LookAndFeelPackage=org\.kde\.breeze' "${kdeglobals}" 2>/dev/null \
+    || ! grep -qE '^LookAndFeelPackage=' "${kdeglobals}" 2>/dev/null; then
+    if command -v kwriteconfig6 >/dev/null 2>&1; then
+      kwriteconfig6 --file kdeglobals --group KDE --key LookAndFeelPackage com.valve.vapor.desktop
+    elif command -v kwriteconfig5 >/dev/null 2>&1; then
+      kwriteconfig5 --file kdeglobals --group KDE --key LookAndFeelPackage com.valve.vapor.desktop
+    fi
+  fi
+fi
+
+# Drop stale icon caches so Kickoff picks up Arcalium start-here marks.
+rm -f "${HOME}/.cache/icon-cache.kcache" 2>/dev/null || true

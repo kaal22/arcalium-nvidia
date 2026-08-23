@@ -1,0 +1,4 @@
+[KDE]
+# Prefer Valve/Bazzite look-and-feel packages we brand (wordmark splash), not stock
+# org.kde.breeze.desktop which shows the KDE loading logo between login and desktop.
+LookAndFeelPackage=com.valve.vapor.desktop
