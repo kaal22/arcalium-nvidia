@@ -3,7 +3,7 @@
 **Edition:** NVIDIA Edition  
 **Channel:** `0.2.0` / `stable` prep (CI tip `:dev`; GHCR still private until download page)  
 **Upstream template:** [ublue-os/image-template](https://github.com/ublue-os/image-template) @ `3d68ac893a31f5947dfe6210c04aee2cc469a02e`  
-**Base image:** `ghcr.io/ublue-os/bazzite-nvidia-open:stable@sha256:6df8151a75c4020e6d5eb273b3ce9ce3cbe185d77cced11fc650749a4a14da7d` (resolved 2026-08-04)  
+**Base image:** `ghcr.io/ublue-os/bazzite-nvidia-open:stable@sha256:0fba65cba100304e56596c2d352b994910f860240405b9a6ca7400bedbba6759` (resolved 2026-08-23)  
 **Status values:** `not started` · `in progress` · `blocked` · `tested` · `complete`
 
 ---

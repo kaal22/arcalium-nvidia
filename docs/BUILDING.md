@@ -57,7 +57,7 @@ If it differs from the digest in the `Containerfile`, update the `FROM` line and
 
 Control Centre → **GPU and Display** → **Drivers** (and Setup’s NVIDIA step) expose the current `nvidia-smi` driver version and reuse **Updates** check/apply (`bootc`) so users do not chase GeForce/.run installers. Newer drivers only appear after a re-pin + published Arcalium image.
 
-Last checked **2026-08-04**: Containerfile pin matches upstream `:stable` at `sha256:6df8151a75c4020e6d5eb273b3ce9ce3cbe185d77cced11fc650749a4a14da7d`. Smoke on the 3060 after CI (`bootc upgrade`, `nvidia-smi`).
+Last checked **2026-08-23**: Containerfile pin matches upstream `:stable` at `sha256:0fba65cba100304e56596c2d352b994910f860240405b9a6ca7400bedbba6759`. Smoke on the 3060 after CI (`bootc upgrade`, `nvidia-smi`).
 
 ## Standard ISO build workflow
 
