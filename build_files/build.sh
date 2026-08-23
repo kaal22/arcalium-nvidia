@@ -101,12 +101,15 @@ for splash_logo in "${splash_logos[@]}"; do
     grep -q 'images/arcalium_logo.svgz' "${splash_qml}" ||
         { echo "ERROR: ${splash_qml} was not patched to arcalium_logo.svgz" >&2; exit 1; }
 
-    sed -i -E '/^[[:space:]]*sourceSize\.height:[[:space:]]*(size|[0-9]+)[[:space:]]*$/d' "${splash_qml}"
+    # Drop any fixed height (literal, `size`, expressions). Width alone keeps aspect ratio.
+    sed -i -E '/^[[:space:]]*sourceSize\.height:/d' "${splash_qml}"
 
     grep -qE 'sourceSize\.width:[[:space:]]*(size|[0-9]+)' "${splash_qml}" ||
         { echo "ERROR: ${splash_qml} no longer sets sourceSize.width" >&2; exit 1; }
-    ! grep -qE '^[[:space:]]*sourceSize\.height:' "${splash_qml}" ||
-        { echo "ERROR: ${splash_qml} still forces a fixed height on the logo" >&2; exit 1; }
+    if grep -nE 'sourceSize\.height' "${splash_qml}"; then
+        echo "ERROR: ${splash_qml} still forces a fixed height on the logo" >&2
+        exit 1
+    fi
     splash_patched=$((splash_patched + 1))
 done
 [[ "${splash_patched}" -ge 1 ]] ||
