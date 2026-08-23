@@ -45,12 +45,21 @@
             "format": "{1} {2}"
         },
         {
+            "type": "cpu",
+            "key": " 󰻠"
+        },
+        {
             "type": "gpu",
             "key": " 󰍛"
         },
         {
             "type": "memory",
             "key": " "
+        },
+        {
+            "type": "disk",
+            "key": " 󰋊",
+            "folders": "/"
         },
         "break",
         {
