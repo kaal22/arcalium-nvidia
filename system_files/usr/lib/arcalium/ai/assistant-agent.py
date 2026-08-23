@@ -157,6 +157,12 @@ def _print_boot_splash() -> None:
             "Safe agent · allowlisted tools only · mutating steps ask for yes.",
         )
     )
+    _print(
+        _paint(
+            _DIM,
+            "AI can be wrong — double-check before changing your system.",
+        )
+    )
     _print()
 
 
