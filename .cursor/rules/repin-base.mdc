@@ -8,6 +8,7 @@ alwaysApply: true
 If the user asks to **check for base updates**, **re-pin base**, **update the Bazzite digest**, or get **newer nvidia-open / drivers from upstream**:
 
 1. Open and follow [`docs/REPIN_BASE.md`](docs/REPIN_BASE.md) end-to-end.
-2. Start with **Phase A (check only)** unless they already ordered a re-pin.
-3. Never rebase machines onto `bazzite-nvidia-open` directly; never treat `just build` as a re-pin.
-4. Do not push, promote `:stable`, or cut an ISO unless they ask.
+2. Start with **Phase A (check only)** unless they already ordered a re-pin — include the **NVIDIA driver version** compare when digests differ.
+3. **Default:** do not re-pin on digest-only churn when the driver version is unchanged; recommend re-pin when upstream driver is newer (or they explicitly want Plasma/security/ISO).
+4. Never rebase machines onto `bazzite-nvidia-open` directly; never treat `just build` as a re-pin; never layer GeForce/`.run` drivers.
+5. Do not push, promote `:stable`, or cut an ISO unless they ask.

@@ -36,13 +36,15 @@ Arcalium is the update source of truth. An installed machine tracks `ghcr.io/kaa
 | Brave / Spotify / Steam Flatpaks | Control Centre / Flathub on demand (not in `installer/flatpaks`) |
 | Home directory, Steam library, user settings | Not touched by image updates |
 
-The `Containerfile` pins the base by digest, so the `:stable` tag in the `FROM` line is documentation — the digest is what actually builds. Bazzite moving `:stable` therefore changes nothing here until we act, which is the point: no tester receives a base change nobody reviewed. The trade-off is that **upstream security and driver fixes do not arrive on their own**, so re-pin on a deliberate cadence.
+The `Containerfile` pins the base by digest, so the `:stable` tag in the `FROM` line is documentation — the digest is what actually builds. Bazzite moving `:stable` therefore changes nothing here until we act, which is the point: no tester receives a base change nobody reviewed. The trade-off is that **upstream security and driver fixes do not arrive on their own**.
+
+**Re-pin policy:** check digests often; **re-pin mainly when the NVIDIA driver version in upstream `:stable` is newer** (see [`REPIN_BASE.md`](REPIN_BASE.md) Phase A driver gate). A digest-only move with the same driver is Plasma/apps/MOTD churn — skip unless you explicitly want that or are cutting stable/ISO. There is no safe “driver-only” layer on bootc; GeForce/`.run` installs are out of scope.
 
 ### Taking a Bazzite update
 
-**Agent / maintainer runbook:** [`docs/REPIN_BASE.md`](REPIN_BASE.md) — use that when checking digests or re-pinning.
+**Agent / maintainer runbook:** [`docs/REPIN_BASE.md`](REPIN_BASE.md) — use that when checking digests or re-pinning (driver compare + when *not* to re-pin).
 
-Resolve what `:stable` currently points at (no pull needed; `skopeo` is not installed in WSL, so use the registry API):
+Resolve what `:stable` currently points at (no pull needed for the digest; `skopeo` is not installed in WSL, so use the registry API):
 
 ```bash
 TOKEN=$(curl -s "https://ghcr.io/token?scope=repository:ublue-os/bazzite-nvidia-open:pull&service=ghcr.io" | jq -r .token)
@@ -53,7 +55,7 @@ curl -sI -H "Authorization: Bearer $TOKEN" \
   | grep -i docker-content-digest
 ```
 
-If it differs from the digest in the `Containerfile`, update the `FROM` line and the date comment above it, then push. CI rebuilds Arcalium on the new base, signs it, and testers pick it up with `bootc upgrade`. Re-pinning the kernel and NVIDIA stack is exactly the kind of change that deserves a bare-metal check on the 3060 before it goes further.
+If the digest differs, **compare NVIDIA driver versions** before editing the pin (Podman `rpm -q` against pinned vs remote images — details in the runbook). Only then update the `FROM` line and the date comment when you intend to re-pin. CI rebuilds Arcalium on the new base, signs it, and testers pick it up with `bootc upgrade`. Re-pinning the kernel and NVIDIA stack deserves a bare-metal check on the 3060 before it goes further.
 
 Control Centre → **GPU and Display** → **Drivers** (and Setup’s NVIDIA step) expose the current `nvidia-smi` driver version and reuse **Updates** check/apply (`bootc`) so users do not chase GeForce/.run installers. Newer drivers only appear after a re-pin + published Arcalium image.
 
