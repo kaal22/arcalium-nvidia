@@ -1,5 +1,30 @@
 #!/usr/bin/bash
-# Remove leftover Bazzite Portal autostart copied into existing user homes
-# before Arcalium hid Portal from the image/skel.
+# Clear leftover Bazzite Portal / Updater / CLI launchers copied into existing
+# user homes before Arcalium hid them from the image/skel.
 set -euo pipefail
+
 rm -f "${HOME}/.config/autostart/bazzite-portal.desktop"
+
+app_dir="${HOME}/.local/share/applications"
+if [[ -d "${app_dir}" ]]; then
+  shopt -s nullglob
+  for f in \
+    "${app_dir}"/*bazzite-updater* \
+    "${app_dir}"/*bazzite*cli* \
+    "${app_dir}"/bbrew.desktop \
+    "${app_dir}"/system-update.desktop \
+    "${app_dir}"/bazzite-documentation.desktop \
+    "${app_dir}"/*yafti* \
+    "${app_dir}"/*bazzite-portal*
+  do
+    rm -f "${f}"
+  done
+  shopt -u nullglob
+
+  while IFS= read -r -d '' desktop; do
+    if grep -E '^(Name|Name\[en(_[A-Z]+)?\])=' "${desktop}" 2>/dev/null \
+      | grep -qiE 'Bazzite Updater|Bazzite CLI|Bold Brew|Bazzite Portal|Bazzite Documentation'; then
+      rm -f "${desktop}"
+    fi
+  done < <(find "${app_dir}" -maxdepth 1 -type f -name '*.desktop' -print0 2>/dev/null)
+fi

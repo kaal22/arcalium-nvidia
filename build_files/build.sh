@@ -342,23 +342,44 @@ grep -q 'not shipped in the image' /usr/bin/bazzite-steam
 echo "Steam client removed from image (not redistributed)."
 
 # Hide inherited Bazzite marketing / maintenance launchers. Arcalium users update
-# via Control Centre (bootc) and should not see Portal / Bazzite docs / ujust update.
-echo "Removing Bazzite Portal / Documentation / System Update menu entries..."
+# via Control Centre (bootc) — not Bazzite Updater / Portal / docs / Bold Brew CLI UI.
+echo "Removing Bazzite Portal / Documentation / Updater / CLI menu entries..."
+# Newer bases ship the GUI as RPM bazzite-updater (io.github.rfrench3.bazzite-updater),
+# replacing the old system-update.desktop tip launcher.
+if rpm -q bazzite-updater >/dev/null 2>&1; then
+    dnf5 -y remove bazzite-updater || dnf -y remove bazzite-updater
+fi
+if rpm -q bazzite-updater >/dev/null 2>&1; then
+    echo "ERROR: bazzite-updater RPM still present after removal" >&2
+    exit 1
+fi
 rm -f /etc/skel/.config/autostart/bazzite-portal.desktop
 rm -f /usr/share/applications/bazzite-documentation.desktop
 rm -f /usr/share/applications/system-update.desktop
 rm -f /usr/share/applications/discourse.desktop
-# Portal app id (yafti) — name can vary by base; wipe any matching launchers.
-find /usr/share/applications -maxdepth 1 -type f \( \
+rm -f /usr/share/applications/bbrew.desktop
+rm -f /usr/share/applications/io.github.rfrench3.bazzite-updater.desktop
+rm -f /usr/share/applications/bazzite-updater.desktop
+# Portal / updater / CLI launcher ids vary by base; wipe by filename pattern.
+find /usr/share/applications /usr/local/share/applications -maxdepth 1 -type f \( \
     -iname '*yafti*' -o \
     -iname '*bazzite-portal*' -o \
     -iname 'bazzite-documentation.desktop' -o \
-    -iname 'system-update.desktop' \
-  \) -print -delete
+    -iname 'system-update.desktop' -o \
+    -iname '*bazzite-updater*' -o \
+    -iname '*bazzite*cli*' -o \
+    -iname 'bbrew.desktop' \
+  \) -print -delete 2>/dev/null || true
+# Also catch renamed launchers by visible Name= (Kickoff label).
+while IFS= read -r -d '' desktop; do
+    if grep -E '^(Name|Name\[en(_[A-Z]+)?\])=' "${desktop}" 2>/dev/null \
+        | grep -qiE 'Bazzite Updater|Bazzite CLI|Bold Brew|Bazzite Portal|Bazzite Documentation'; then
+        echo "Removing launcher by Name: ${desktop}"
+        rm -f "${desktop}"
+    fi
+done < <(find /usr/share/applications /usr/local/share/applications -maxdepth 1 -type f -name '*.desktop' -print0 2>/dev/null)
 # Autostart for existing profiles is under ~/.config; skel covers new users.
-# Mark leftover user-copied Portal autostarts NoDisplay via a system drop-in name
-# would not help ~/.config — Control Centre docs note: delete
-# ~/.config/autostart/bazzite-portal.desktop after upgrade if it still appears.
+# User unit arcalium-cleanup-bazzite also clears ~/.local leftovers after upgrade.
 if [[ -e /etc/skel/.config/autostart/bazzite-portal.desktop ]]; then
     echo "ERROR: skel bazzite-portal.desktop autostart still present" >&2
     exit 1
@@ -371,12 +392,21 @@ if [[ -e /usr/share/applications/system-update.desktop ]]; then
     echo "ERROR: system-update.desktop still present" >&2
     exit 1
 fi
+if compgen -G '/usr/share/applications/*bazzite-updater*' >/dev/null 2>&1; then
+    echo "ERROR: bazzite-updater launcher still present under /usr/share/applications" >&2
+    ls -la /usr/share/applications/*bazzite-updater* >&2 || true
+    exit 1
+fi
 if compgen -G '/usr/share/applications/*yafti*' >/dev/null 2>&1; then
     echo "ERROR: yafti/Portal launcher still present under /usr/share/applications" >&2
     ls -la /usr/share/applications/*yafti* >&2 || true
     exit 1
 fi
-echo "Bazzite Portal / Documentation / System Update menu entries removed."
+if [[ -e /usr/share/applications/bbrew.desktop ]]; then
+    echo "ERROR: bbrew.desktop (Bold Brew / Bazzite CLI UI) still present" >&2
+    exit 1
+fi
+echo "Bazzite Portal / Documentation / Updater / CLI menu entries removed."
 
 # An import-time error in any ctl module breaks every arcaliumctl command, and
 # therefore the whole Control Centre, so prove the CLI imports and that the
