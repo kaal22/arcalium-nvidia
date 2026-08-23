@@ -168,8 +168,10 @@ grep -qx 'PRETTY_NAME="Arcalium OS NVIDIA Edition"' /usr/lib/os-release ||
 # targets so stock hooks cannot show Bazzite tips/logo after a re-pin.
 [[ -f /etc/profile.d/user-motd.sh ]] ||
     { echo "ERROR: missing /etc/profile.d/user-motd.sh" >&2; exit 1; }
-grep -q '/usr/share/arcalium/fastfetch.jsonc' /etc/profile.d/user-motd.sh ||
-    { echo "ERROR: user-motd.sh does not invoke Arcalium fastfetch" >&2; exit 1; }
+grep -q 'arcalium-motd' /etc/profile.d/user-motd.sh ||
+    { echo "ERROR: user-motd.sh does not call arcalium-motd" >&2; exit 1; }
+grep -q 'case $-' /etc/profile.d/user-motd.sh ||
+    { echo "ERROR: user-motd.sh must guard for interactive shells" >&2; exit 1; }
 [[ -f /etc/profile.d/bazzite-neofetch.sh ]] ||
     { echo "ERROR: missing /etc/profile.d/bazzite-neofetch.sh" >&2; exit 1; }
 grep -q '/usr/share/arcalium/fastfetch.jsonc' /etc/profile.d/bazzite-neofetch.sh ||
@@ -185,8 +187,16 @@ grep -q 'arcaliumctl updates' /usr/share/arcalium/motd-tips.txt ||
 [[ -x /usr/libexec/arcalium-motd ]] || chmod 0755 /usr/libexec/arcalium-motd
 grep -q 'motd-tips.txt' /usr/libexec/arcalium-motd ||
     { echo "ERROR: arcalium-motd does not print motd-tips.txt" >&2; exit 1; }
-grep -q 'arcalium-motd' /etc/profile.d/user-motd.sh ||
-    { echo "ERROR: user-motd.sh does not call arcalium-motd" >&2; exit 1; }
+[[ -f /usr/share/fish/vendor_conf.d/arcalium-motd.fish ]] ||
+    { echo "ERROR: missing fish arcalium-motd.fish" >&2; exit 1; }
+[[ -f /usr/share/konsole/Arcalium.profile ]] ||
+    { echo "ERROR: missing Konsole Arcalium.profile" >&2; exit 1; }
+grep -q 'LoginShell=true' /usr/share/konsole/Arcalium.profile ||
+    { echo "ERROR: Konsole Arcalium.profile must enable LoginShell" >&2; exit 1; }
+[[ -f /etc/xdg/konsolerc ]] ||
+    { echo "ERROR: missing /etc/xdg/konsolerc" >&2; exit 1; }
+grep -q 'DefaultProfile=Arcalium.profile' /etc/xdg/konsolerc ||
+    { echo "ERROR: konsolerc must default to Arcalium.profile" >&2; exit 1; }
 
 if [[ -d /usr/share/ublue-os/bazzite ]]; then
     install -Dm0644 /usr/share/arcalium/fastfetch.jsonc \
