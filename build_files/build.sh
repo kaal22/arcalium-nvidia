@@ -176,6 +176,17 @@ grep -q '/usr/share/arcalium/fastfetch.jsonc' /etc/profile.d/bazzite-neofetch.sh
     { echo "ERROR: bazzite-neofetch.sh aliases do not point at Arcalium fastfetch" >&2; exit 1; }
 [[ -f /usr/share/arcalium/fastfetch.jsonc && -f /usr/share/arcalium/logo.txt ]] ||
     { echo "ERROR: missing /usr/share/arcalium/fastfetch.jsonc or logo.txt" >&2; exit 1; }
+[[ -f /usr/share/arcalium/motd-tips.txt ]] ||
+    { echo "ERROR: missing /usr/share/arcalium/motd-tips.txt" >&2; exit 1; }
+grep -q 'arcaliumctl ai launch' /usr/share/arcalium/motd-tips.txt ||
+    { echo "ERROR: motd-tips.txt missing Local AI command" >&2; exit 1; }
+grep -q 'arcaliumctl updates' /usr/share/arcalium/motd-tips.txt ||
+    { echo "ERROR: motd-tips.txt missing updates commands" >&2; exit 1; }
+[[ -x /usr/libexec/arcalium-motd ]] || chmod 0755 /usr/libexec/arcalium-motd
+grep -q 'motd-tips.txt' /usr/libexec/arcalium-motd ||
+    { echo "ERROR: arcalium-motd does not print motd-tips.txt" >&2; exit 1; }
+grep -q 'arcalium-motd' /etc/profile.d/user-motd.sh ||
+    { echo "ERROR: user-motd.sh does not call arcalium-motd" >&2; exit 1; }
 
 if [[ -d /usr/share/ublue-os/bazzite ]]; then
     install -Dm0644 /usr/share/arcalium/fastfetch.jsonc \
@@ -194,11 +205,8 @@ fi
 if [[ -x /usr/libexec/ublue-motd || -e /usr/libexec/ublue-motd ]]; then
     cat >/usr/libexec/ublue-motd <<'EOF'
 #!/usr/bin/bash
-# Arcalium: replace Bazzite tip/glow MOTD with our Konsole fastfetch banner.
-if [[ -e "${HOME:-}/.config/no-show-user-motd" ]]; then
-    exit 0
-fi
-exec /usr/bin/fastfetch -c /usr/share/arcalium/fastfetch.jsonc
+# Arcalium: replace Bazzite tip/glow MOTD with our Konsole banner.
+exec /usr/libexec/arcalium-motd
 EOF
     chmod 0755 /usr/libexec/ublue-motd
 fi
@@ -246,6 +254,7 @@ EOF
 chmod 0755 /usr/libexec/arcalium-migrate-hostname
 chmod 0755 /usr/libexec/arcalium-cleanup-bazzite-user
 chmod 0755 /usr/libexec/arcalium-image-label
+chmod 0755 /usr/libexec/arcalium-motd
 chmod 0755 /usr/bin/arcaliumctl
 chmod 0755 /usr/bin/arcalium-heroic
 chmod 0755 /usr/bin/arcalium-setup

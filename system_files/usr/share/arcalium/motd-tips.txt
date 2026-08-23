@@ -1,0 +1,9 @@
+Welcome to Arcalium OS — immutable gaming desktop. Use Control Centre, or:
+
+  Local AI        arcaliumctl ai launch
+  Check updates   arcaliumctl updates check
+  Apply updates   arcaliumctl updates apply
+  Rollback        arcaliumctl updates rollback
+  Help            arcaliumctl --help
+
+Hide this banner:  touch ~/.config/no-show-user-motd

@@ -1,0 +1,17 @@
+#!/usr/bin/bash
+# Konsole / interactive-shell Arcalium banner (logo + short specs + command tips).
+set -euo pipefail
+
+if [[ -e "${HOME:-}/.config/no-show-user-motd" ]]; then
+  exit 0
+fi
+
+if [[ -x /usr/bin/fastfetch && -f /usr/share/arcalium/fastfetch.jsonc ]]; then
+  /usr/bin/fastfetch -c /usr/share/arcalium/fastfetch.jsonc
+fi
+
+if [[ -f /usr/share/arcalium/motd-tips.txt ]]; then
+  printf '\n'
+  cat /usr/share/arcalium/motd-tips.txt
+  printf '\n'
+fi

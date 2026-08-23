@@ -45,59 +45,12 @@
             "format": "{1} {2}"
         },
         {
-            "type": "uptime",
-            "key": " 󰅐"
-        },
-        "break",
-        {
-            "type": "host",
-            "key": " 󰾰"
-        },
-        {
-            "type": "cpu",
-            "key": " 󰻠"
-        },
-        {
             "type": "gpu",
             "key": " 󰍛"
         },
         {
             "type": "memory",
             "key": " "
-        },
-        {
-            "type": "disk",
-            "key": " ",
-            "hideFS": "overlay"
-        },
-        {
-            "type": "display",
-            "key": " 󰍹"
-        },
-        {
-            "type": "battery",
-            "key": " "
-        },
-        "break",
-        {
-            "type": "de",
-            "key": " 󰕮"
-        },
-        {
-            "type": "wm",
-            "key": " "
-        },
-        {
-            "type": "shell",
-            "key": " "
-        },
-        {
-            "type": "terminal",
-            "key": " "
-        },
-        {
-            "type": "packages",
-            "key": " 󰏖"
         },
         "break",
         {
