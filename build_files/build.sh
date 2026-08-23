@@ -62,29 +62,70 @@ python3 /ctx/install_logos.py /ctx/assets
 # Taskbar pins come from the panel layout template, not from an update script.
 python3 /ctx/patch_panel_pins.py
 
-# Plasma splash currently loads images/bazzite_logo.svgz from the active
-# look-and-feel package. Replace that file in place wherever it exists so the
-# wordmark appears on the boot-to-desktop splash.
+# Plasma splash loads images/*_logo.svgz from the active look-and-feel package.
+# Replace Bazzite/Valve logos in place and point Splash.qml at arcalium_logo.svgz so
+# upstream renames cannot silently leave a stock mark. Fail the build if nothing is patched.
 #
-# Splash.qml pins both sourceSize.width and sourceSize.height to `size`, which
-# rasterises into a square. That suits Bazzite's square mark but squashes our
-# ~2.1:1 wordmark. Qt derives the missing dimension from the source aspect
-# ratio, so dropping the height line is enough. `sourceSize.height: size` is
-# unique to the logo (the spinner spells its own size out in grid units), and
-# the result is asserted so an upstream rewrite cannot silently reintroduce it.
-while IFS= read -r -d '' splash_logo; do
-    gzip -nc /usr/share/arcalium/logo-wordmark.svg >"${splash_logo}"
+# Splash.qml often pins both sourceSize.width and sourceSize.height (to `size` or a
+# literal). That suits a square mark but squashes our ~2.1:1 wordmark. Qt derives the
+# missing dimension from the source aspect ratio, so dropping the height line is enough.
+splash_patched=0
+wordmark_sum="$(sha256sum /usr/share/arcalium/logo-wordmark.svg | awk '{print $1}')"
+mapfile -d '' -t splash_logos < <(
+    find /usr/share/plasma/look-and-feel -type f \( \
+        -name 'bazzite_logo.svgz' -o -name 'deck_logo.svgz' -o -name 'steamdeck_logo.svgz' \
+    \) -print0 2>/dev/null || true
+)
+if [[ "${#splash_logos[@]}" -eq 0 ]]; then
+    echo "ERROR: no Plasma splash logo (bazzite_logo/deck_logo) under look-and-feel — branding would silently revert." >&2
+    find /usr/share/plasma/look-and-feel -type f -name '*logo*' 2>/dev/null | head -n 40 >&2 || true
+    exit 1
+fi
+for splash_logo in "${splash_logos[@]}"; do
+    [[ -n "${splash_logo}" ]] || continue
+    splash_dir="$(dirname "${splash_logo}")"
+    arcalium_logo="${splash_dir}/arcalium_logo.svgz"
+    gzip -nc /usr/share/arcalium/logo-wordmark.svg >"${arcalium_logo}"
+    # Keep upstream filename as a copy too (Splash.qml may still reference it until patched).
+    cp -f "${arcalium_logo}" "${splash_logo}"
+
+    replaced_sum="$(gzip -dc "${arcalium_logo}" | sha256sum | awk '{print $1}')"
+    [[ "${replaced_sum}" == "${wordmark_sum}" ]] ||
+        { echo "ERROR: ${arcalium_logo} does not match Arcalium wordmark" >&2; exit 1; }
 
     splash_qml="$(dirname "${splash_logo}")/../Splash.qml"
     [[ -f "${splash_qml}" ]] || continue
 
-    sed -i '/^[[:space:]]*sourceSize\.height: size[[:space:]]*$/d' "${splash_qml}"
+    # Point QML at our stable filename regardless of upstream logo name.
+    sed -i -E 's#(source:[[:space:]]*")images/[^"]+_logo\.svgz(")#\1images/arcalium_logo.svgz\2#g' "${splash_qml}"
+    grep -q 'images/arcalium_logo.svgz' "${splash_qml}" ||
+        { echo "ERROR: ${splash_qml} was not patched to arcalium_logo.svgz" >&2; exit 1; }
 
-    grep -q 'sourceSize.width: size' "${splash_qml}" ||
+    sed -i -E '/^[[:space:]]*sourceSize\.height:[[:space:]]*(size|[0-9]+)[[:space:]]*$/d' "${splash_qml}"
+
+    grep -qE 'sourceSize\.width:[[:space:]]*(size|[0-9]+)' "${splash_qml}" ||
         { echo "ERROR: ${splash_qml} no longer sets sourceSize.width" >&2; exit 1; }
-    ! grep -q 'sourceSize.height: size' "${splash_qml}" ||
-        { echo "ERROR: ${splash_qml} still forces a square logo" >&2; exit 1; }
-done < <(find /usr/share/plasma/look-and-feel -type f -name 'bazzite_logo.svgz' -print0 2>/dev/null || true)
+    ! grep -qE '^[[:space:]]*sourceSize\.height:' "${splash_qml}" ||
+        { echo "ERROR: ${splash_qml} still forces a fixed height on the logo" >&2; exit 1; }
+    splash_patched=$((splash_patched + 1))
+done
+[[ "${splash_patched}" -ge 1 ]] ||
+    { echo "ERROR: Plasma splash logos found but no Splash.qml was patched" >&2; exit 1; }
+echo "Plasma splash: patched ${splash_patched} look-and-feel logo(s)"
+
+# Login greeter wallpaper — assert Arcalium defaults survived the base image.
+[[ -f /usr/share/wallpapers/arcalium-wallpaper.png ]] ||
+    { echo "ERROR: missing /usr/share/wallpapers/arcalium-wallpaper.png" >&2; exit 1; }
+[[ -f /usr/lib/plasmalogin/defaults.conf ]] ||
+    { echo "ERROR: missing /usr/lib/plasmalogin/defaults.conf" >&2; exit 1; }
+grep -q 'arcalium-wallpaper.png' /usr/lib/plasmalogin/defaults.conf ||
+    { echo "ERROR: plasmalogin defaults.conf does not reference arcalium-wallpaper.png" >&2; exit 1; }
+grep -q 'file:///usr/share/wallpapers/arcalium-wallpaper.png' /usr/lib/plasmalogin/defaults.conf ||
+    { echo "ERROR: plasmalogin defaults.conf must use file:// Image URIs" >&2; exit 1; }
+grep -q 'WallpaperPlugin=org.kde.image' /usr/lib/plasmalogin/defaults.conf ||
+    { echo "ERROR: plasmalogin defaults.conf missing WallpaperPlugin=org.kde.image" >&2; exit 1; }
+[[ -f /usr/lib/plasmalogin/plasmalogin.conf.d/10-arcalium-wallpaper.conf ]] ||
+    { echo "ERROR: missing plasmalogin.conf.d/10-arcalium-wallpaper.conf" >&2; exit 1; }
 
 # Plymouth boot splash (post-GRUB) uses the spinner theme's watermark.png —
 # including via the default bgrt theme, whose ImageDir points here. Bazzite's

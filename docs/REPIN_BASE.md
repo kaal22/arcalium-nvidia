@@ -96,6 +96,13 @@ nvidia-smi
 
 Checklist minimum: boots, `nvidia-smi` OK, Plasma Wayland, Control Centre opens, optional Drivers check still coherent. Also confirm Flatpak GL matched the new driver (`flatpak list | grep GL.nvidia` and/or wait for `arcalium-flatpak-nvidia.service` — it auto-pulls matching GL on first boot with network). Smoke: Heroic launches a game without an OpenGL error; optional Firefox `about:support` GPU line; escape hatch `arcaliumctl steam harden`.
 
+**Branding (re-pin sensitive):** Plasma splash shows Arcalium wordmark (not Bazzite); login greeter uses Arcalium wallpaper. If login looks stock after upgrade, check host override:
+
+```bash
+sudo grep -n Image /etc/plasmalogin.conf /etc/plasmalogin.conf.d/* 2>/dev/null || true
+# If Image= points at default.jxl / convergence / backgrounds/, clear or fix, then restart greeter / reboot.
+```
+
 ### B5. Promote (only if asked)
 
 After smoke passes, use **Promote stable** (`promote-stable.yml`) for version/`stable` tags — see public release notes. Do not auto-promote every re-pin during `:dev` iteration.
