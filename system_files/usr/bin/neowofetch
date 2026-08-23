@@ -1,0 +1,3 @@
+#!/usr/bin/bash
+# Alias of neofetch → Arcalium fastfetch (binary, not only a shell alias).
+exec /usr/bin/fastfetch -c /usr/share/arcalium/fastfetch.jsonc "$@"

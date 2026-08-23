@@ -59,6 +59,20 @@ fi
 # The ctx stage copies build_files/ to /, so siblings of this script are at /ctx.
 python3 /ctx/install_logos.py /ctx/assets
 
+# Raster Kickoff marks (some Plasma/icon themes resolve PNG before SVG).
+if command -v magick >/dev/null 2>&1; then
+    for size in 48 64 128 256; do
+        install -d "/usr/share/icons/hicolor/${size}x${size}/places"
+        magick -background none /usr/share/arcalium/logo-mark.svg \
+            -resize "${size}x${size}" \
+            "PNG32:/usr/share/icons/hicolor/${size}x${size}/places/start-here-kde.png"
+        cp -f "/usr/share/icons/hicolor/${size}x${size}/places/start-here-kde.png" \
+            "/usr/share/icons/hicolor/${size}x${size}/places/distributor-logo.png"
+        cp -f "/usr/share/icons/hicolor/${size}x${size}/places/start-here-kde.png" \
+            "/usr/share/icons/hicolor/${size}x${size}/places/start-here.png"
+    done
+fi
+
 # Taskbar pins come from the panel layout template, not from an update script.
 python3 /ctx/patch_panel_pins.py
 
@@ -101,10 +115,16 @@ for splash_logo in "${splash_logos[@]}"; do
     grep -q 'images/arcalium_logo.svgz' "${splash_qml}" ||
         { echo "ERROR: ${splash_qml} was not patched to arcalium_logo.svgz" >&2; exit 1; }
 
-    # Drop any fixed height (literal, `size`, expressions). Width alone keeps aspect ratio.
+    # Wordmark is wide: keep width, drop fixed height, force aspect-fit so the
+    # logo cannot collapse to an empty/zero-height Image after re-pins.
     sed -i -E '/^[[:space:]]*sourceSize\.height:/d' "${splash_qml}"
+    if ! grep -q 'fillMode:[[:space:]]*Image.PreserveAspectFit' "${splash_qml}"; then
+        sed -i -E '/images\/arcalium_logo\.svgz/a\        fillMode: Image.PreserveAspectFit' "${splash_qml}"
+    fi
+    # Prefer a wider slot than a square `size` when upstream used sourceSize.width: size.
+    sed -i -E 's#(sourceSize\.width:[[:space:]]*)size\b#\1Math.round(size * 2.2)#g' "${splash_qml}"
 
-    grep -qE 'sourceSize\.width:[[:space:]]*(size|[0-9]+)' "${splash_qml}" ||
+    grep -qE 'sourceSize\.width:[[:space:]]*(Math\.round\(size \* 2\.2\)|size|[0-9]+)' "${splash_qml}" ||
         { echo "ERROR: ${splash_qml} no longer sets sourceSize.width" >&2; exit 1; }
     if grep -nE 'sourceSize\.height' "${splash_qml}"; then
         echo "ERROR: ${splash_qml} still forces a fixed height on the logo" >&2
@@ -268,7 +288,19 @@ chmod 0755 /usr/libexec/arcalium-migrate-hostname
 chmod 0755 /usr/libexec/arcalium-cleanup-bazzite-user
 chmod 0755 /usr/libexec/arcalium-image-label
 chmod 0755 /usr/libexec/arcalium-motd
+chmod 0755 /usr/bin/neofetch
+chmod 0755 /usr/bin/neowofetch
 chmod 0755 /usr/bin/arcaliumctl
+# Binary wrappers beat broken / missing aliases when something execs `neofetch`.
+grep -q 'arcalium/fastfetch.jsonc' /usr/bin/neofetch ||
+    { echo "ERROR: /usr/bin/neofetch is not the Arcalium fastfetch wrapper" >&2; exit 1; }
+grep -q 'arcalium/fastfetch.jsonc' /usr/bin/neowofetch ||
+    { echo "ERROR: /usr/bin/neowofetch is not the Arcalium fastfetch wrapper" >&2; exit 1; }
+# Kickoff mark must exist in hicolor (install_logos also mirrors into Breeze).
+[[ -f /usr/share/icons/hicolor/scalable/places/start-here-kde.svg ]] ||
+    { echo "ERROR: missing Kickoff start-here-kde.svg" >&2; exit 1; }
+[[ -f /usr/share/icons/hicolor/scalable/places/distributor-logo.svg ]] ||
+    { echo "ERROR: missing distributor-logo.svg" >&2; exit 1; }
 chmod 0755 /usr/bin/arcalium-heroic
 chmod 0755 /usr/bin/arcalium-setup
 chmod 0755 /usr/bin/arcalium-control-centre-launch
