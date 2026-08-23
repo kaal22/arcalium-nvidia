@@ -17,6 +17,29 @@
 
 A digest bump replaces the **entire** upstream image (kernel, NVIDIA stack, Plasma, MOTD hooks, new apps like Bazzite Updater). Arcalium is overlays + hide-lists on top; upstream renames break branding until build asserts catch them. That cost is why we **check often** and **re-pin rarely**.
 
+### Lesson: 2026-08-23 re-pin recovery (do not skip)
+
+After re-pinning to `sha256:0fba65cb…ba6759`, the 3060 looked “mostly Arcalium” but branding and shell welcome were a multi-hour mess. Upstream had rewritten MOTD / neofetch hooks, splash QML, Kickoff place icons, and shipped more Bazzite launchers. Build asserts caught some failures; several only showed up on hardware.
+
+**What broke (symptoms → root cause → durable fix):**
+
+| Symptom on 3060 | Cause | Fix in tree (do not “just tee” on the machine) |
+|---|---|---|
+| Splash / login looked Bazzite again | Splash.qml / greeter paths or `sourceSize` changed; host `/etc/plasmalogin.conf` can override wallpaper | Splash patch + asserts in `build.sh`; greeter wallpaper under plasmalogin defaults; clear bad host `Image=` overrides |
+| Kickoff launcher blank / stock Bazzite mark | Breeze ships its own `start-here-kde` / `distributor-logo`; hicolor alone is not enough; PNG sometimes wins over SVG | `install_logos.py` overwrites **every** theme’s scalable places + PNG sizes in `build.sh` |
+| Bazzite Portal / Updater / CLI / docs / Discourse back in Kickoff | New or renamed `.desktop` files + autostart after base bump | Hide/scrub lists + metadata grep asserts in `build.sh`; `arcalium-cleanup-bazzite-user` for leftover user autostart |
+| `neofetch` / banner wrong or broken | Stock `/etc/profile.d/bazzite-neofetch.sh` truncated or re-pointed at Bazzite bling; `/usr/libexec/ublue-motd` truncated (`unexpected EOF` / `}'`) | **Force-rewrite** those files in `build.sh` (do not append); ship `/usr/bin/neofetch` → fastfetch wrappers; rewrite `ublue-motd` |
+| Blank Konsole (no banner) though `/usr/libexec/arcalium-motd` works by hand | (1) Interactive guard `case $- in i)` never matches real `$-` like `himBHs` — needs `*i*` or prefer `[[ $- =~ i ]]` (chat markdown strips `*i*` when pasting). (2) User Konsole profiles skip LoginShell / `profile.d` | `user-motd.sh` + `zz-arcalium-motd.sh` with `=~ i`; Konsole `Arcalium.profile` → `/usr/libexec/arcalium-konsole-shell` (prints MOTD then `exec bash`) |
+| Banner missing CPU / drives / full specs | Intentional slim-down for tips; restored later | Full module list in `/usr/share/arcalium/fastfetch.jsonc` (uptime, host, cpu, gpu, memory, disk, display, battery, de, wm, shell, terminal, packages) + `motd-tips.txt` |
+
+**Hard-won rules for the next re-pin:**
+
+1. Expect MOTD / Kickoff / splash / Bazzite app hide-lists to break. Treat Phase B4 branding as **mandatory**, not optional.
+2. Never rely on live `sudo tee` / `rpm-ostree usroverlay` as the fix — overlays die on reboot. Fix `system_files/` + `build.sh` asserts, wait for CI green, then `bootc upgrade`.
+3. Do not paste `case $- in *i*)` into chat-driven recovery snippets — markdown eats the asterisks. Use `[[ $- =~ i ]]` in docs and scripts.
+4. Cancelled intermediate CI runs do not publish; only the tip green build is upgrade-safe. Do not tell the user to upgrade while older MOTD commits are still “cancelled”.
+5. After upgrade, if Kickoff mark is still wrong on an **existing** user, icon caches may need a one-shot refresh (copy mark into Breeze places is already in the image; user may need `kbuildsycoca6` + `plasma-plasmashell` restart once).
+
 ## Cadence (advice to the user)
 
 - **Check** digests (and driver versions) whenever asked, or about every **2–4 weeks**.
@@ -138,18 +161,35 @@ nvidia-smi
 
 Checklist minimum: boots, `nvidia-smi` OK (version matches the re-pin), Plasma Wayland, Control Centre opens, optional Drivers check still coherent. Also confirm Flatpak GL matched the new driver (`flatpak list | grep GL.nvidia` and/or wait for `arcalium-flatpak-nvidia.service` — it auto-pulls matching GL on first boot with network). Smoke: Heroic launches a game without an OpenGL error; optional Firefox `about:support` GPU line; escape hatch `arcaliumctl steam harden`.
 
-**Branding (re-pin sensitive):** Plasma splash shows Arcalium wordmark (not Bazzite); login greeter uses Arcalium wallpaper; Konsole opens with Arcalium MOTD (`arcalium-motd` / tips, not Bazzite tips); Kickoff must not list Bazzite Updater / Bazzite CLI / Bold Brew / Portal. If login looks stock after upgrade, check host override:
+**Branding (re-pin sensitive — see 2026-08-23 lesson above):** mandatory on every re-pin smoke:
+
+- [ ] Plasma splash = Arcalium wordmark (not Bazzite)
+- [ ] Login greeter = Arcalium wallpaper
+- [ ] Kickoff leftmost icon = Arcalium mark (not blank / Bazzite)
+- [ ] Kickoff has **no** Bazzite Portal, Updater, CLI, docs, Discourse, Bold Brew
+- [ ] New Konsole window shows Arcalium MOTD **automatically** (logo + full specs + tips) — not blank, not Bazzite tips
+- [ ] `neofetch` / `fastfetch` show Arcalium config (not upstream bling)
+- [ ] No `ublue-motd` / `bazzite-neofetch.sh` syntax errors on shell start
+
+If login looks stock after upgrade, check host override:
 
 ```bash
 sudo grep -n Image /etc/plasmalogin.conf /etc/plasmalogin.conf.d/* 2>/dev/null || true
 # If Image= points at default.jxl / convergence / backgrounds/, clear or fix, then restart greeter / reboot.
 ```
 
-Quick Konsole check after upgrade:
+Quick Konsole / MOTD check after upgrade:
 
 ```bash
 grep -E '^(NAME|PRETTY_NAME)=' /etc/os-release
-/usr/libexec/arcalium-motd | head
+# Manual banner (must work even if Konsole auto-start is broken):
+/usr/libexec/arcalium-motd
+# Auto-start path (must print banner, not blank):
+bash -lic 'true'
+grep -E 'arcalium-motd|=~ i' /etc/profile.d/user-motd.sh /etc/profile.d/zz-arcalium-motd.sh
+grep -F arcalium-konsole-shell /usr/share/konsole/Arcalium.profile
+# Broken upstream leftovers (should be Arcalium rewrites, no truncated EOF):
+bash -n /etc/profile.d/bazzite-neofetch.sh /usr/libexec/ublue-motd
 ```
 
 ### B5. Promote (only if asked)
@@ -184,6 +224,7 @@ Full `just build` then `just build-iso-live` in WSL — base re-pin does **not**
 [ ] Update Last checked if check-only and user wants it
 [ ] If re-pin: edit Containerfile + BUILDING (+ IMPLEMENTATION_STATUS); mention driver in commit
 [ ] Commit/push only if asked
-[ ] Wait CI / tell user bootc upgrade + nvidia-smi smoke (+ Flatpak GL via auto harden + branding checks)
+[ ] Wait CI green on tip (ignore cancelled supersedes) / tell user bootc upgrade + nvidia-smi smoke
+[ ] Branding smoke from B4 (MOTD auto, Kickoff mark, no Portal/Updater, splash/login) — 2026-08-23 lesson
 [ ] Promote/ISO only if asked (ISO carries matching GL.nvidia for offline installs)
 ```
