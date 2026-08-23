@@ -3,10 +3,14 @@
 
 Existing user profiles often keep a theme name (start-here-kde) or a custom
 file:// path that broke after a re-pin — Kickoff then shows a blank mark.
+
+Global Theme / look-and-feel applies also reset Kickoff back to start-here-kde.
+This script is idempotent and safe to run on every login (autostart + cleanup).
 """
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -58,7 +62,20 @@ def fix_text(text: str) -> str:
                 i += 1
             continue
         i += 1
-    return "".join(out)
+
+    updated = "".join(out)
+    # Belt-and-suspenders: any leftover theme-name Kickoff icons elsewhere.
+    updated = re.sub(
+        r"(?m)^icon=(start-here\S*|distributor-logo\S*|bazzite\S*)?$",
+        f"icon={KICKOFF_ICON}",
+        updated,
+    )
+    updated = re.sub(
+        r"(?m)^useCustomButtonImage=true$",
+        "useCustomButtonImage=false",
+        updated,
+    )
+    return updated
 
 
 def main() -> int:
@@ -71,22 +88,6 @@ def main() -> int:
     if "org.kde.plasma.kickoff" not in original:
         return 0
     updated = fix_text(original)
-    if updated == original and KICKOFF_ICON in original:
-        return 0
-    if updated == original:
-        # Kickoff present but General block not found — last-resort global rewrite.
-        import re
-
-        updated = re.sub(
-            r"(?m)^icon=(start-here.*|distributor-logo.*|bazzite.*)?$",
-            f"icon={KICKOFF_ICON}",
-            original,
-        )
-        updated = re.sub(
-            r"(?m)^useCustomButtonImage=true$",
-            "useCustomButtonImage=false",
-            updated,
-        )
     if updated != original:
         APPLETRC.write_text(updated, encoding="utf-8", newline="\n")
     return 0

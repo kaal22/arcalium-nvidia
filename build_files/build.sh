@@ -164,6 +164,10 @@ grep -q 'LookAndFeelPackage=com.valve.vapor.desktop' /etc/xdg/kdeglobals ||
     { echo "ERROR: /etc/xdg/kdeglobals must set LookAndFeelPackage=com.valve.vapor.desktop" >&2; exit 1; }
 [[ -d /usr/share/plasma/look-and-feel/com.valve.vapor.desktop ]] ||
     { echo "ERROR: com.valve.vapor.desktop look-and-feel missing from base" >&2; exit 1; }
+[[ -f /etc/xdg/autostart/arcalium-kickoff-icon.desktop ]] ||
+    { echo "ERROR: missing Kickoff icon autostart (theme-change safety net)" >&2; exit 1; }
+grep -q 'arcalium-fix-kickoff-icon' /etc/xdg/autostart/arcalium-kickoff-icon.desktop ||
+    { echo "ERROR: Kickoff autostart does not call fix-kickoff-icon" >&2; exit 1; }
 
 # Login greeter wallpaper — assert Arcalium defaults survived the base image.
 [[ -f /usr/share/wallpapers/arcalium-wallpaper.png ]] ||
