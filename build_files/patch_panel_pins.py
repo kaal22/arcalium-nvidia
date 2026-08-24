@@ -44,13 +44,14 @@ OPTIONAL = [
 CALL = re.compile(r'widget\.writeConfig\("launchers",\s*\[.*?\]\);', re.S)
 
 # Stock Plasma / Bazzite: no assignment, no trailing semicolon.
+# Do not use \s* after ) — that would swallow the following newline.
 BARE_KICKOFF = re.compile(
-    r'(?P<indent>[ \t]*)panel\.addWidget\(\s*"org\.kde\.plasma\.kickoff"\s*\)\s*;?'
+    r'(?P<indent>[ \t]*)panel\.addWidget\(\s*"org\.kde\.plasma\.kickoff"\s*\)[ \t]*;?'
 )
 
 ASSIGNED_KICKOFF = re.compile(
     r'(?P<indent>[ \t]*)(?:var|let|const)\s+(?P<var>[A-Za-z_][\w]*)\s*=\s*'
-    r'panel\.addWidget\(\s*"org\.kde\.plasma\.kickoff"\s*\)\s*;?'
+    r'panel\.addWidget\(\s*"org\.kde\.plasma\.kickoff"\s*\)[ \t]*;?'
 )
 
 
