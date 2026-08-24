@@ -71,7 +71,9 @@ if command -v magick >/dev/null 2>&1; then
         cp -f "/usr/share/icons/hicolor/${size}x${size}/places/start-here-kde.png" \
             "/usr/share/icons/hicolor/${size}x${size}/places/start-here.png"
         # Mirror into every installed theme (Breeze wins over hicolor for Kickoff).
+        # Skip hicolor itself — we already wrote there; cp same-file exits 1.
         while IFS= read -r -d '' places_dir; do
+            [[ "${places_dir}" == "/usr/share/icons/hicolor/${size}x${size}/places" ]] && continue
             install -d "${places_dir}"
             for name in start-here-kde.png start-here.png distributor-logo.png \
                 distributor-logo-white.png start-here-symbolic.png; do
