@@ -16,7 +16,8 @@ if [[ -d "${autostart}" ]]; then
 fi
 
 app_dir="${HOME}/.local/share/applications"
-_BAZZITE_LAUNCHER_RE='Bazzite Updater|Bazzite CLI|Bold Brew|Bazzite Portal|Bazzite Documentation|Bazzite Announcements|Update your system|Update Your System|System Update|yafti|ujust update|Universal Blue Forums|^Name=Discourse$|^Name=Documentation$'
+# Portal action titles + launchers that may have been exported into the user tree.
+_BAZZITE_LAUNCHER_RE='Bazzite Updater|Bazzite CLI|Bold Brew|Bazzite Portal|Bazzite Documentation|Bazzite Announcements|Update your system|Update Your System|System Update|yafti|yafti_gtk|ujust update|Universal Blue Forums|Read the Bazzite Docs|Get help through Discord|Decky Loader|Bazzite Buddy|^Name=Discourse$|^Name=Documentation$'
 if [[ -d "${app_dir}" ]]; then
   shopt -s nullglob
   for f in \
@@ -29,7 +30,8 @@ if [[ -d "${app_dir}" ]]; then
     "${app_dir}"/discourse.desktop \
     "${app_dir}"/*yafti* \
     "${app_dir}"/*ublue*yafti* \
-    "${app_dir}"/bazzite-*.desktop
+    "${app_dir}"/bazzite-*.desktop \
+    "${app_dir}"/io.github.ublue_os.yafti_gtk.desktop
   do
     rm -f "${f}"
   done
@@ -57,8 +59,14 @@ if [[ -f "${kdeglobals}" ]]; then
   fi
 fi
 
-# Drop stale icon caches so Kickoff picks up Arcalium start-here marks.
+# Drop stale icon / sycoca caches so Kickoff stops listing removed Portal entries.
 rm -f "${HOME}/.cache/icon-cache.kcache" 2>/dev/null || true
+rm -f "${HOME}/.cache/ksycoca6"* "${HOME}/.cache/ksycoca5"* 2>/dev/null || true
+if command -v kbuildsycoca6 >/dev/null 2>&1; then
+  kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
+elif command -v kbuildsycoca5 >/dev/null 2>&1; then
+  kbuildsycoca5 --noincremental >/dev/null 2>&1 || true
+fi
 
 # Force Kickoff button to absolute Arcalium PNG (theme-name lookup often stays blank).
 if [[ -x /usr/libexec/arcalium-fix-kickoff-icon.py ]]; then

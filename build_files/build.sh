@@ -484,12 +484,18 @@ if rpm -q bazzite-updater >/dev/null 2>&1; then
     echo "ERROR: bazzite-updater RPM still present after removal" >&2
     exit 1
 fi
-# Portal / yafti may be an RPM; remove if present so it cannot reappear.
-for pkg in yafti yafti-gtk python3-yafti; do
+# Portal ships as RPM bazzite-portal (provides yafti_gtk + AppStream metainfo).
+# Deleting only the .desktop leaves Kickoff/AppStream search hits for "Bazzite Portal"
+# and the yafti.yml action catalogue. Remove the package + leftover files.
+for pkg in bazzite-portal yafti yafti-gtk python3-yafti; do
     if rpm -q "${pkg}" >/dev/null 2>&1; then
         dnf5 -y remove "${pkg}" || dnf -y remove "${pkg}" || true
     fi
 done
+if rpm -q bazzite-portal >/dev/null 2>&1; then
+    echo "ERROR: bazzite-portal RPM still present after removal" >&2
+    exit 1
+fi
 
 # Skel + system autostart (Portal / announcements copy into ~/.config on first login).
 rm -f /etc/skel/.config/autostart/bazzite-portal.desktop
@@ -510,6 +516,10 @@ rm -f /usr/share/applications/bazzite-updater.desktop
 rm -f /usr/share/applications/io.github.ublue_os.yafti_gtk.desktop
 rm -f /usr/share/applications/yafti_gtk.desktop
 rm -f /usr/share/applications/yafti.desktop
+rm -f /usr/bin/yafti_gtk.py /usr/bin/yafti /usr/bin/bbrew-helper
+rm -f /usr/share/metainfo/io.github.ublue_os.yafti_gtk.metainfo.xml
+rm -f /usr/share/icons/hicolor/scalable/apps/io.github.ublue_os.yafti_gtk.svg
+rm -rf /usr/share/yafti /usr/share/doc/bazzite-portal /usr/share/licenses/bazzite-portal
 
 # Portal / updater / CLI / docs / forums — wipe by filename under applications trees.
 find /usr/share/applications /usr/local/share/applications -type f \( \
@@ -526,7 +536,8 @@ find /usr/share/applications /usr/local/share/applications -type f \( \
   \) -print -delete 2>/dev/null || true
 
 # Catch renamed launchers by Name= / Comment= / Exec= (Kickoff label).
-_BAZZITE_LAUNCHER_RE='Bazzite Updater|Bazzite CLI|Bold Brew|Bazzite Portal|Bazzite Documentation|Bazzite Announcements|Update your system|Update Your System|System Update|yafti|ujust update|Universal Blue Forums|^Name=Discourse$|^Name=Documentation$'
+# Include common Portal action titles that may have been exported as .desktop files.
+_BAZZITE_LAUNCHER_RE='Bazzite Updater|Bazzite CLI|Bold Brew|Bazzite Portal|Bazzite Documentation|Bazzite Announcements|Update your system|Update Your System|System Update|yafti|yafti_gtk|ujust update|Universal Blue Forums|Read the Bazzite Docs|Get help through Discord|Decky Loader|Bazzite Buddy|^Name=Discourse$|^Name=Documentation$'
 while IFS= read -r -d '' desktop; do
     if grep -E '^(Name|Name\[en(_[A-Z]+)?\]|GenericName|Comment|Comment\[en(_[A-Z]+)?\]|Exec|Keywords)=' "${desktop}" 2>/dev/null \
         | grep -qiE "${_BAZZITE_LAUNCHER_RE}"; then
@@ -544,13 +555,20 @@ for shadow in \
     discourse.desktop \
     bazzite-documentation.desktop \
     bazzite-portal.desktop \
-    io.github.rfrench3.bazzite-updater.desktop
+    io.github.rfrench3.bazzite-updater.desktop \
+    io.github.ublue_os.yafti_gtk.desktop
 do
     if [[ -e "/usr/share/applications/${shadow}" ]]; then
         echo "ERROR: ${shadow} still present after scrub" >&2
         exit 1
     fi
 done
+[[ ! -e /usr/share/yafti/yafti.yml ]] ||
+    { echo "ERROR: /usr/share/yafti/yafti.yml still present (Portal action catalogue)" >&2; exit 1; }
+[[ ! -e /usr/share/metainfo/io.github.ublue_os.yafti_gtk.metainfo.xml ]] ||
+    { echo "ERROR: Bazzite Portal AppStream metainfo still present" >&2; exit 1; }
+[[ ! -e /usr/bin/yafti_gtk.py ]] ||
+    { echo "ERROR: yafti_gtk.py still present" >&2; exit 1; }
 
 # Autostart for existing profiles is under ~/.config; skel covers new users.
 # User unit arcalium-cleanup-bazzite also clears ~/.local leftovers after upgrade.
