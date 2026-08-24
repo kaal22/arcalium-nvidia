@@ -11,8 +11,8 @@ script therefore had no effect: fresh installs came up with Bazzite's list, with
 Every writer of the list is patched so the value cannot depend on ordering.
 
 Also force the Kickoff (application launcher) button icon to an absolute Arcalium
-PNG. Theme-name lookup (start-here-kde) is fragile after re-pins — Breeze caches,
-symbolic colouring, and leftover customButtonImage paths often leave a blank mark.
+PNG. Upstream uses a bare panel.addWidget("org.kde.plasma.kickoff") with no
+config — theme-name lookup goes blank after re-pins.
 """
 
 from __future__ import annotations
@@ -21,22 +21,6 @@ from pathlib import Path
 import re
 import sys
 
-# The order here is the left-to-right order of the pins.
-#
-# The browser slot stays `preferred://browser` rather than naming Firefox's
-# desktop file. It resolves through our mimeapps.list default and is the one
-# entry already confirmed to pin correctly on a fresh install.
-#
-# The Control Centre is deliberately absent. Its icon is the Arcalium mark, the
-# same artwork as the Kickoff launcher at the far left of the panel, so pinning
-# it put two identical marks side by side. It stays in the Kickoff favourites,
-# where there is no adjacency to the launcher button.
-#
-# ProtonPlus is also absent from the panel: it is a setup/utility tool, not a
-# daily launcher, so it belongs in Kickoff favourites rather than Icon Tasks.
-#
-# Brave and Spotify are not pinned: they are Flathub install-on-demand (like
-# Steam), not bundled in the ISO.
 LAUNCHERS = [
     "preferred://filemanager",
     "applications:io.github.kolunmi.Bazaar.desktop",
@@ -44,12 +28,8 @@ LAUNCHERS = [
     "applications:com.heroicgameslauncher.hgl.desktop",
 ]
 
-# Absolute file:// path — skips icon-theme resolution entirely.
 KICKOFF_ICON = "file:///usr/share/arcalium/kickoff-icon.png"
 
-# The template is authoritative; the update script is patched defensively so it
-# cannot reapply Bazzite's list (which still names Lutris, removed from the
-# catalogue) if it ever sees an empty value.
 REQUIRED = Path(
     "/usr/share/plasma/layout-templates"
     "/org.kde.plasma.desktop.defaultPanel/contents/layout.js"
@@ -62,14 +42,15 @@ OPTIONAL = [
 ]
 
 CALL = re.compile(r'widget\.writeConfig\("launchers",\s*\[.*?\]\);', re.S)
-ADD_KICKOFF = re.compile(
-    r'(?P<var>[A-Za-z_][\w]*)\s*=\s*[^;]*addWidget\(\s*"org\.kde\.plasma\.kickoff"\s*\)'
+
+# Stock Plasma / Bazzite: no assignment, no trailing semicolon.
+BARE_KICKOFF = re.compile(
+    r'(?P<indent>[ \t]*)panel\.addWidget\(\s*"org\.kde\.plasma\.kickoff"\s*\)\s*;?'
 )
-ICON_WRITE = re.compile(
-    r'(?P<var>[A-Za-z_][\w]*)\.writeConfig\(\s*"icon"\s*,\s*"[^"]*"\s*\)'
-)
-ICON_NAME_WRITE = re.compile(
-    r'\.writeConfig\(\s*"icon"\s*,\s*"(?:start-here[^"]*|distributor-logo[^"]*|bazzite[^"]*)"\s*\)'
+
+ASSIGNED_KICKOFF = re.compile(
+    r'(?P<indent>[ \t]*)(?:var|let|const)\s+(?P<var>[A-Za-z_][\w]*)\s*=\s*'
+    r'panel\.addWidget\(\s*"org\.kde\.plasma\.kickoff"\s*\)\s*;?'
 )
 
 
@@ -99,55 +80,63 @@ def patch_launchers(path: Path, text: str) -> str:
     return patched
 
 
+def _kickoff_block(indent: str, var: str = "arcaliumKickoff") -> str:
+    return (
+        f'{indent}var {var} = panel.addWidget("org.kde.plasma.kickoff")\n'
+        f'{indent}{var}.currentConfigGroup = ["General"]\n'
+        f'{indent}{var}.writeConfig("icon", "{KICKOFF_ICON}")'
+    )
+
+
 def patch_kickoff_icon(path: Path, text: str) -> str:
     """Point Kickoff at the Arcalium absolute icon path."""
-    # Rewrite any start-here / distributor / bazzite icon config strings.
-    text2, n_name = ICON_NAME_WRITE.subn(
-        f'.writeConfig("icon", "{KICKOFF_ICON}")', text
-    )
-    if n_name:
-        print(f"rewrote {n_name} Kickoff-style icon write(s) in {path}")
+    if "org.kde.plasma.kickoff" not in text:
+        return text
 
-    # Ensure each kickoff widget gets an explicit icon writeConfig.
-    inserts: list[tuple[int, str]] = []
-    for match in ADD_KICKOFF.finditer(text2):
-        var = match.group("var")
-        # Look ahead ~12 lines for an icon write on this var.
-        window = text2[match.end() : match.end() + 800]
-        if re.search(rf'{re.escape(var)}\.writeConfig\(\s*"icon"', window):
-            # Already has icon= — normalize to our path if still a theme name.
-            continue
-        line_start = text2.rfind("\n", 0, match.start()) + 1
-        indent = text2[line_start : match.start()]
-        inserts.append(
-            (
-                match.end(),
-                f'\n{indent}{var}.writeConfig("icon", "{KICKOFF_ICON}");',
-            )
+    # 1) Assigned form: keep the variable name, ensure icon write follows.
+    def repl_assigned(m: re.Match[str]) -> str:
+        indent, var = m.group("indent"), m.group("var")
+        return (
+            f'{indent}var {var} = panel.addWidget("org.kde.plasma.kickoff")\n'
+            f'{indent}{var}.currentConfigGroup = ["General"]\n'
+            f'{indent}{var}.writeConfig("icon", "{KICKOFF_ICON}")'
         )
 
-    if inserts:
-        out = text2
-        # Insert from the end so offsets stay valid.
-        for pos, snippet in sorted(inserts, key=lambda t: t[0], reverse=True):
-            out = out[:pos] + snippet + out[pos:]
-        print(f"injected Kickoff icon write(s) in {path}")
-        text2 = out
+    text2, n_assigned = ASSIGNED_KICKOFF.subn(repl_assigned, text)
+    if n_assigned:
+        print(f"rewrote {n_assigned} assigned Kickoff addWidget(s) in {path}")
 
-    # Normalize any remaining icon writes on kickoff vars to our path.
-    kickoff_vars = {m.group("var") for m in ADD_KICKOFF.finditer(text2)}
-    if kickoff_vars:
+    # 2) Bare form (what Bazzite / stock Plasma ship).
+    text2, n_bare = BARE_KICKOFF.subn(
+        lambda m: _kickoff_block(m.group("indent")), text2
+    )
+    if n_bare:
+        print(f"rewrote {n_bare} bare Kickoff addWidget(s) in {path}")
 
-        def repl(m: re.Match[str]) -> str:
-            if m.group("var") in kickoff_vars:
-                return f'{m.group("var")}.writeConfig("icon", "{KICKOFF_ICON}")'
-            return m.group(0)
+    # 3) Also append a panels() pass so existing-panel update scripts set the icon.
+    if KICKOFF_ICON not in text2:
+        # Last resort: append a small loop (e.g. pins-only update scripts).
+        appendix = f"""
+// Arcalium: force Kickoff launcher icon (absolute path — survives theme resets).
+{{
+    const _arcaliumPanels = panels();
+    for (let _i = 0; _i < _arcaliumPanels.length; ++_i) {{
+        const _widgets = _arcaliumPanels[_i].widgets();
+        for (let _j = 0; _j < _widgets.length; ++_j) {{
+            const _w = _widgets[_j];
+            if (_w.type === "org.kde.plasma.kickoff") {{
+                _w.currentConfigGroup = ["General"];
+                _w.writeConfig("icon", "{KICKOFF_ICON}");
+                _w.reloadConfig();
+            }}
+        }}
+    }}
+}}
+"""
+        text2 = text2.rstrip() + "\n" + appendix
+        print(f"appended Kickoff icon loop in {path}")
 
-        text2, n = ICON_WRITE.subn(repl, text2)
-        if n:
-            print(f"normalized {n} Kickoff icon write(s) in {path}")
-
-    if KICKOFF_ICON not in text2 and "org.kde.plasma.kickoff" in text2:
+    if KICKOFF_ICON not in text2:
         sys.exit(
             f"ERROR: {path} mentions kickoff but has no Arcalium kickoff icon path"
         )
@@ -172,7 +161,6 @@ def main() -> None:
     if not REQUIRED.is_file():
         sys.exit(f"ERROR: {REQUIRED} is missing; upstream moved the panel template")
     if not patch(REQUIRED):
-        # Still require launcher patch on the template.
         text = REQUIRED.read_text(encoding="utf-8")
         if not CALL.search(text):
             sys.exit(f"ERROR: {REQUIRED} no longer writes a launchers list")
