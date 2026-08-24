@@ -86,12 +86,11 @@ if command -v magick >/dev/null 2>&1; then
         [[ -f "${theme_dir}index.theme" ]] || continue
         gtk-update-icon-cache -f "${theme_dir}" 2>/dev/null || true
     done
-    # Absolute Kickoff button art (cyan so it stays visible on dark panels).
+    # Absolute Kickoff button art (white mark on transparent — matches panel icons).
     # Panel applets that still use theme names often go blank after re-pins;
     # layout.js + user cleanup point at this file:// path instead.
     magick -background none /usr/share/arcalium/logo-mark.svg \
         -resize 256x256 \
-        -fill '#67e8f9' -colorize 100 \
         PNG32:/usr/share/arcalium/kickoff-icon.png
 fi
 [[ -f /usr/share/arcalium/kickoff-icon.png ]] ||
