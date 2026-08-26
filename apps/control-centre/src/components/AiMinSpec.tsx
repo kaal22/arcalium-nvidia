@@ -38,9 +38,6 @@ export function AiMinSpec({ status }: { status: JsonValue | null }) {
         )}
       </p>
       <p className="muted small">{note}</p>
-      <p className="muted small">
-        AI can be wrong — double-check before changing your system. Mutating tools still ask for yes.
-      </p>
       {!ok &&
         warnings.map((w) => (
           <p className="banner bad" key={w}>

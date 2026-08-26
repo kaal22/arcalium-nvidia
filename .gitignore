@@ -8,6 +8,3 @@ apps/control-centre/node_modules/
 apps/control-centre/dist/
 apps/control-centre/src-tauri/target/
 apps/control-centre/src-tauri/gen/
-
-# Personal maintainer notes (not for the public repo)
-docs/HOST_ISO_R2.md

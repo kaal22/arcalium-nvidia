@@ -1,9 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Arcalium Kickoff icon
-Comment=Keep the application launcher button on the Arcalium mark after theme changes
-Exec=/usr/bin/python3 /usr/libexec/arcalium-fix-kickoff-icon.py
-Icon=arcalium-logo
-X-KDE-autostart-phase=0
-X-GNOME-Autostart-enabled=true
-NoDisplay=true

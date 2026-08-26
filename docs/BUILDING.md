@@ -17,8 +17,6 @@ The trap worth remembering: **Flatpaks do not travel with `bootc upgrade`.** Any
 
 Milestones that justify an ISO: installer behaviour changed, bundled app set changed, or a tester needs a clean bare-metal install. Otherwise push, let CI publish the image, and `bootc upgrade` on the test machine.
 
-**Release channel discipline:** always smoke on `:dev` (RTX 3060) before **Promote stable**. See [`PROMOTE_STABLE.md`](PROMOTE_STABLE.md). GHCR “public” is a later, separate step ([`GHCR_PUBLIC_FLIP.md`](GHCR_PUBLIC_FLIP.md)).
-
 ### What CI does automatically
 
 - **`build.yml`** — builds, signs and pushes the container image on every push to `main`, and on PRs. This is the cheap path and the one to rely on. No nightly schedule: `:dev` moves only when we push, so a tester's `bootc upgrade` never pulls an unreviewed base change. Take Bazzite updates deliberately by re-pinning the digest in the `Containerfile`, or run the workflow by hand.
@@ -36,15 +34,13 @@ Arcalium is the update source of truth. An installed machine tracks `ghcr.io/kaa
 | Brave / Spotify / Steam Flatpaks | Control Centre / Flathub on demand (not in `installer/flatpaks`) |
 | Home directory, Steam library, user settings | Not touched by image updates |
 
-The `Containerfile` pins the base by digest, so the `:stable` tag in the `FROM` line is documentation — the digest is what actually builds. Bazzite moving `:stable` therefore changes nothing here until we act, which is the point: no tester receives a base change nobody reviewed. The trade-off is that **upstream security and driver fixes do not arrive on their own**.
-
-**Re-pin policy:** check digests often; **re-pin mainly when the NVIDIA driver version in upstream `:stable` is newer** (see [`REPIN_BASE.md`](REPIN_BASE.md) Phase A driver gate). A digest-only move with the same driver is Plasma/apps/MOTD churn — skip unless you explicitly want that or are cutting stable/ISO. There is no safe “driver-only” layer on bootc; GeForce/`.run` installs are out of scope.
+The `Containerfile` pins the base by digest, so the `:stable` tag in the `FROM` line is documentation — the digest is what actually builds. Bazzite moving `:stable` therefore changes nothing here until we act, which is the point: no tester receives a base change nobody reviewed. The trade-off is that **upstream security and driver fixes do not arrive on their own**, so re-pin on a deliberate cadence.
 
 ### Taking a Bazzite update
 
-**Agent / maintainer runbook:** [`docs/REPIN_BASE.md`](REPIN_BASE.md) — use that when checking digests or re-pinning (driver compare + when *not* to re-pin).
+**Agent / maintainer runbook:** [`docs/REPIN_BASE.md`](REPIN_BASE.md) — use that when checking digests or re-pinning.
 
-Resolve what `:stable` currently points at (no pull needed for the digest; `skopeo` is not installed in WSL, so use the registry API):
+Resolve what `:stable` currently points at (no pull needed; `skopeo` is not installed in WSL, so use the registry API):
 
 ```bash
 TOKEN=$(curl -s "https://ghcr.io/token?scope=repository:ublue-os/bazzite-nvidia-open:pull&service=ghcr.io" | jq -r .token)
@@ -55,11 +51,11 @@ curl -sI -H "Authorization: Bearer $TOKEN" \
   | grep -i docker-content-digest
 ```
 
-If the digest differs, **compare NVIDIA driver versions** before editing the pin (Podman `rpm -q` against pinned vs remote images — details in the runbook). Only then update the `FROM` line and the date comment when you intend to re-pin. CI rebuilds Arcalium on the new base, signs it, and testers pick it up with `bootc upgrade`. Re-pinning the kernel and NVIDIA stack deserves a bare-metal check on the 3060 before it goes further.
+If it differs from the digest in the `Containerfile`, update the `FROM` line and the date comment above it, then push. CI rebuilds Arcalium on the new base, signs it, and testers pick it up with `bootc upgrade`. Re-pinning the kernel and NVIDIA stack is exactly the kind of change that deserves a bare-metal check on the 3060 before it goes further.
 
 Control Centre → **GPU and Display** → **Drivers** (and Setup’s NVIDIA step) expose the current `nvidia-smi` driver version and reuse **Updates** check/apply (`bootc`) so users do not chase GeForce/.run installers. Newer drivers only appear after a re-pin + published Arcalium image.
 
-Last checked **2026-08-23**: Containerfile pin matches upstream `:stable` at `sha256:0fba65cba100304e56596c2d352b994910f860240405b9a6ca7400bedbba6759`. Smoke on the 3060 after CI (`bootc upgrade`, `nvidia-smi`).
+Last checked **2026-08-04**: Containerfile pin matches upstream `:stable` at `sha256:6df8151a75c4020e6d5eb273b3ce9ce3cbe185d77cced11fc650749a4a14da7d`. Smoke on the 3060 after CI (`bootc upgrade`, `nvidia-smi`).
 
 ## Standard ISO build workflow
 
@@ -317,7 +313,7 @@ The shell prompt’s `@bazzite` half is the machine hostname, not the OS name. D
 - `/etc/hostname` → `arcalium`
 - `arcalium-migrate-hostname.service` renames a stock `bazzite` / `localhost` hostname once after rebase; custom hostnames are left alone
 
-Konsole’s banner is the interactive MOTD (`/etc/profile.d/user-motd.sh` → `/usr/libexec/arcalium-motd`). Fedora’s `/etc/bashrc` sources `profile.d` for interactive non-login shells, so ordinary Konsole tabs get it; we also ship `/usr/share/konsole/Arcalium.profile` (`LoginShell=true`) as the system default via `/etc/xdg/konsolerc`, plus fish `vendor_conf.d/arcalium-motd.fish`. The banner prints a lean Arcalium `fastfetch` (ASCII mark, image/OS/kernel/GPU/memory) then `/usr/share/arcalium/motd-tips.txt` (Local AI, updates, rollback, `arcaliumctl --help`). Config is `/usr/share/arcalium/fastfetch.jsonc`. `fastfetch` / `neofetch` aliases (bash `bazzite-neofetch.sh` and fish `vendor_conf.d`) point at the same config. Build also overwrites `/usr/share/ublue-os/bazzite/fastfetch.jsonc` + `logo.txt`, and rewires `ublue-motd` / `bazzite-fetch-image`, so upstream hooks cannot silently show Bazzite after a re-pin. The image line is `/usr/libexec/arcalium-image-label`, which prefers the **booted** `bootc` / `rpm-ostree` image tag (`:stable`, `:dev`, `:0.x.y`) over baked `/etc/arcalium/image-info.json` — promote retags the same digest, so the JSON channel stays `dev` unless a rebuild sets `ARCALIUM_CHANNEL`. Per-user opt-out is unchanged: `touch ~/.config/no-show-user-motd` (or `ujust toggle-user-motd`). If an existing account already set another Konsole default profile under `~/.config/konsolerc`, pick **Arcalium** once in Konsole → Settings → Manage Profiles.
+Konsole’s banner is the interactive MOTD (`/etc/profile.d/user-motd.sh`). We replaced Bazzite’s tip markdown with `fastfetch` using `/usr/share/arcalium/fastfetch.jsonc` and the ASCII mark in `/usr/share/arcalium/logo.txt`. `fastfetch` / `neofetch` aliases point at the same config. Per-user opt-out is unchanged: `touch ~/.config/no-show-user-motd` (or `ujust toggle-user-motd`).
 
 #### The Konsole ASCII mark
 
@@ -368,14 +364,14 @@ Arcalium does **not** redistribute Steam in the image. `build.sh` removes the Ba
 
 ### Local AI Assistant (§9.14)
 
-Offline maintenance helper via **Ollama**, base **`gemma4:e4b-it-qat`**, session model **`arcalium-assistant`** (Modelfile + `/usr/lib/arcalium/ai/system-prompt.txt` for Arcalium OS / bash context, plus `/usr/lib/arcalium/ai/os-command-skills.txt` suggest-only command cookbook).
+Offline maintenance helper via **Ollama**, base **`gemma4:e4b-it-qat`**, session model **`arcalium-assistant`** (Modelfile + `/usr/lib/arcalium/ai/system-prompt.txt` for Arcalium OS / bash context).
 
 - **Minimum hardware (soft gate):** 16 GiB system RAM and 8 GiB GPU VRAM — shown in Setup and Control Centre with This-PC measurement; warn when below, do not hard-block Skip.
 - Control Centre → **Local AI Assistant**: Install Ollama, Pull and configure model, Launch assistant, Refresh agent prompt, Unload model.
 - UI **Install** / **Pull** use `--visible`: open Konsole (or Ptyxis/kgx) running `/usr/lib/arcalium/ai/install-session.sh` / `ensure-session.sh` so brew / `ollama pull` progress is visible; the page polls status until ready.
 - `arcaliumctl ai install-ollama` (no `--visible`) runs a non-interactive user-level `brew install ollama`, then starts the local server — for scripts. No sudo or copy/paste flow. **Success = `ollama` binary present**, even if brew exits non-zero (link/caveat noise).
-- `arcaliumctl ai ensure` (no `--visible`) pulls the base tag and creates/refreshes `arcalium-assistant` silently (also used by **Refresh agent prompt** after prompt / tool-catalog / **OS skills** changes). On success it installs a trusted Desktop shortcut.
-- `arcaliumctl ai launch` / `/usr/bin/arcalium-assistant` opens Konsole/Ptyxis/kgx running `/usr/lib/arcalium/ai/assistant-session.sh`, which starts the safe agent `/usr/lib/arcalium/ai/assistant-agent.py` with allowlisted tools from `agent_tools.py` and the OS skills file. The model requests tools with `ARCALIUM_TOOL <name> {}`; read-only tools auto-run; mutating ones require typing `yes`. `/help` prints tools plus skills. Skills are **suggest-only** (user-typed shell); they do not expand what the wrapper can execute. Closing the terminal runs `ollama stop` so VRAM is freed for gaming.
+- `arcaliumctl ai ensure` (no `--visible`) pulls the base tag and creates/refreshes `arcalium-assistant` silently (also used by **Refresh agent prompt** after prompt/tool-catalog changes). On success it installs a trusted Desktop shortcut.
+- `arcaliumctl ai launch` / `/usr/bin/arcalium-assistant` opens Konsole/Ptyxis/kgx running `/usr/lib/arcalium/ai/assistant-session.sh`, which starts the safe agent `/usr/lib/arcalium/ai/assistant-agent.py` with allowlisted tools from `agent_tools.py`. The model requests tools with `ARCALIUM_TOOL <name> {}`; read-only tools auto-run; mutating ones require typing `yes`. Closing the terminal runs `ollama stop` so VRAM is freed for gaming.
 - Menu entry: `io.arcalium.Assistant.desktop` (Space Invaders-style pixel icon under `io.arcalium.Assistant`). Desktop: `~/Desktop/arcalium-assistant.desktop` after the first successful ensure (executable so Plasma trusts it).
 - Ollama is **not** layered into the image (atomic desktop); the UI installs it into the user's Homebrew environment on demand. The model pull is separate (~10 GB).
 - The local server keeps weights warm during an active chat; the terminal session traps EXIT/HUP and explicitly unloads both assistant and base models.

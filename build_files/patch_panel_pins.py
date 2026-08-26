@@ -9,10 +9,6 @@ script therefore had no effect: fresh installs came up with Bazzite's list, with
 `preferred://browser` resolving to Firefox and none of our bundled apps present.
 
 Every writer of the list is patched so the value cannot depend on ordering.
-
-Also force the Kickoff (application launcher) button icon to an absolute Arcalium
-PNG. Upstream uses a bare panel.addWidget("org.kde.plasma.kickoff") with no
-config — theme-name lookup goes blank after re-pins.
 """
 
 from __future__ import annotations
@@ -21,6 +17,22 @@ from pathlib import Path
 import re
 import sys
 
+# The order here is the left-to-right order of the pins.
+#
+# The browser slot stays `preferred://browser` rather than naming Firefox's
+# desktop file. It resolves through our mimeapps.list default and is the one
+# entry already confirmed to pin correctly on a fresh install.
+#
+# The Control Centre is deliberately absent. Its icon is the Arcalium mark, the
+# same artwork as the Kickoff launcher at the far left of the panel, so pinning
+# it put two identical marks side by side. It stays in the Kickoff favourites,
+# where there is no adjacency to the launcher button.
+#
+# ProtonPlus is also absent from the panel: it is a setup/utility tool, not a
+# daily launcher, so it belongs in Kickoff favourites rather than Icon Tasks.
+#
+# Brave and Spotify are not pinned: they are Flathub install-on-demand (like
+# Steam), not bundled in the ISO.
 LAUNCHERS = [
     "preferred://filemanager",
     "applications:io.github.kolunmi.Bazaar.desktop",
@@ -28,8 +40,9 @@ LAUNCHERS = [
     "applications:com.heroicgameslauncher.hgl.desktop",
 ]
 
-KICKOFF_ICON = "file:///usr/share/arcalium/kickoff-icon.png"
-
+# The template is authoritative; the update script is patched defensively so it
+# cannot reapply Bazzite's list (which still names Lutris, removed from the
+# catalogue) if it ever sees an empty value.
 REQUIRED = Path(
     "/usr/share/plasma/layout-templates"
     "/org.kde.plasma.desktop.defaultPanel/contents/layout.js"
@@ -43,27 +56,17 @@ OPTIONAL = [
 
 CALL = re.compile(r'widget\.writeConfig\("launchers",\s*\[.*?\]\);', re.S)
 
-# Stock Plasma / Bazzite: no assignment, no trailing semicolon.
-# Do not use \s* after ) — that would swallow the following newline.
-BARE_KICKOFF = re.compile(
-    r'(?P<indent>[ \t]*)panel\.addWidget\(\s*"org\.kde\.plasma\.kickoff"\s*\)[ \t]*;?'
-)
 
-ASSIGNED_KICKOFF = re.compile(
-    r'(?P<indent>[ \t]*)(?:var|let|const)\s+(?P<var>[A-Za-z_][\w]*)\s*=\s*'
-    r'panel\.addWidget\(\s*"org\.kde\.plasma\.kickoff"\s*\)[ \t]*;?'
-)
-
-
-def render_launchers(indent: str) -> str:
+def render(indent: str) -> str:
     body = ",\n".join(f'{indent}    "{entry}"' for entry in LAUNCHERS)
     return f'widget.writeConfig("launchers", [\n{body}\n{indent}]);'
 
 
-def patch_launchers(path: Path, text: str) -> str:
+def patch(path: Path) -> bool:
+    text = path.read_text(encoding="utf-8")
     matches = list(CALL.finditer(text))
     if not matches:
-        return text
+        return False
     if len(matches) != 1:
         sys.exit(f"ERROR: {path} has {len(matches)} launcher writes, expected 1")
 
@@ -73,88 +76,13 @@ def patch_launchers(path: Path, text: str) -> str:
     if indent.strip():
         sys.exit(f"ERROR: {path} launcher write is not at the start of a line")
 
-    patched = text[: match.start()] + render_launchers(indent) + text[match.end() :]
+    patched = text[: match.start()] + render(indent) + text[match.end() :]
+    path.write_text(patched, encoding="utf-8", newline="\n")
+
     for entry in LAUNCHERS:
-        if f'"{entry}"' not in patched:
+        if f'"{entry}"' not in path.read_text(encoding="utf-8"):
             sys.exit(f"ERROR: {path} is missing {entry} after patching")
-    print(f"patched launchers in {path}")
-    return patched
-
-
-def _kickoff_block(indent: str, var: str = "arcaliumKickoff") -> str:
-    return (
-        f'{indent}var {var} = panel.addWidget("org.kde.plasma.kickoff")\n'
-        f'{indent}{var}.currentConfigGroup = ["General"]\n'
-        f'{indent}{var}.writeConfig("icon", "{KICKOFF_ICON}")'
-    )
-
-
-def patch_kickoff_icon(path: Path, text: str) -> str:
-    """Point Kickoff at the Arcalium absolute icon path."""
-    if "org.kde.plasma.kickoff" not in text:
-        return text
-
-    # 1) Assigned form: keep the variable name, ensure icon write follows.
-    def repl_assigned(m: re.Match[str]) -> str:
-        indent, var = m.group("indent"), m.group("var")
-        return (
-            f'{indent}var {var} = panel.addWidget("org.kde.plasma.kickoff")\n'
-            f'{indent}{var}.currentConfigGroup = ["General"]\n'
-            f'{indent}{var}.writeConfig("icon", "{KICKOFF_ICON}")'
-        )
-
-    text2, n_assigned = ASSIGNED_KICKOFF.subn(repl_assigned, text)
-    if n_assigned:
-        print(f"rewrote {n_assigned} assigned Kickoff addWidget(s) in {path}")
-
-    # 2) Bare form (what Bazzite / stock Plasma ship).
-    text2, n_bare = BARE_KICKOFF.subn(
-        lambda m: _kickoff_block(m.group("indent")), text2
-    )
-    if n_bare:
-        print(f"rewrote {n_bare} bare Kickoff addWidget(s) in {path}")
-
-    # 3) Also append a panels() pass so existing-panel update scripts set the icon.
-    if KICKOFF_ICON not in text2:
-        # Last resort: append a small loop (e.g. pins-only update scripts).
-        appendix = f"""
-// Arcalium: force Kickoff launcher icon (absolute path — survives theme resets).
-{{
-    const _arcaliumPanels = panels();
-    for (let _i = 0; _i < _arcaliumPanels.length; ++_i) {{
-        const _widgets = _arcaliumPanels[_i].widgets();
-        for (let _j = 0; _j < _widgets.length; ++_j) {{
-            const _w = _widgets[_j];
-            if (_w.type === "org.kde.plasma.kickoff") {{
-                _w.currentConfigGroup = ["General"];
-                _w.writeConfig("icon", "{KICKOFF_ICON}");
-                _w.reloadConfig();
-            }}
-        }}
-    }}
-}}
-"""
-        text2 = text2.rstrip() + "\n" + appendix
-        print(f"appended Kickoff icon loop in {path}")
-
-    if KICKOFF_ICON not in text2:
-        sys.exit(
-            f"ERROR: {path} mentions kickoff but has no Arcalium kickoff icon path"
-        )
-    return text2
-
-
-def patch(path: Path) -> bool:
-    text = path.read_text(encoding="utf-8")
-    original = text
-    if CALL.search(text):
-        text = patch_launchers(path, text)
-    if "org.kde.plasma.kickoff" in text:
-        text = patch_kickoff_icon(path, text)
-    if text == original:
-        return False
-    path.write_text(text, encoding="utf-8", newline="\n")
-    print(f"wrote {path}")
+    print(f"patched {path}")
     return True
 
 
@@ -162,10 +90,7 @@ def main() -> None:
     if not REQUIRED.is_file():
         sys.exit(f"ERROR: {REQUIRED} is missing; upstream moved the panel template")
     if not patch(REQUIRED):
-        text = REQUIRED.read_text(encoding="utf-8")
-        if not CALL.search(text):
-            sys.exit(f"ERROR: {REQUIRED} no longer writes a launchers list")
-        sys.exit(f"ERROR: {REQUIRED} was not modified")
+        sys.exit(f"ERROR: {REQUIRED} no longer writes a launchers list")
 
     for path in OPTIONAL:
         if path.is_file():

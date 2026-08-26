@@ -3,9 +3,6 @@
 
 Strips Adobe Illustrator private metadata (the aipgf CDATA blob) which is not
 needed for rendering and bloats the files ~10×. Sources stay in /ctx/assets/.
-
-Also overwrites start-here / distributor-logo icons in every installed icon
-theme (Breeze takes precedence over hicolor for Kickoff).
 """
 
 from __future__ import annotations
@@ -13,7 +10,6 @@ from __future__ import annotations
 from pathlib import Path
 import re
 import shutil
-import subprocess
 import sys
 
 
@@ -32,18 +28,6 @@ def write_svg(src: Path, dst: Path, element_id: str) -> None:
     print(f"installed {dst} ({dst.stat().st_size} bytes)")
 
 
-# Kickoff / menu button names Plasma and Fedora/Bazzite commonly resolve.
-PLACE_NAMES = (
-    "distributor-logo.svg",
-    "distributor-logo-white.svg",
-    "distributor-logo-symbolic.svg",
-    "distributor-logo-steamdeck.svg",
-    "start-here-kde.svg",
-    "start-here.svg",
-    "start-here-symbolic.svg",
-)
-
-
 def main() -> int:
     assets = Path(sys.argv[1] if len(sys.argv) > 1 else "/ctx/assets")
     mark = assets / "arccleanSVG.svg"
@@ -54,42 +38,23 @@ def main() -> int:
 
     places = Path("/usr/share/icons/hicolor/scalable/places")
     arcalium = Path("/usr/share/arcalium")
-    icons_root = Path("/usr/share/icons")
 
-    for name in PLACE_NAMES:
-        write_svg(mark, places / name, "arcalium-mark")
-
+    # Application menu / distributor mark (white fill — matches dark Plasma panels).
+    write_svg(mark, places / "distributor-logo.svg", "arcalium-mark")
+    write_svg(mark, places / "distributor-logo-white.svg", "arcalium-mark-white")
+    write_svg(mark, places / "start-here-kde.svg", "arcalium-start-here")
+    # Keep canonical copies for splash, Plymouth watermark and docs to reference later.
     write_svg(mark, arcalium / "logo-mark.svg", "arcalium-mark")
     write_svg(wordmark, arcalium / "logo-wordmark.svg", "arcalium-wordmark")
 
+    # Also mirror under applications so Kickoff and About pages can find them.
     apps = Path("/usr/share/icons/hicolor/scalable/apps")
     write_svg(mark, apps / "arcalium-logo.svg", "arcalium-mark")
     write_svg(wordmark, apps / "arcalium-wordmark.svg", "arcalium-wordmark")
 
-    # Breeze ships its own start-here-kde; Kickoff prefers the active icon theme
-    # over hicolor. Overwrite scalable place icons in every theme. Raster PNGs are
-    # mirrored from hicolor in build.sh after ImageMagick renders them.
-    replaced = 0
-    if icons_root.is_dir():
-        for places_dir in icons_root.rglob("places"):
-            if not places_dir.is_dir():
-                continue
-            if "scalable" not in places_dir.parts:
-                continue
-            for name in PLACE_NAMES:
-                write_svg(mark, places_dir / name, "arcalium-mark")
-                replaced += 1
-    print(f"icon theme place overrides: {replaced} SVG files")
-
+    # Refresh icon cache if the helper is present (bootc image build is offline-safe).
     if shutil.which("gtk-update-icon-cache"):
         Path("/usr/share/icons/hicolor/index.theme").touch(exist_ok=True)
-        for theme_dir in sorted(icons_root.iterdir()):
-            if theme_dir.is_dir() and (theme_dir / "index.theme").is_file():
-                subprocess.run(
-                    ["gtk-update-icon-cache", "-f", str(theme_dir)],
-                    check=False,
-                    capture_output=True,
-                )
     return 0
 
 

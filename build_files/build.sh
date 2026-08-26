@@ -59,130 +59,32 @@ fi
 # The ctx stage copies build_files/ to /, so siblings of this script are at /ctx.
 python3 /ctx/install_logos.py /ctx/assets
 
-# Raster Kickoff marks (some Plasma/icon themes resolve PNG before SVG).
-if command -v magick >/dev/null 2>&1; then
-    for size in 16 22 24 32 48 64 128 256; do
-        install -d "/usr/share/icons/hicolor/${size}x${size}/places"
-        magick -background none /usr/share/arcalium/logo-mark.svg \
-            -resize "${size}x${size}" \
-            "PNG32:/usr/share/icons/hicolor/${size}x${size}/places/start-here-kde.png"
-        cp -f "/usr/share/icons/hicolor/${size}x${size}/places/start-here-kde.png" \
-            "/usr/share/icons/hicolor/${size}x${size}/places/distributor-logo.png"
-        cp -f "/usr/share/icons/hicolor/${size}x${size}/places/start-here-kde.png" \
-            "/usr/share/icons/hicolor/${size}x${size}/places/start-here.png"
-        # Mirror into every installed theme (Breeze wins over hicolor for Kickoff).
-        # Skip hicolor itself — we already wrote there; cp same-file exits 1.
-        while IFS= read -r -d '' places_dir; do
-            [[ "${places_dir}" == "/usr/share/icons/hicolor/${size}x${size}/places" ]] && continue
-            install -d "${places_dir}"
-            for name in start-here-kde.png start-here.png distributor-logo.png \
-                distributor-logo-white.png start-here-symbolic.png; do
-                cp -f "/usr/share/icons/hicolor/${size}x${size}/places/start-here-kde.png" \
-                    "${places_dir}/${name}"
-            done
-        done < <(find /usr/share/icons -type d -path "*/${size}x${size}/places" -print0 2>/dev/null)
-    done
-    for theme_dir in /usr/share/icons/*/; do
-        [[ -f "${theme_dir}index.theme" ]] || continue
-        gtk-update-icon-cache -f "${theme_dir}" 2>/dev/null || true
-    done
-    # Absolute Kickoff button art (white mark on transparent — matches panel icons).
-    # Panel applets that still use theme names often go blank after re-pins;
-    # layout.js + user cleanup point at this file:// path instead.
-    magick -background none /usr/share/arcalium/logo-mark.svg \
-        -resize 256x256 \
-        PNG32:/usr/share/arcalium/kickoff-icon.png
-fi
-[[ -f /usr/share/arcalium/kickoff-icon.png ]] ||
-    { echo "ERROR: missing /usr/share/arcalium/kickoff-icon.png for Kickoff button" >&2; exit 1; }
-
 # Taskbar pins come from the panel layout template, not from an update script.
 python3 /ctx/patch_panel_pins.py
 
-# Plasma splash (login→desktop) and logout art come from look-and-feel Splash.qml.
-# Stock org.kde.breeze.desktop shows the KDE logo; vapor/vgui ship bazzite_logo.svgz.
-# Brand every Splash.qml, overwrite common logo filenames, default LookAndFeel to vapor.
+# Plasma splash currently loads images/bazzite_logo.svgz from the active
+# look-and-feel package. Replace that file in place wherever it exists so the
+# wordmark appears on the boot-to-desktop splash.
 #
-# Splash.qml often pins sourceSize.height; that squashes our ~2.1:1 wordmark — drop it.
-splash_patched=0
-wordmark_sum="$(sha256sum /usr/share/arcalium/logo-wordmark.svg | awk '{print $1}')"
+# Splash.qml pins both sourceSize.width and sourceSize.height to `size`, which
+# rasterises into a square. That suits Bazzite's square mark but squashes our
+# ~2.1:1 wordmark. Qt derives the missing dimension from the source aspect
+# ratio, so dropping the height line is enough. `sourceSize.height: size` is
+# unique to the logo (the spinner spells its own size out in grid units), and
+# the result is asserted so an upstream rewrite cannot silently reintroduce it.
+while IFS= read -r -d '' splash_logo; do
+    gzip -nc /usr/share/arcalium/logo-wordmark.svg >"${splash_logo}"
 
-_arcalium_patch_splash_qml() {
-    local splash_qml="$1"
-    local splash_dir images_dir arcalium_logo name replaced_sum
-    splash_dir="$(dirname "${splash_qml}")"
-    images_dir="${splash_dir}/images"
-    mkdir -p "${images_dir}"
-    arcalium_logo="${images_dir}/arcalium_logo.svgz"
-    gzip -nc /usr/share/arcalium/logo-wordmark.svg >"${arcalium_logo}"
-    replaced_sum="$(gzip -dc "${arcalium_logo}" | sha256sum | awk '{print $1}')"
-    [[ "${replaced_sum}" == "${wordmark_sum}" ]] ||
-        { echo "ERROR: ${arcalium_logo} does not match Arcalium wordmark" >&2; return 1; }
+    splash_qml="$(dirname "${splash_logo}")/../Splash.qml"
+    [[ -f "${splash_qml}" ]] || continue
 
-    for name in bazzite_logo.svgz deck_logo.svgz steamdeck_logo.svgz plasma.svgz kde.svgz logo.svgz; do
-        cp -f "${arcalium_logo}" "${images_dir}/${name}"
-    done
+    sed -i '/^[[:space:]]*sourceSize\.height: size[[:space:]]*$/d' "${splash_qml}"
 
-    sed -i -E \
-        -e 's#(source:[[:space:]]*")images/[^"]*_logo\.svgz(")#\1images/arcalium_logo.svgz\2#gi' \
-        -e 's#(source:[[:space:]]*")images/(plasma|kde|logo)\.svgz(")#\1images/arcalium_logo.svgz\3#gi' \
-        "${splash_qml}"
-
-    sed -i -E '/^[[:space:]]*sourceSize\.height:/d' "${splash_qml}"
-    if ! grep -q 'fillMode:[[:space:]]*Image.PreserveAspectFit' "${splash_qml}"; then
-        if grep -q 'images/arcalium_logo.svgz' "${splash_qml}"; then
-            sed -i -E '/images\/arcalium_logo\.svgz/a\        fillMode: Image.PreserveAspectFit' "${splash_qml}"
-        fi
-    fi
-    sed -i -E 's#(sourceSize\.width:[[:space:]]*)size\b#\1Math.round(size * 2.2)#g' "${splash_qml}"
-
-    if grep -nE 'sourceSize\.height' "${splash_qml}"; then
-        echo "ERROR: ${splash_qml} still forces a fixed height on the logo" >&2
-        return 1
-    fi
-    return 0
-}
-
-mapfile -d '' -t splash_qml_files < <(
-    find /usr/share/plasma/look-and-feel -type f -name 'Splash.qml' -print0 2>/dev/null || true
-)
-[[ "${#splash_qml_files[@]}" -ge 1 ]] ||
-    { echo "ERROR: no Splash.qml under look-and-feel — KDE splash would stay stock" >&2; exit 1; }
-
-for splash_qml in "${splash_qml_files[@]}"; do
-    [[ -n "${splash_qml}" ]] || continue
-    _arcalium_patch_splash_qml "${splash_qml}" || exit 1
-    splash_patched=$((splash_patched + 1))
-done
-[[ "${splash_patched}" -ge 1 ]] ||
-    { echo "ERROR: no Splash.qml was patched" >&2; exit 1; }
-echo "Plasma splash: patched ${splash_patched} Splash.qml file(s)"
-
-# Prefer vapor (branded) over stock breeze for new sessions.
-[[ -f /etc/xdg/kdeglobals ]] ||
-    { echo "ERROR: missing /etc/xdg/kdeglobals (LookAndFeelPackage)" >&2; exit 1; }
-grep -q 'LookAndFeelPackage=com.valve.vapor.desktop' /etc/xdg/kdeglobals ||
-    { echo "ERROR: /etc/xdg/kdeglobals must set LookAndFeelPackage=com.valve.vapor.desktop" >&2; exit 1; }
-[[ -d /usr/share/plasma/look-and-feel/com.valve.vapor.desktop ]] ||
-    { echo "ERROR: com.valve.vapor.desktop look-and-feel missing from base" >&2; exit 1; }
-[[ -f /etc/xdg/autostart/arcalium-kickoff-icon.desktop ]] ||
-    { echo "ERROR: missing Kickoff icon autostart (theme-change safety net)" >&2; exit 1; }
-grep -q 'arcalium-fix-kickoff-icon' /etc/xdg/autostart/arcalium-kickoff-icon.desktop ||
-    { echo "ERROR: Kickoff autostart does not call fix-kickoff-icon" >&2; exit 1; }
-
-# Login greeter wallpaper — assert Arcalium defaults survived the base image.
-[[ -f /usr/share/wallpapers/arcalium-wallpaper.png ]] ||
-    { echo "ERROR: missing /usr/share/wallpapers/arcalium-wallpaper.png" >&2; exit 1; }
-[[ -f /usr/lib/plasmalogin/defaults.conf ]] ||
-    { echo "ERROR: missing /usr/lib/plasmalogin/defaults.conf" >&2; exit 1; }
-grep -q 'arcalium-wallpaper.png' /usr/lib/plasmalogin/defaults.conf ||
-    { echo "ERROR: plasmalogin defaults.conf does not reference arcalium-wallpaper.png" >&2; exit 1; }
-grep -q 'file:///usr/share/wallpapers/arcalium-wallpaper.png' /usr/lib/plasmalogin/defaults.conf ||
-    { echo "ERROR: plasmalogin defaults.conf must use file:// Image URIs" >&2; exit 1; }
-grep -q 'WallpaperPlugin=org.kde.image' /usr/lib/plasmalogin/defaults.conf ||
-    { echo "ERROR: plasmalogin defaults.conf missing WallpaperPlugin=org.kde.image" >&2; exit 1; }
-[[ -f /usr/lib/plasmalogin/plasmalogin.conf.d/10-arcalium-wallpaper.conf ]] ||
-    { echo "ERROR: missing plasmalogin.conf.d/10-arcalium-wallpaper.conf" >&2; exit 1; }
+    grep -q 'sourceSize.width: size' "${splash_qml}" ||
+        { echo "ERROR: ${splash_qml} no longer sets sourceSize.width" >&2; exit 1; }
+    ! grep -q 'sourceSize.height: size' "${splash_qml}" ||
+        { echo "ERROR: ${splash_qml} still forces a square logo" >&2; exit 1; }
+done < <(find /usr/share/plasma/look-and-feel -type f -name 'bazzite_logo.svgz' -print0 2>/dev/null || true)
 
 # Plymouth boot splash (post-GRUB) uses the spinner theme's watermark.png —
 # including via the default bgrt theme, whose ImageDir points here. Bazzite's
@@ -215,137 +117,24 @@ sed -i \
     /usr/lib/os-release
 # /etc/os-release is a symlink to ../usr/lib/os-release on this base.
 grep -E '^(NAME|PRETTY_NAME|ID|ID_LIKE|VARIANT)=' /usr/lib/os-release
-grep -qx 'NAME="Arcalium OS"' /usr/lib/os-release ||
-    { echo "ERROR: /usr/lib/os-release NAME was not rewritten to Arcalium OS" >&2; exit 1; }
-grep -qx 'PRETTY_NAME="Arcalium OS NVIDIA Edition"' /usr/lib/os-release ||
-    { echo "ERROR: /usr/lib/os-release PRETTY_NAME was not rewritten" >&2; exit 1; }
 
-# Konsole / shell banner: Bazzite dropped profile.d/user-motd.sh and points
-# fastfetch aliases + ublue-motd at /usr/share/ublue-os/bazzite/*. Overwrite those
-# targets so stock hooks cannot show Bazzite tips/logo after a re-pin.
-#
-# IMPORTANT: force-rewrite via heredoc (do not trust a prior /etc merge of the
-# stock Bazzite file). Truncated stock aliases cause:
-#   unexpected EOF while looking for matching `''
-_arcalium_neofetch_profile='# Arcalium: fastfetch aliases (filename kept so we replace Bazzite stock).
-# Real /usr/bin/neofetch + neowofetch wrappers also exist for non-alias callers.
-alias neofetch='\''/usr/bin/fastfetch -c /usr/share/arcalium/fastfetch.jsonc'\''
-alias neowofetch='\''/usr/bin/fastfetch -c /usr/share/arcalium/fastfetch.jsonc'\''
-alias fastfetch='\''/usr/bin/fastfetch -c /usr/share/arcalium/fastfetch.jsonc'\''
-'
-printf '%s\n' "${_arcalium_neofetch_profile}" >/etc/profile.d/bazzite-neofetch.sh
-printf '%s\n' "${_arcalium_neofetch_profile}" >/etc/profile.d/zz-arcalium-fastfetch.sh
-bash -n /etc/profile.d/bazzite-neofetch.sh
-bash -n /etc/profile.d/zz-arcalium-fastfetch.sh
-
-# Always replace ublue-motd with a tiny wrapper (stock script uses } / glow tips).
-cat >/usr/libexec/ublue-motd <<'EOF'
-#!/usr/bin/bash
-# Arcalium: replace Bazzite tip/glow MOTD with our Konsole banner.
-exec /usr/libexec/arcalium-motd
-EOF
-chmod 0755 /usr/libexec/ublue-motd
-bash -n /usr/libexec/ublue-motd
-bash -n /usr/libexec/arcalium-motd
-
-[[ -f /etc/profile.d/user-motd.sh ]] ||
-    { echo "ERROR: missing /etc/profile.d/user-motd.sh" >&2; exit 1; }
-grep -q 'arcalium-motd' /etc/profile.d/user-motd.sh ||
-    { echo "ERROR: user-motd.sh does not call arcalium-motd" >&2; exit 1; }
-grep -qE '\[\[ \$- =~ i \]\]|case \$-' /etc/profile.d/user-motd.sh ||
-    { echo "ERROR: user-motd.sh must guard for interactive shells" >&2; exit 1; }
-[[ -f /etc/profile.d/bazzite-neofetch.sh ]] ||
-    { echo "ERROR: missing /etc/profile.d/bazzite-neofetch.sh" >&2; exit 1; }
-grep -q '/usr/share/arcalium/fastfetch.jsonc' /etc/profile.d/bazzite-neofetch.sh ||
-    { echo "ERROR: bazzite-neofetch.sh aliases do not point at Arcalium fastfetch" >&2; exit 1; }
-grep -q 'bazzite-bling-fastfetch' /etc/profile.d/bazzite-neofetch.sh &&
-    { echo "ERROR: bazzite-neofetch.sh still references Bazzite bling helper" >&2; exit 1; }
-[[ -f /usr/share/arcalium/fastfetch.jsonc && -f /usr/share/arcalium/logo.txt ]] ||
-    { echo "ERROR: missing /usr/share/arcalium/fastfetch.jsonc or logo.txt" >&2; exit 1; }
-[[ -f /usr/share/arcalium/motd-tips.txt ]] ||
-    { echo "ERROR: missing /usr/share/arcalium/motd-tips.txt" >&2; exit 1; }
-grep -q 'arcaliumctl ai launch' /usr/share/arcalium/motd-tips.txt ||
-    { echo "ERROR: motd-tips.txt missing Local AI command" >&2; exit 1; }
-grep -q 'arcaliumctl updates' /usr/share/arcalium/motd-tips.txt ||
-    { echo "ERROR: motd-tips.txt missing updates commands" >&2; exit 1; }
-[[ -x /usr/libexec/arcalium-motd ]] || chmod 0755 /usr/libexec/arcalium-motd
-grep -q 'motd-tips.txt' /usr/libexec/arcalium-motd ||
-    { echo "ERROR: arcalium-motd does not print motd-tips.txt" >&2; exit 1; }
-grep -q 'exec /usr/libexec/arcalium-motd' /usr/libexec/ublue-motd ||
-    { echo "ERROR: ublue-motd is not the Arcalium wrapper" >&2; exit 1; }
-[[ -f /usr/share/fish/vendor_conf.d/arcalium-motd.fish ]] ||
-    { echo "ERROR: missing fish arcalium-motd.fish" >&2; exit 1; }
-[[ -f /usr/share/konsole/Arcalium.profile ]] ||
-    { echo "ERROR: missing Konsole Arcalium.profile" >&2; exit 1; }
-grep -q 'LoginShell=true' /usr/share/konsole/Arcalium.profile ||
-    { echo "ERROR: Konsole Arcalium.profile must enable LoginShell" >&2; exit 1; }
-[[ -f /etc/xdg/konsolerc ]] ||
-    { echo "ERROR: missing /etc/xdg/konsolerc" >&2; exit 1; }
-grep -q 'DefaultProfile=Arcalium.profile' /etc/xdg/konsolerc ||
-    { echo "ERROR: konsolerc must default to Arcalium.profile" >&2; exit 1; }
-
-if [[ -d /usr/share/ublue-os/bazzite ]]; then
-    install -Dm0644 /usr/share/arcalium/fastfetch.jsonc \
-        /usr/share/ublue-os/bazzite/fastfetch.jsonc
-    install -Dm0644 /usr/share/arcalium/logo.txt \
-        /usr/share/ublue-os/bazzite/logo.txt
-fi
-if [[ -x /usr/libexec/bazzite-fetch-image || -e /usr/libexec/bazzite-fetch-image ]]; then
-    cat >/usr/libexec/bazzite-fetch-image <<'EOF'
-#!/usr/bin/bash
-# Arcalium: stock Bazzite image-line helper → live Arcalium image label.
-exec /usr/libexec/arcalium-image-label
-EOF
-    chmod 0755 /usr/libexec/bazzite-fetch-image
-fi
-if [[ -x /usr/libexec/ublue-motd || -e /usr/libexec/ublue-motd ]]; then
-    cat >/usr/libexec/ublue-motd <<'EOF'
-#!/usr/bin/bash
-# Arcalium: replace Bazzite tip/glow MOTD with our Konsole banner.
-exec /usr/libexec/arcalium-motd
-EOF
-    chmod 0755 /usr/libexec/ublue-motd
-fi
-# Keep /usr/etc in sync when present (some rebases seed /etc from here).
-if [[ -d /usr/etc/profile.d ]]; then
-    install -Dm0644 /etc/profile.d/user-motd.sh /usr/etc/profile.d/user-motd.sh
-    install -Dm0644 /etc/profile.d/bazzite-neofetch.sh /usr/etc/profile.d/bazzite-neofetch.sh
-    install -Dm0644 /etc/profile.d/zz-arcalium-fastfetch.sh /usr/etc/profile.d/zz-arcalium-fastfetch.sh
-    install -Dm0644 /etc/profile.d/zz-arcalium-motd.sh /usr/etc/profile.d/zz-arcalium-motd.sh
-fi
-grep -qE '\[\[ \$- =~ i \]\]' /etc/profile.d/user-motd.sh ||
-    { echo "ERROR: user-motd.sh interactive guard must use [[ \$- =~ i ]] (not bare case i))" >&2; exit 1; }
-grep -qE '\[\[ \$- =~ i \]\]' /etc/profile.d/zz-arcalium-motd.sh ||
-    { echo "ERROR: zz-arcalium-motd.sh interactive guard must use [[ \$- =~ i ]]" >&2; exit 1; }
-[[ -f /etc/profile.d/zz-arcalium-motd.sh ]] ||
-    { echo "ERROR: missing zz-arcalium-motd.sh safety-net MOTD" >&2; exit 1; }
-[[ -f /usr/share/fish/vendor_conf.d/bazzite-neofetch.fish ]] ||
-    { echo "ERROR: missing fish fastfetch alias override" >&2; exit 1; }
-grep -q '/usr/share/arcalium/fastfetch.jsonc' /usr/share/fish/vendor_conf.d/bazzite-neofetch.fish ||
-    { echo "ERROR: fish fastfetch aliases do not point at Arcalium" >&2; exit 1; }
-
-# Channel baked at image build time (CI DEFAULT_TAG=dev). Promote :stable retags the
-# same digest and does not rewrite this file — fastfetch / Control Centre prefer the
-# live bootc image tag via /usr/libexec/arcalium-image-label and system.summarize().
-ARCALIUM_CHANNEL="${ARCALIUM_CHANNEL:-dev}"
-
-cat >/usr/share/arcalium/os-release.snippet <<EOF
+cat >/usr/share/arcalium/os-release.snippet <<'EOF'
 NAME="Arcalium OS"
 PRETTY_NAME="Arcalium OS NVIDIA Edition"
 ID_LIKE="fedora bazzite"
 VARIANT="NVIDIA Edition"
 VARIANT_ID="nvidia"
 ARCALIUM_EDITION="nvidia"
-ARCALIUM_CHANNEL="${ARCALIUM_CHANNEL}"
+ARCALIUM_CHANNEL="dev"
 EOF
 
-cat >/etc/arcalium/image-info.json <<EOF
+cat >/etc/arcalium/image-info.json <<'EOF'
 {
   "schemaVersion": 1,
   "product": "Arcalium OS",
   "edition": "NVIDIA Edition",
   "imageName": "arcalium-os-nvidia",
-  "channel": "${ARCALIUM_CHANNEL}",
+  "channel": "dev",
   "website": "https://getarcalium.com",
   "baseImage": "ghcr.io/ublue-os/bazzite-nvidia-open:stable",
   "independentProjectNotice": "Arcalium OS is an independent project built on Bazzite and is not affiliated with or endorsed by Valve, NVIDIA, Spotify, Proton AG, Fedora, Universal Blue or the Bazzite project."
@@ -357,27 +146,7 @@ EOF
 # /etc/hostname from system_files.
 chmod 0755 /usr/libexec/arcalium-migrate-hostname
 chmod 0755 /usr/libexec/arcalium-cleanup-bazzite-user
-chmod 0755 /usr/libexec/arcalium-fix-kickoff-icon.py
-chmod 0755 /usr/libexec/arcalium-image-label
-chmod 0755 /usr/libexec/arcalium-motd
-chmod 0755 /usr/libexec/arcalium-konsole-shell
-chmod 0755 /usr/bin/neofetch
-chmod 0755 /usr/bin/neowofetch
 chmod 0755 /usr/bin/arcaliumctl
-# Binary wrappers beat broken / missing aliases when something execs `neofetch`.
-grep -q 'arcalium/fastfetch.jsonc' /usr/bin/neofetch ||
-    { echo "ERROR: /usr/bin/neofetch is not the Arcalium fastfetch wrapper" >&2; exit 1; }
-grep -q 'arcalium/fastfetch.jsonc' /usr/bin/neowofetch ||
-    { echo "ERROR: /usr/bin/neowofetch is not the Arcalium fastfetch wrapper" >&2; exit 1; }
-grep -q 'arcalium-motd' /usr/libexec/arcalium-konsole-shell ||
-    { echo "ERROR: arcalium-konsole-shell must invoke arcalium-motd" >&2; exit 1; }
-grep -q 'arcalium-konsole-shell' /usr/share/konsole/Arcalium.profile ||
-    { echo "ERROR: Konsole Arcalium.profile must use arcalium-konsole-shell" >&2; exit 1; }
-# Kickoff mark must exist in hicolor (install_logos also mirrors into Breeze).
-[[ -f /usr/share/icons/hicolor/scalable/places/start-here-kde.svg ]] ||
-    { echo "ERROR: missing Kickoff start-here-kde.svg" >&2; exit 1; }
-[[ -f /usr/share/icons/hicolor/scalable/places/distributor-logo.svg ]] ||
-    { echo "ERROR: missing distributor-logo.svg" >&2; exit 1; }
 chmod 0755 /usr/bin/arcalium-heroic
 chmod 0755 /usr/bin/arcalium-setup
 chmod 0755 /usr/bin/arcalium-control-centre-launch
@@ -473,112 +242,25 @@ grep -q 'not shipped in the image' /usr/bin/bazzite-steam
 echo "Steam client removed from image (not redistributed)."
 
 # Hide inherited Bazzite marketing / maintenance launchers. Arcalium users update
-# via Control Centre (bootc) — not Bazzite Updater / Portal / docs / Bold Brew CLI UI.
-echo "Removing Bazzite Portal / Documentation / Updater / CLI menu entries..."
-# Newer bases ship the GUI as RPM bazzite-updater (io.github.rfrench3.bazzite-updater),
-# replacing the old system-update.desktop tip launcher.
-if rpm -q bazzite-updater >/dev/null 2>&1; then
-    dnf5 -y remove bazzite-updater || dnf -y remove bazzite-updater
-fi
-if rpm -q bazzite-updater >/dev/null 2>&1; then
-    echo "ERROR: bazzite-updater RPM still present after removal" >&2
-    exit 1
-fi
-# Portal ships as RPM bazzite-portal (provides yafti_gtk + AppStream metainfo).
-# Deleting only the .desktop leaves Kickoff/AppStream search hits for "Bazzite Portal"
-# and the yafti.yml action catalogue. Remove the package + leftover files.
-for pkg in bazzite-portal yafti yafti-gtk python3-yafti; do
-    if rpm -q "${pkg}" >/dev/null 2>&1; then
-        dnf5 -y remove "${pkg}" || dnf -y remove "${pkg}" || true
-    fi
-done
-if rpm -q bazzite-portal >/dev/null 2>&1; then
-    echo "ERROR: bazzite-portal RPM still present after removal" >&2
-    exit 1
-fi
-
-# Skel + system autostart (Portal / announcements copy into ~/.config on first login).
+# via Control Centre (bootc) and should not see Portal / Bazzite docs / ujust update.
+echo "Removing Bazzite Portal / Documentation / System Update menu entries..."
 rm -f /etc/skel/.config/autostart/bazzite-portal.desktop
-rm -f /etc/skel/.config/autostart/bazzite-*.desktop
-rm -f /etc/xdg/autostart/bazzite-portal.desktop
-rm -f /etc/xdg/autostart/bazzite-announcement.desktop
-rm -f /etc/xdg/autostart/bazzite-*.desktop
-find /etc/skel/.config/autostart /etc/xdg/autostart -maxdepth 1 -type f \( \
-    -iname '*bazzite*' -o -iname '*yafti*' \
-  \) -print -delete 2>/dev/null || true
-
 rm -f /usr/share/applications/bazzite-documentation.desktop
 rm -f /usr/share/applications/system-update.desktop
 rm -f /usr/share/applications/discourse.desktop
-rm -f /usr/share/applications/bbrew.desktop
-rm -f /usr/share/applications/io.github.rfrench3.bazzite-updater.desktop
-rm -f /usr/share/applications/bazzite-updater.desktop
-rm -f /usr/share/applications/io.github.ublue_os.yafti_gtk.desktop
-rm -f /usr/share/applications/yafti_gtk.desktop
-rm -f /usr/share/applications/yafti.desktop
-rm -f /usr/bin/yafti_gtk.py /usr/bin/yafti /usr/bin/bbrew-helper
-rm -f /usr/share/metainfo/io.github.ublue_os.yafti_gtk.metainfo.xml
-rm -f /usr/share/icons/hicolor/scalable/apps/io.github.ublue_os.yafti_gtk.svg
-rm -rf /usr/share/yafti /usr/share/doc/bazzite-portal /usr/share/licenses/bazzite-portal
-
-# Portal / updater / CLI / docs / forums — wipe by filename under applications trees.
-find /usr/share/applications /usr/local/share/applications -type f \( \
+# Portal app id (yafti) — name can vary by base; wipe any matching launchers.
+find /usr/share/applications -maxdepth 1 -type f \( \
     -iname '*yafti*' -o \
     -iname '*bazzite-portal*' -o \
-    -iname '*bazzite*portal*' -o \
     -iname 'bazzite-documentation.desktop' -o \
-    -iname 'system-update.desktop' -o \
-    -iname '*bazzite-updater*' -o \
-    -iname '*bazzite*cli*' -o \
-    -iname 'bbrew.desktop' -o \
-    -iname 'discourse.desktop' -o \
-    -iname '*ublue*yafti*' \
-  \) -print -delete 2>/dev/null || true
-
-# Catch renamed launchers by Name= / Comment= / Exec= (Kickoff label).
-# Include common Portal action titles that may have been exported as .desktop files.
-_BAZZITE_LAUNCHER_RE='Bazzite Updater|Bazzite CLI|Bold Brew|Bazzite Portal|Bazzite Documentation|Bazzite Announcements|Update your system|Update Your System|System Update|yafti|yafti_gtk|ujust update|Universal Blue Forums|Read the Bazzite Docs|Get help through Discord|Decky Loader|Bazzite Buddy|^Name=Discourse$|^Name=Documentation$'
-while IFS= read -r -d '' desktop; do
-    if grep -E '^(Name|Name\[en(_[A-Z]+)?\]|GenericName|Comment|Comment\[en(_[A-Z]+)?\]|Exec|Keywords)=' "${desktop}" 2>/dev/null \
-        | grep -qiE "${_BAZZITE_LAUNCHER_RE}"; then
-        echo "Removing launcher by metadata: ${desktop}"
-        rm -f "${desktop}"
-    fi
-done < <(find /usr/share/applications /usr/local/share/applications /usr/share/kglobalaccel \
-    -type f \( -name '*.desktop' -o -name '*.desktop.desktop' \) -print0 2>/dev/null)
-
-# Also hide any leftover by writing NoDisplay shadows (same basename) if a path
-# outside applications/ still exposes them — keep Kickoff clean after re-pins.
-for shadow in \
-    system-update.desktop \
-    bbrew.desktop \
-    discourse.desktop \
-    bazzite-documentation.desktop \
-    bazzite-portal.desktop \
-    io.github.rfrench3.bazzite-updater.desktop \
-    io.github.ublue_os.yafti_gtk.desktop
-do
-    if [[ -e "/usr/share/applications/${shadow}" ]]; then
-        echo "ERROR: ${shadow} still present after scrub" >&2
-        exit 1
-    fi
-done
-[[ ! -e /usr/share/yafti/yafti.yml ]] ||
-    { echo "ERROR: /usr/share/yafti/yafti.yml still present (Portal action catalogue)" >&2; exit 1; }
-[[ ! -e /usr/share/metainfo/io.github.ublue_os.yafti_gtk.metainfo.xml ]] ||
-    { echo "ERROR: Bazzite Portal AppStream metainfo still present" >&2; exit 1; }
-[[ ! -e /usr/bin/yafti_gtk.py ]] ||
-    { echo "ERROR: yafti_gtk.py still present" >&2; exit 1; }
-
+    -iname 'system-update.desktop' \
+  \) -print -delete
 # Autostart for existing profiles is under ~/.config; skel covers new users.
-# User unit arcalium-cleanup-bazzite also clears ~/.local leftovers after upgrade.
+# Mark leftover user-copied Portal autostarts NoDisplay via a system drop-in name
+# would not help ~/.config — Control Centre docs note: delete
+# ~/.config/autostart/bazzite-portal.desktop after upgrade if it still appears.
 if [[ -e /etc/skel/.config/autostart/bazzite-portal.desktop ]]; then
     echo "ERROR: skel bazzite-portal.desktop autostart still present" >&2
-    exit 1
-fi
-if compgen -G '/etc/xdg/autostart/*bazzite*' >/dev/null 2>&1; then
-    echo "ERROR: Bazzite autostart still present under /etc/xdg/autostart" >&2
-    ls -la /etc/xdg/autostart/*bazzite* >&2 || true
     exit 1
 fi
 if [[ -e /usr/share/applications/bazzite-documentation.desktop ]]; then
@@ -589,38 +271,12 @@ if [[ -e /usr/share/applications/system-update.desktop ]]; then
     echo "ERROR: system-update.desktop still present" >&2
     exit 1
 fi
-if [[ -e /usr/share/applications/discourse.desktop ]]; then
-    echo "ERROR: discourse.desktop still present" >&2
-    exit 1
-fi
-if compgen -G '/usr/share/applications/*bazzite-updater*' >/dev/null 2>&1; then
-    echo "ERROR: bazzite-updater launcher still present under /usr/share/applications" >&2
-    ls -la /usr/share/applications/*bazzite-updater* >&2 || true
-    exit 1
-fi
 if compgen -G '/usr/share/applications/*yafti*' >/dev/null 2>&1; then
     echo "ERROR: yafti/Portal launcher still present under /usr/share/applications" >&2
     ls -la /usr/share/applications/*yafti* >&2 || true
     exit 1
 fi
-if [[ -e /usr/share/applications/bbrew.desktop ]]; then
-    echo "ERROR: bbrew.desktop (Bold Brew / Bazzite CLI UI) still present" >&2
-    exit 1
-fi
-# Fail if any remaining app menu entry is clearly Bazzite Portal/Updater branded.
-if find /usr/share/applications -type f -name '*.desktop' -print0 2>/dev/null \
-    | xargs -0 grep -l -Ei \
-        '^Name=.*(Bazzite (Portal|Updater|CLI|Announcements)|Update your system|System Update)' \
-        2>/dev/null \
-    | grep -q .; then
-    echo "ERROR: Bazzite-branded Kickoff entries still present:" >&2
-    find /usr/share/applications -type f -name '*.desktop' -print0 2>/dev/null \
-        | xargs -0 grep -l -Ei \
-            '^Name=.*(Bazzite (Portal|Updater|CLI|Announcements)|Update your system|System Update)' \
-            >&2 || true
-    exit 1
-fi
-echo "Bazzite Portal / Documentation / Updater / CLI menu entries removed."
+echo "Bazzite Portal / Documentation / System Update menu entries removed."
 
 # An import-time error in any ctl module breaks every arcaliumctl command, and
 # therefore the whole Control Centre, so prove the CLI imports and that the

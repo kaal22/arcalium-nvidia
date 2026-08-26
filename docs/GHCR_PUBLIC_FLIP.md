@@ -1,14 +1,12 @@
 # Flip GHCR public (after getarcalium.com download)
 
-**Status (2026-08-10):** GHCR package `arcalium-os-nvidia` is already **public**. Ship `Arcalium-Live-0.2.2.iso` + SHA on [getarcalium.com](https://getarcalium.com) and keep Release notes aligned with the checksum.
+Do **not** run this until:
 
-Historical gate (completed):
-
-1. [getarcalium.com](https://getarcalium.com) hosts live ISO + SHA-256 + install link (not a placeholder landing page).
-2. GitHub Release notes match the published checksum.
+1. [getarcalium.com](https://getarcalium.com) hosts `Arcalium-Live-0.2.0.iso` + SHA-256 + install link (not a placeholder landing page).
+2. GitHub Release `0.2.0` notes match the published checksum.
 3. Notices / privacy / support remain accepted (`docs/LICENSING.md`).
 
-## Steps (already done for visibility)
+## Steps
 
 1. GitHub → Packages → `arcalium-os-nvidia` → Package settings → change visibility to **Public** (irreversible).
 2. Confirm anonymous pull:

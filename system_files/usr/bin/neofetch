@@ -1,4 +1,0 @@
-#!/usr/bin/bash
-# Real binary so Kickoff / scripts / non-interactive shells work without bash aliases.
-# (Alias-only overrides miss when something execs `neofetch` by name.)
-exec /usr/bin/fastfetch -c /usr/share/arcalium/fastfetch.jsonc "$@"
